@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/.env
+**/yarn.lock
+**/pnpm-lock.yaml
+.DS_Store
+**/.terraform
+
+.env.test
+**/tsconfig.tsbuildinfo

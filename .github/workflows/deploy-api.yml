@@ -1,0 +1,55 @@
+name: Deploy Backoffice API to cPanel
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "backoffice-BE/**"   # 🚀 Only deploy when backend folder changes
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: "npm"
+          cache-dependency-path: backoffice-BE/package-lock.json
+
+      - name: Install & Build (Backend only)
+        working-directory: backoffice-BE
+        run: |
+          npm install
+          npm run build || true   # optional: if you use TypeScript
+
+      - name: Sync backend files to cPanel
+        uses: burnett01/rsync-deployments@7.1.0
+        with:
+          switches: -avzr --delete
+          path: backoffice-BE/         # local folder
+          remote_path: ${{ secrets.BACK_OFFICE_API_CPANEL_DEPLOY_PATH }}   # your cPanel path
+          remote_host: ${{ secrets.CPANEL_HOST }}
+          remote_user: ${{ secrets.CPANEL_USER }}
+          remote_key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+
+      # Install production dependencies and restart Passenger
+      - name: Install prod deps + restart Node app
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.CPANEL_HOST }}
+          username: ${{ secrets.CPANEL_USER }}
+          key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          port: ${{ secrets.CPANEL_SSH_PORT }}
+          script: |
+            cd ${{ secrets.BACK_OFFICE_API_CPANEL_DEPLOY_PATH }}
+            npm install --production
+            mkdir -p tmp
+            touch tmp/restart.txt
+            echo "Restarted Node.js app!"
