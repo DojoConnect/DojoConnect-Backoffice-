@@ -47,7 +47,7 @@ jobs:
       - name: Sync backend files to cPanel
         uses: burnett01/rsync-deployments@7.1.0
         with:
-          switches: -avzr --delete --exclude-from='.rsyncignore'
+          switches: -avzr --delete --exclude-from="backoffice-BE/.rsyncignore"
           path: backoffice-BE/         # local folder
           remote_path: ${{ secrets.BACK_OFFICE_API_CPANEL_DEPLOY_PATH }}   # your cPanel path
           remote_host: ${{ secrets.CPANEL_HOST }}
