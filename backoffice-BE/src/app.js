@@ -1,3 +1,4 @@
+import "express-async-errors";
 const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
@@ -8,11 +9,14 @@ const PDFDocument = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 
+import { notFound } from "./middlewares/notFound.middleware";
+import { errorHandler } from "./middlewares/errorHandler.middleware";
 import AppConfig from "./config/AppConfig";
+import routes from "./routes/index";
 
 const corsOptions = {
   origin: "https://www.dojoconnect.app",
-}
+};
 
 const app = express();
 app.use(cors(corsOptions));
@@ -145,11 +149,9 @@ async function exportToPDF(data, filename, title) {
     // Title
     doc.fontSize(20).text(title, { align: "center" });
     doc.moveDown();
-    doc
-      .fontSize(10)
-      .text(`Generated on: ${new Date().toLocaleString()}`, {
-        align: "center",
-      });
+    doc.fontSize(10).text(`Generated on: ${new Date().toLocaleString()}`, {
+      align: "center",
+    });
     doc.moveDown(2);
 
     // Data
@@ -711,24 +713,9 @@ async function sendTrialClassBookingConfirmation(
   }
 }
 
-/* ------------------ DOJOS ------------------ */
+/* ------------------ API Routes ------------------ */
+app.use("/api", routes);
 
-app.get("/dojos/slug/:slug", async (req, res) => {
-  try {
-    const [rows] = await connection.execute(
-      `SELECT id, name, email, role, dojo_id, dojo_name, dojo_tag, tagline, description, created_at
-       FROM users
-       WHERE dojo_tag = ?`,
-      [req.params.slug]
-    );
-
-    if (rows.length === 0)
-      return res.status(404).json({ error: "Dojo not found" });
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 /* ------------------ EXPORTING/REPORTING (from combine.js) ------------------ */
 
@@ -3370,16 +3357,6 @@ app.delete("/notifications/:id", async (req, res) => {
   }
 });
 
-/* ------------------ ERROR HANDLING ------------------ */
-app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
-  res
-    .status(500)
-    .json(
-      formatResponse(false, null, null, err.message || "Internal server error")
-    );
-});
-
 /* ------------------ ROOT (merged) ------------------ */
 app.get("/backoffice", (req, res) => {
   res.json({
@@ -3437,17 +3414,22 @@ app.get("/test", (req, res) => {
   });
 });
 
+// catch all 404 routes → JSON
+app.use(notFound);
 
-(
-  /* ------------------ START ------------------ */
-  async () => {
-    try {
-      await initDB(); // ✅ ensure DB is ready before listen
-      const PORT = process.env.PORT || 5000;
-      app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    } catch (e) {
-      console.error("DB init failed:", e);
-      process.exit(1);
-    }
+/* ------------------ ERROR HANDLING ------------------ */
+// register AFTER all routes
+app.use(errorHandler);
+
+/* ------------------ START ------------------ */
+(async () => {
+  try {
+    await initDB(); // ✅ ensure DB is ready before listen
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  } catch (e) {
+    console.error("DB init failed:", e);
+    process.exit(1);
   }
-)();
+})();
+
