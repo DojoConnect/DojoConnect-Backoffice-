@@ -10,8 +10,12 @@ const path = require("path");
 
 import AppConfig from "./config/AppConfig";
 
+const corsOptions = {
+  origin: "https://www.dojoconnect.app",
+}
+
 const app = express();
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json()); // bodyParser not needed
 
 /* ------------------ DB ------------------ */
