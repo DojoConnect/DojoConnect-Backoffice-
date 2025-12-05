@@ -29,15 +29,31 @@ jobs:
           npm install
           npm run build || true   # optional: if you use TypeScript
 
+      # -----------------------------
+      # 4. Preview Deployment Info
+      # -----------------------------
+      - name: 📝 Log deploy variables (MASKED VALUES)
+        run: |
+          echo "------ DEPLOYMENT VARIABLES ------"
+          echo "HOST starts with: ${CPANEL_HOST:0:3}..."
+          echo "USER starts with: ${CPANEL_USER:0:2}..."
+          echo "DEPLOY path begins: ${DEPLOY_PATH:0:10}..."
+          echo "----------------------------------"
+        env:
+            CPANEL_HOST: ${{ secrets.CPANEL_HOST }}
+            CPANEL_USER: ${{ secrets.CPANEL_USER }}
+            DEPLOY_PATH: ${{ secrets.BACK_OFFICE_API_CPANEL_DEPLOY_PATH }}
+
       - name: Sync backend files to cPanel
         uses: burnett01/rsync-deployments@7.1.0
         with:
-          switches: -avzr --delete
+          switches: -avzr --delete --exclude-from="backoffice-BE/.rsyncignore"
           path: backoffice-BE/         # local folder
           remote_path: ${{ secrets.BACK_OFFICE_API_CPANEL_DEPLOY_PATH }}   # your cPanel path
           remote_host: ${{ secrets.CPANEL_HOST }}
           remote_user: ${{ secrets.CPANEL_USER }}
           remote_key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          remote_port: ${{ secrets.CPANEL_SSH_PORT }}
 
       # Install production dependencies and restart Passenger
       - name: Install prod deps + restart Node app
