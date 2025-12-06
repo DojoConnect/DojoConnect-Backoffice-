@@ -2,10 +2,10 @@
   "name": "trial-dojo-api",
   "version": "1.0.0",
   "description": "Trial class schedule API (Node.js + MySQL, cPanel friendly)",
-  "main": "src/app.js",
+  "main": "src/server.ts",
   "scripts": {
-    "dev": "tsx watch src/app.js",
-    "start": "node ./dist/app.js",
+    "dev": "tsx watch src/server.ts",
+    "start": "node ./dist/server.js",
     "build": "rm -rf dist && tsc -b"
   },
   "dependencies": {

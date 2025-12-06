@@ -1,13 +1,16 @@
 import "express-async-errors";
-const express = require("express");
-const mysql = require("mysql2/promise");
-const cors = require("cors");
-const nodemailer = require("nodemailer");
-const { createObjectCsvWriter } = require("csv-writer");
-const ExcelJS = require("exceljs");
-const PDFDocument = require("pdfkit");
-const fs = require("fs");
-const path = require("path");
+import dotenv from "dotenv";
+dotenv.config();
+
+import express from "express";
+import mysql from "mysql2/promise";
+import cors from "cors";
+import nodemailer from "nodemailer";
+import { createObjectCsvWriter } from "csv-writer";
+import ExcelJS from "exceljs";
+import PDFDocument from "pdfkit";
+import fs from "fs";
+import path from "path";
 
 import { notFound } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/errorHandler.middleware";
@@ -186,8 +189,8 @@ async function exportToPDF(data, filename, title) {
 }
 
 // Response formatter
-function formatResponse(success, data = null, message = null, error = null) {
-  const response = { success };
+function formatResponse(success: boolean, data: any = null, message: string|null = null, error: any = null) {
+  const response:any = { success };
   if (data !== null) response.data = data;
   if (message !== null) response.message = message;
   if (error !== null) response.error = error;
@@ -397,7 +400,7 @@ async function sendAppointmentRequestConfirmation(
   try {
     await transporter.sendMail(mailOptions);
     console.log(`📧 Appointment request confirmation email sent to ${to}`);
-  } catch (err) {
+  } catch (err:any) {
     console.error("❌ Error sending email:", err.message);
   }
 }
@@ -450,7 +453,7 @@ async function sendPhysicalAppointmentScheduled(
   try {
     await transporter.sendMail(mailOptions);
     console.log(`📧 Physical appointment scheduled email sent to ${to}`);
-  } catch (err) {
+  } catch (err: any) {
     console.error("❌ Error sending email:", err.message);
   }
 }
@@ -502,7 +505,7 @@ async function sendOnlineAppointmentScheduled(
   try {
     await transporter.sendMail(mailOptions);
     console.log(`📧 Online appointment scheduled email sent to ${to}`);
-  } catch (err) {
+  } catch (err:any) {
     console.error("❌ Error sending email:", err.message);
   }
 }
@@ -548,7 +551,7 @@ async function sendAppointmentCancellation(
   try {
     await transporter.sendMail(mailOptions);
     console.log(`📧 Appointment cancellation email sent to ${to}`);
-  } catch (err) {
+  } catch (err:any) {
     console.error("❌ Error sending email:", err.message);
   }
 }
@@ -595,7 +598,7 @@ async function sendOnlineAppointmentReschedule(
   try {
     await transporter.sendMail(mailOptions);
     console.log(`📧 Online appointment reschedule email sent to ${to}`);
-  } catch (err) {
+  } catch (err:any) {
     console.error("❌ Error sending email:", err.message);
   }
 }
@@ -642,7 +645,7 @@ async function sendPhysicalAppointmentReschedule(
   try {
     await transporter.sendMail(mailOptions);
     console.log(`📧 Physical appointment reschedule email sent to ${to}`);
-  } catch (err) {
+  } catch (err:any) {
     console.error("❌ Error sending email:", err.message);
   }
 }
@@ -708,7 +711,7 @@ async function sendTrialClassBookingConfirmation(
   try {
     await transporter.sendMail(mailOptions);
     console.log(`📧 Trial class booking confirmation email sent to ${to}`);
-  } catch (err) {
+  } catch (err:any) {
     console.error("❌ Error sending email:", err.message);
   }
 }
@@ -716,17 +719,16 @@ async function sendTrialClassBookingConfirmation(
 /* ------------------ API Routes ------------------ */
 app.use("/api", routes);
 
-
 /* ------------------ EXPORTING/REPORTING (from combine.js) ------------------ */
 
 // Export Users
 app.post("/export/users", async (req, res) => {
   try {
-    const { format = "csv", filters = {}, include_all = true } = req.body;
+    const { format = "csv", filters = {}, include_all = true } : {format: string, filters:any, include_all: boolean}= req.body;
 
     let query =
       "SELECT id, name, email, role, balance, referral_code, created_at, dob, gender, city, subscription_status FROM users WHERE 1=1";
-    const params = [];
+    const params: any[] = [];
 
     if (!include_all && filters) {
       if (filters.role) {
@@ -799,7 +801,7 @@ app.post("/export/users", async (req, res) => {
         });
       }
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error("Export users error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -810,7 +812,7 @@ app.get("/class_profile/:class_uid", async (req, res) => {
   try {
     const { class_uid } = req.params;
 
-    const [classInfo] = await combinePool.query(
+    const [classInfo]: any[] = await combinePool.query(
       'SELECT * FROM classes WHERE class_uid = ? AND status != "deleted"',
       [class_uid]
     );
@@ -901,7 +903,7 @@ app.get("/class_profile/:class_uid", async (req, res) => {
     res.json(
       formatResponse(true, response, "Class profile retrieved successfully")
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Class profile error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -911,7 +913,7 @@ app.get("/class_profile/:class_uid", async (req, res) => {
 app.get("/user_profile_detailed/:email", async (req, res) => {
   try {
     const { email } = req.params;
-    const [users] = await combinePool.query(
+    const [users]: any[] = await combinePool.query(
       "SELECT * FROM users WHERE email = ?",
       [email]
     );
@@ -1136,7 +1138,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
     res.json(
       formatResponse(true, profileData, "User profile retrieved successfully")
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("User profile error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -1156,7 +1158,7 @@ app.post("/export/classes", async (req, res) => {
       LEFT JOIN class_schedule cs ON c.id = cs.class_id
       WHERE 1=1
     `;
-    const params = [];
+    const params: any[] = [];
 
     if (!include_all && filters) {
       if (filters.status) {
@@ -1232,7 +1234,7 @@ app.post("/export/classes", async (req, res) => {
         });
       }
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error("Export classes error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -1250,7 +1252,7 @@ app.post("/export/transactions", async (req, res) => {
       LEFT JOIN classes c ON t.class_id = c.id
       WHERE 1=1
     `;
-    const params = [];
+    const params: any[] = [];
 
     if (!include_all && filters) {
       if (filters.user_email) {
@@ -1334,7 +1336,7 @@ app.post("/export/transactions", async (req, res) => {
         });
       }
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error("Export transactions error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -1353,7 +1355,7 @@ app.post("/export/attendance", async (req, res) => {
       LEFT JOIN users u ON a.email = u.email
       WHERE 1=1
     `;
-    const params = [];
+    const params: any[] = [];
 
     if (!include_all && filters) {
       if (filters.class_id) {
@@ -1436,7 +1438,7 @@ app.post("/export/attendance", async (req, res) => {
         });
       }
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error("Export attendance error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -1457,7 +1459,7 @@ app.post("/export/enrollments", async (req, res) => {
       LEFT JOIN enrolled_children ec ON e.enrollment_id = ec.enrollment_id
       WHERE 1=1
     `;
-    const params = [];
+    const params: any[] = [];
 
     if (!include_all && filters) {
       if (filters.class_id) {
@@ -1541,7 +1543,7 @@ app.post("/export/enrollments", async (req, res) => {
         });
       }
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error("Export enrollments error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -1633,7 +1635,7 @@ app.post("/trial-class-bookings", async (req, res) => {
       trial_fee: trial_fee || 0,
       created_at: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error("Error creating trial booking:", error.message);
     res.status(500).json({ error: "Failed to create trial booking" });
   }
@@ -1654,7 +1656,7 @@ app.get("/trial-class-bookings/:dojo_tag", async (req, res) => {
       [dojo_tag]
     );
     res.json(rows);
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error fetching trial bookings:", err.message);
     res.status(500).json({ error: err.message });
   }
@@ -1679,7 +1681,7 @@ app.get("/trial-class-bookings/details/:id", async (req, res) => {
     }
 
     res.json(rows[0]);
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error fetching trial booking details:", err.message);
     res.status(500).json({ error: "Failed to fetch trial booking details" });
   }
@@ -1803,7 +1805,7 @@ app.post("/appointment-requests", async (req, res) => {
       status: safeStatus,
       created_at: new Date().toISOString(),
     });
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error creating consultation request:", err);
     res
       .status(500)
@@ -1822,7 +1824,7 @@ app.get("/appointment-requests", async (_req, res) => {
        ORDER BY created_at DESC`
     );
     res.json(rows);
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error fetching consultation requests:", err);
     res
       .status(500)
@@ -1847,7 +1849,7 @@ app.get("/appointment-requests/:id", async (req, res) => {
     }
 
     res.json(rows[0]);
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error fetching consultation request details:", err);
     res
       .status(500)
@@ -1884,7 +1886,7 @@ app.get("/admin/appointment-requests/tag/:dojo_tag", async (req, res) => {
     );
 
     res.json(rows);
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error fetching consultation requests by dojo_tag:", err);
     res
       .status(500)
@@ -2024,7 +2026,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
       parent_name: parent_name || null,
       created_at: new Date().toISOString(),
     });
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error creating scheduled appointment:", err);
     res
       .status(500)
@@ -2046,7 +2048,7 @@ app.get("/admin/scheduled-appointments", async (req, res) => {
         ON sa.consultation_request_id = cr.id
     `;
 
-    const params = [];
+    const params: any[]= [];
 
     if (dojo_id) {
       query += " WHERE sa.dojo_id = ?";
@@ -2058,7 +2060,7 @@ app.get("/admin/scheduled-appointments", async (req, res) => {
     const [rows] = await connection.execute(query, params);
 
     res.json(rows);
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error fetching scheduled appointments:", err);
     res
       .status(500)
@@ -2135,7 +2137,7 @@ app.post("/admin/cancel-appointment", async (req, res) => {
       success: true,
       message: "Appointment canceled successfully",
     });
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error canceling appointment:", err);
     res
       .status(500)
@@ -2247,7 +2249,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
       new_start_time,
       new_end_time,
     });
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error rescheduling appointment:", err);
     res
       .status(500)
@@ -2321,7 +2323,7 @@ app.post("/users", async (req, res) => {
       tagline: tagline || null,
       description: description || null,
     });
-  } catch (err) {
+  } catch (err:any) {
     console.error("Error creating user:", err.message);
     res
       .status(500)
@@ -2356,7 +2358,7 @@ app.post("/admin/users/create", async (req, res) => {
         );
     }
 
-    const [existing] = await combinePool.query(
+    const [existing]: any[] = await combinePool.query(
       "SELECT id FROM users WHERE email = ?",
       [email]
     );
@@ -2370,7 +2372,7 @@ app.post("/admin/users/create", async (req, res) => {
     const plainPassword = password || Math.random().toString(36).slice(-12);
     const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-    const [result] = await combinePool.query(
+    const [result]: any[] = await combinePool.query(
       `INSERT INTO users (name, email, role, password, referred_by, referral_code, created_at) 
        VALUES (?, ?, ?, ?, ?, ?, NOW())`,
       [
@@ -2396,7 +2398,7 @@ app.post("/admin/users/create", async (req, res) => {
         "User created successfully"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Create user error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2409,7 +2411,7 @@ app.post("/metrics/revenue", async (req, res) => {
   try {
     const { period = "all", start_date, end_date, class_id } = req.body;
     let dateFilter = "";
-    let params = [];
+    let params: any[]= [];
     if (period !== "all") {
       const dateRange = getDateRange(period, start_date, end_date);
       dateFilter = "AND t.date BETWEEN ? AND ?";
@@ -2473,7 +2475,7 @@ app.post("/metrics/revenue", async (req, res) => {
         "Revenue metrics retrieved successfully"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Revenue metrics error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2484,7 +2486,7 @@ app.post("/metrics/enrollment", async (req, res) => {
   try {
     const { period = "all", start_date, end_date } = req.body;
     let dateFilter = "";
-    let params = [];
+    let params: any[]= [];
     if (period !== "all") {
       const dateRange = getDateRange(period, start_date, end_date);
       dateFilter = "AND created_at BETWEEN ? AND ?";
@@ -2553,7 +2555,7 @@ app.post("/metrics/enrollment", async (req, res) => {
         "Enrollment metrics retrieved successfully"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Enrollment metrics error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2564,7 +2566,7 @@ app.post("/metrics/attendance", async (req, res) => {
   try {
     const { period = "all", start_date, end_date, class_id } = req.body;
     let dateFilter = "";
-    let params = [];
+    let params: any[]= [];
     if (period !== "all") {
       const dateRange = getDateRange(period, start_date, end_date);
       dateFilter = "AND attendance_date BETWEEN ? AND ?";
@@ -2633,7 +2635,7 @@ app.post("/metrics/attendance", async (req, res) => {
         "Attendance metrics retrieved successfully"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Attendance metrics error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2688,7 +2690,7 @@ app.post("/metrics/subscriptions", async (req, res) => {
         "Subscription metrics retrieved successfully"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Subscription metrics error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2699,7 +2701,7 @@ app.post("/metrics/overview", async (req, res) => {
   try {
     const { period = "this_month", start_date, end_date } = req.body;
     let dateFilter = "";
-    let params = [];
+    let params: any[]= [];
     if (period !== "all") {
       const dateRange = getDateRange(period, start_date, end_date);
       dateFilter = "AND created_at BETWEEN ? AND ?";
@@ -2769,7 +2771,7 @@ app.post("/metrics/overview", async (req, res) => {
         "Overview metrics retrieved successfully"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Overview metrics error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2797,7 +2799,7 @@ app.put("/admin/users/:email", async (req, res) => {
       values
     );
     res.json(formatResponse(true, null, "User updated successfully"));
-  } catch (error) {
+  } catch (error:any) {
     console.error("Update user error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2831,7 +2833,7 @@ app.patch("/admin/users/:email/status", async (req, res) => {
         `User ${status === "active" ? "activated" : "deactivated"} successfully`
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Update user status error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2859,7 +2861,7 @@ app.delete("/admin/users/:email", async (req, res) => {
       ["deleted", email]
     );
     res.json(formatResponse(true, null, "User soft deleted successfully"));
-  } catch (error) {
+  } catch (error:any) {
     console.error("Soft delete user error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2884,7 +2886,7 @@ app.delete("/admin/users/:email/hard", async (req, res) => {
     }
     await combinePool.query("DELETE FROM users WHERE email = ?", [email]);
     res.json(formatResponse(true, null, "User permanently deleted"));
-  } catch (error) {
+  } catch (error:any) {
     console.error("Hard delete user error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2922,7 +2924,7 @@ app.post("/admin/classes/create", async (req, res) => {
         );
     }
     const class_uid = Math.random().toString(36).substr(2, 10);
-    const [result] = await combinePool.query(
+    const [result]: any[] = await combinePool.query(
       `INSERT INTO classes (class_uid, owner_email, class_name, description, instructor, level, 
        age_group, frequency, capacity, location, street_address, city, subscription, price, status, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', NOW())`,
@@ -2964,7 +2966,7 @@ app.post("/admin/classes/create", async (req, res) => {
         "Class created successfully"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Create class error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -2992,7 +2994,7 @@ app.put("/admin/classes/:class_uid", async (req, res) => {
       values
     );
     res.json(formatResponse(true, null, "Class updated successfully"));
-  } catch (error) {
+  } catch (error:any) {
     console.error("Update class error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -3020,7 +3022,7 @@ app.delete("/admin/classes/:class_uid", async (req, res) => {
       ["deleted", class_uid]
     );
     res.json(formatResponse(true, null, "Class soft deleted successfully"));
-  } catch (error) {
+  } catch (error:any) {
     console.error("Soft delete class error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -3070,7 +3072,7 @@ app.post("/admin/classes/:class_uid/enroll", async (req, res) => {
     res.json(
       formatResponse(true, { enrollment_id }, "Student enrolled successfully")
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Enroll student error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -3091,7 +3093,7 @@ app.delete(
         [class_uid, student_email]
       );
       res.json(formatResponse(true, null, "Student unenrolled successfully"));
-    } catch (error) {
+    } catch (error:any) {
       console.error("Unenroll student error:", error);
       res.status(500).json(formatResponse(false, null, null, error.message));
     }
@@ -3170,7 +3172,7 @@ app.post("/admin/classes/:class_uid/attendance/export", async (req, res) => {
         });
       }
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error("Export class attendance error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -3221,7 +3223,7 @@ app.post("/test-email", async (req, res) => {
       message: `Test email sent successfully to ${email}`,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch (error:any) {
     console.error("❌ Error sending test email:", error.message);
     res.status(500).json({
       error: "Failed to send test email",
@@ -3241,13 +3243,13 @@ app.get("/notifications/:user_email", async (req, res) => {
     const { user_email } = req.params;
     const { limit = 50, unread_only = false } = req.query;
     let query = "SELECT * FROM notifications WHERE user_email = ?";
-    const params = [user_email];
+    const params: any[]= [user_email];
     if (unread_only === "true") {
       query += " AND is_read = 0";
     }
     query += " ORDER BY created_at DESC LIMIT ?";
-    params.push(parseInt(limit));
-    const [notifications] = await combinePool.query(query, params);
+    params.push(parseInt(limit as any));
+    const [notifications]: any[] = await combinePool.query(query, params);
     const [unreadCount] = await combinePool.query(
       "SELECT COUNT(*) as count FROM notifications WHERE user_email = ? AND is_read = 0",
       [user_email]
@@ -3263,7 +3265,7 @@ app.get("/notifications/:user_email", async (req, res) => {
         "Notifications retrieved successfully"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Get notifications error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -3291,7 +3293,7 @@ app.post("/notifications", async (req, res) => {
           )
         );
     }
-    const [result] = await combinePool.query(
+    const [result]: any[] = await combinePool.query(
       `INSERT INTO notifications (user_email, title, message, type, event_id, is_read, created_at, status)
        VALUES (?, ?, ?, ?, ?, 0, NOW(), 'pending')`,
       [user_email, title, message, type, event_id]
@@ -3303,7 +3305,7 @@ app.post("/notifications", async (req, res) => {
         "Notification created successfully"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Create notification error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -3318,7 +3320,7 @@ app.patch("/notifications/:id/read", async (req, res) => {
       [id]
     );
     res.json(formatResponse(true, null, "Notification marked as read"));
-  } catch (error) {
+  } catch (error:any) {
     console.error("Mark notification read error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -3328,7 +3330,7 @@ app.patch("/notifications/:id/read", async (req, res) => {
 app.patch("/notifications/read_all/:user_email", async (req, res) => {
   try {
     const { user_email } = req.params;
-    const [result] = await combinePool.query(
+    const [result]: any[] = await combinePool.query(
       "UPDATE notifications SET is_read = 1 WHERE user_email = ? AND is_read = 0",
       [user_email]
     );
@@ -3339,7 +3341,7 @@ app.patch("/notifications/read_all/:user_email", async (req, res) => {
         "All notifications marked as read"
       )
     );
-  } catch (error) {
+  } catch (error:any) {
     console.error("Mark all notifications read error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -3351,7 +3353,7 @@ app.delete("/notifications/:id", async (req, res) => {
     const { id } = req.params;
     await combinePool.query("DELETE FROM notifications WHERE id = ?", [id]);
     res.json(formatResponse(true, null, "Notification deleted successfully"));
-  } catch (error) {
+  } catch (error:any) {
     console.error("Delete notification error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
   }
@@ -3433,3 +3435,4 @@ app.use(errorHandler);
   }
 })();
 
+export default app;
