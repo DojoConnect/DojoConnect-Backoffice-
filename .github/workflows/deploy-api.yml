@@ -27,7 +27,11 @@ jobs:
         working-directory: backoffice-BE
         run: |
           npm install
-          npm run build || true   # optional: if you use TypeScript
+          npm run build
+      
+      - name: Run tests
+        working-directory: backoffice-BE
+        run: npm test
 
       # -----------------------------
       # 4. Preview Deployment Info
