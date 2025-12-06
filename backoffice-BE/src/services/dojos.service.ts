@@ -1,8 +1,22 @@
 import { NotFoundException } from "../core/errors/NotFoundException";
-import { getDBConnection } from "./db.service";
+import * as dbService from "./db.service";
+
+export interface IDojo {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  dojo_id: number;
+  dojo_name: string;
+  dojo_tag: string;
+  tagline: string;
+  description: string;
+  created_at: Date;
+}
+
 
 export const fetchDojoBySlug = async (slug: string) => {
-  const dbConnection = await getDBConnection();
+  const dbConnection = await dbService.getDBConnection();
 
   const [rows] = await dbConnection.execute(
     `SELECT id, name, email, role, dojo_id, dojo_name, dojo_tag, tagline, description, created_at
