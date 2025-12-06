@@ -2,7 +2,7 @@ import { create } from "domain";
 import { NotFoundException } from "../core/errors/NotFoundException";
 import { createDbServiceSpies } from "../tests/spies/db.service.spies";
 import * as dojosService from "./dojos.service";
-import { buildDojoMock } from "../tests/spies/factories/dojos.factory";
+import { buildDojoMock } from "../tests/factories/dojos.factory";
 
 describe("Dojo Service", () => {
   let getDbConnectionSpy: jest.SpyInstance;

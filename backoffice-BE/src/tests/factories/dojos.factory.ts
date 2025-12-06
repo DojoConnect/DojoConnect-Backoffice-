@@ -1,4 +1,4 @@
-import { IDojo } from "../../../services/dojos.service";
+import { IDojo } from "../../services/dojos.service";
 
 export const buildDojoMock = (overrides?: Partial<IDojo>): IDojo => {
   return {
