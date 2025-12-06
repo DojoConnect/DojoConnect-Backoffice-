@@ -4,7 +4,6 @@ dotenv.config();
 
 import express, { Express } from "express";
 import cors from "cors";
-import nodemailer from "nodemailer";
 import { createObjectCsvWriter } from "csv-writer";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
@@ -13,6 +12,7 @@ import path from "path";
 
 import AppConfig from "./config/AppConfig";
 import * as dbService from "./services/db.service";
+import * as mailerService from "./services/mailer.service";
 import { notFound } from "./middlewares/notFound.middleware";
 import { errorHandler } from "./middlewares/errorHandler.middleware";
 import routes from "./routes/index";
@@ -189,22 +189,6 @@ function formatResponse(
   return response;
 }
 
-const transporter = nodemailer.createTransport({
-  host: "smtp.zoho.com",
-  port: 465,
-  secure: true,
-  auth: {
-    user: process.env.ZOHO_EMAIL || "hello@dojoconnect.app",
-    pass: process.env.ZOHO_PASSWORD || "Connectdojo1!",
-  },
-  connectionTimeout: 20000,
-  greetingTimeout: 15000,
-  socketTimeout: 30000,
-  logger: true,
-  debug: true,
-  tls: { servername: "smtp.zoho.com" },
-});
-
 /* ---------- helpers ---------- */
 // slug util
 const slugify = (str) =>
@@ -269,12 +253,6 @@ function toMySQLDateTime(input) {
   return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
-/** Normalize appointment type to 'physical' | 'online' */
-function normalizeApptType(value) {
-  if (!value) return "Online"; // default
-  return value.toLowerCase() === "physical" ? "Physical" : "Online";
-}
-
 /** Convert time from "HH:MM AM/PM" format to "HH:MM:SS" 24-hour format for MySQL */
 function convertTo24Hour(time12h) {
   if (!time12h) return null;
@@ -332,361 +310,6 @@ function convertTo12Hour(time24h) {
 }
 
 /** Helper for Sending Appointment Emails */
-
-// 1. Appointment Request Confirmation Email
-async function sendAppointmentRequestConfirmation(
-  to,
-  parentName,
-  appointmentType,
-  reason,
-  timeRange,
-  numberOfChildren,
-  dojoName
-) {
-  const mailOptions = {
-    from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
-    to,
-    subject: "Your Appointment Request Has Been Received",
-    html: `
-      <h2>Hello ${parentName},</h2>
-      <p>Thank you for requesting an appointment with <strong>${dojoName}</strong>. We've successfully received your request and our team will review the details.</p>
-      
-      <p><strong>Here's a summary of your request:</strong></p>
-      <ul>
-        <li><b>Appointment Type:</b> ${appointmentType}</li>
-        <li><b>Reason for Consultation:</b> ${reason || "Not provided"}</li>
-        <li><b>Preferred Time Range:</b> ${timeRange || "Not provided"}</li>
-        <li><b>Number of Children:</b> ${
-          numberOfChildren || "Not provided"
-        }</li>
-      </ul>
-      
-      <p>We will get back to you shortly with the confirmed date, time, and meeting details.</p>
-      
-      <p>Best regards,<br/>The ${dojoName} Team</p>
-    `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`📧 Appointment request confirmation email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-}
-
-// 2. Appointment Scheduled Email - Physical Meeting
-async function sendPhysicalAppointmentScheduled(
-  to,
-  parentName,
-  scheduledDate,
-  startTime,
-  dojoName,
-  dojoAddress,
-  preferredContactMethod
-) {
-  const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
-    to,
-    subject: "Your Appointment Has Been Scheduled",
-    html: `
-      <h2>Hello ${parentName},</h2>
-      <p>Your appointment with <strong>${dojoName}</strong> has been scheduled successfully.</p>
-      
-      <p><strong>Appointment Details</strong></p>
-      <ul>
-        <li><b>Date:</b> ${formattedDate}</li>
-        <li><b>Time:</b> ${startTime}</li>
-        <li><b>Type:</b> Physical</li>
-        <li><b>Meeting Location:</b> ${dojoAddress}</li>
-      </ul>
-      
-      <p>If you have any questions before the appointment, please reach out via ${
-        preferredContactMethod || "email"
-      }.</p>
-      
-      <p>We look forward to meeting you.</p>
-      
-      <p>Best regards,<br/>The ${dojoName} Team</p>
-    `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`📧 Physical appointment scheduled email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-}
-
-// 3. Appointment Scheduled Email - Online
-async function sendOnlineAppointmentScheduled(
-  to,
-  parentName,
-  scheduledDate,
-  startTime,
-  dojoName,
-  meetingLink,
-  preferredContactMethod
-) {
-  const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
-    to,
-    subject: "Your Online Appointment Has Been Scheduled",
-    html: `
-      <h2>Hello ${parentName},</h2>
-      <p>Your online appointment with <strong>${dojoName}</strong> has been scheduled successfully.</p>
-      
-      <p><strong>Appointment Details</strong></p>
-      <ul>
-        <li><b>Date:</b> ${formattedDate}</li>
-        <li><b>Time:</b> ${startTime}</li>
-        <li><b>Meeting Link:</b> <a href="${meetingLink}">${meetingLink}</a></li>
-      </ul>
-      
-      <p>Please join the meeting using the link above at the scheduled time. If you encounter any issues, reach us via ${
-        preferredContactMethod || "email"
-      }.</p>
-      
-      <p>We look forward to meeting you online.</p>
-      
-      <p>Best regards,<br/>The ${dojoName} Team</p>
-    `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`📧 Online appointment scheduled email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-}
-
-// 4. Appointment Cancellation Email
-async function sendAppointmentCancellation(
-  to,
-  parentName,
-  scheduledDate,
-  startTime,
-  dojoName,
-  dojoWebPageUrl
-) {
-  const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
-    to,
-    subject: "Appointment Canceled",
-    html: `
-      <h2>Hello ${parentName},</h2>
-      <p>We regret to inform you that your scheduled appointment with <strong>${dojoName}</strong> on <strong>${formattedDate}</strong> at <strong>${startTime}</strong> has been canceled.</p>
-      
-      ${
-        dojoWebPageUrl
-          ? `<p>If you would like, you can request a new appointment anytime by visiting our dojo web page: <a href="${dojoWebPageUrl}">${dojoWebPageUrl}</a>.</p>`
-          : ""
-      }
-      
-      <p>We apologize for any inconvenience and appreciate your understanding.</p>
-      
-      <p>Best regards,<br/>The ${dojoName} Team</p>
-    `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`📧 Appointment cancellation email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-}
-
-// 5. Appointment Reschedule Email - Online
-async function sendOnlineAppointmentReschedule(
-  to,
-  parentName,
-  newDate,
-  newTime,
-  dojoName,
-  newMeetingLink
-) {
-  const formattedDate = new Date(newDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
-    to,
-    subject: "Appointment Update – Rescheduled",
-    html: `
-      <h2>Hello ${parentName},</h2>
-      <p>Your online appointment with <strong>${dojoName}</strong> has been rescheduled. Please find the updated details below:</p>
-      
-      <p><strong>New Appointment Details</strong></p>
-      <ul>
-        <li><b>Date:</b> ${formattedDate}</li>
-        <li><b>Time:</b> ${newTime}</li>
-        <li><b>Meeting Link:</b> <a href="${newMeetingLink}">${newMeetingLink}</a></li>
-      </ul>
-      
-      <p>We appreciate your flexibility and look forward to meeting you online at the new time.</p>
-      
-      <p>Best regards,<br/>The ${dojoName} Team</p>
-    `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`📧 Online appointment reschedule email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-}
-
-// 6. Appointment Reschedule Email - Physical
-async function sendPhysicalAppointmentReschedule(
-  to,
-  parentName,
-  newDate,
-  newTime,
-  dojoName,
-  newAddress
-) {
-  const formattedDate = new Date(newDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
-    to,
-    subject: "Appointment Update – Rescheduled",
-    html: `
-      <h2>Hello ${parentName},</h2>
-      <p>Your in-person appointment with <strong>${dojoName}</strong> has been rescheduled. Please find the updated details below:</p>
-      
-      <p><strong>New Appointment Details</strong></p>
-      <ul>
-        <li><b>Date:</b> ${formattedDate}</li>
-        <li><b>Time:</b> ${newTime}</li>
-        <li><b>Location:</b> ${newAddress}</li>
-      </ul>
-      
-      <p>We look forward to seeing you at the dojo on the new date.</p>
-      
-      <p>Best regards
-    `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`📧 Physical appointment reschedule email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-}
-
-// 7. Trial Class Booking Confirmation Email
-async function sendTrialClassBookingConfirmation(
-  to,
-  parentName,
-  className,
-  instructorName,
-  appointmentDate,
-  numberOfChildren,
-  trialFee,
-  dojoName
-) {
-  const formattedDate = new Date(appointmentDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
-    to,
-    subject: "Your Trial Class Booking Has Been Confirmed",
-    html: `
-      <h2>Hello ${parentName},</h2>
-      <p>Thank you for booking a trial class with <strong>${dojoName}</strong>! We're excited to have you join us.</p>
-      
-      <p><strong>Trial Class Details</strong></p>
-      <ul>
-        <li><b>Class:</b> ${className || "Trial Class"}</li>
-        ${instructorName ? `<li><b>Instructor:</b> ${instructorName}</li>` : ""}
-        <li><b>Date:</b> ${formattedDate}</li>
-        <li><b>Number of Children:</b> ${numberOfChildren || 1}</li>
-        ${
-          trialFee > 0
-            ? `<li><b>Trial Fee:</b> $${trialFee}</li>`
-            : "<li><b>Trial Fee:</b> Free</li>"
-        }
-      </ul>
-      
-      <p><strong>What to Bring:</strong></p>
-      <ul>
-        <li>Comfortable workout attire</li>
-        <li>Water bottle</li>
-        <li>A positive attitude and willingness to learn!</li>
-      </ul>
-      
-      <p>Please arrive 10-15 minutes early to complete any necessary paperwork and get settled in.</p>
-      
-      <p>If you have any questions or need to make changes to your booking, please don't hesitate to contact us.</p>
-      
-      <p>We look forward to seeing you soon!</p>
-      
-      <p>Best regards,<br/>The ${dojoName} Team</p>
-    `,
-  };
-
-  try {
-    await transporter.sendMail(mailOptions);
-    console.log(`📧 Trial class booking confirmation email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-}
 
 /* ------------------ API Routes ------------------ */
 app.use("/api", routes);
@@ -1598,7 +1221,7 @@ app.post("/trial-class-bookings", async (req, res) => {
     const dojoName = dojoRows.length > 0 ? dojoRows[0].dojo_name : "Trial Dojo";
 
     // Send trial class booking confirmation email
-    await sendTrialClassBookingConfirmation(
+    await mailerService.sendTrialClassBookingConfirmation(
       email,
       parent_name,
       class_name,
@@ -1676,180 +1299,6 @@ app.get("/trial-class-bookings/details/:id", async (req, res) => {
   } catch (err: any) {
     console.error("Error fetching trial booking details:", err.message);
     res.status(500).json({ error: "Failed to fetch trial booking details" });
-  }
-});
-
-/* ------------------ CREATE A NEW APPOINTMENT REQUESTS ------------------ */
-app.post("/appointment-requests", async (req, res) => {
-  try {
-    const {
-      dojo_tag, // required string dojo_tag
-      dojo_email, // required dojo owner's email
-      parent_name,
-      email_address,
-      contact_details,
-      reason_for_consultation,
-      preferred_contact_method,
-      preferred_time_range,
-      number_of_children,
-      additional_notes,
-      consent_acknowledged,
-      appointment_type,
-      status,
-    } = req.body || {};
-
-    if (
-      !parent_name ||
-      !email_address ||
-      !contact_details ||
-      consent_acknowledged === undefined
-    ) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    if (!dojo_tag || !dojo_email) {
-      return res
-        .status(400)
-        .json({ error: "dojo_tag and dojo_email are required" });
-    }
-
-    // normalize values
-    const children = Number.isFinite(Number(number_of_children))
-      ? Number(number_of_children)
-      : null;
-    const appointment_type_normalized = normalizeApptType(appointment_type);
-    const validStatuses = ["pending", "upcoming", "completed"];
-    const safeStatus = validStatuses.includes(status) ? status : "pending";
-    const consent = !!consent_acknowledged ? 1 : 0;
-
-    const connection = await dbService.getBackOfficeDB();
-
-    // Insert consultation request including dojo_email
-    const [result]: any = await connection.execute(
-      `INSERT INTO consultation_requests
-       (dojo_tag, dojo_email, parent_name, email_address, contact_details, reason_for_consultation,
-        preferred_contact_method, preferred_time_range, number_of_children,
-        additional_notes, consent_acknowledged, appointment_type, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        dojo_tag,
-        dojo_email,
-        parent_name,
-        email_address,
-        contact_details,
-        reason_for_consultation || null,
-        preferred_contact_method || null,
-        preferred_time_range || null,
-        children,
-        additional_notes || null,
-        consent,
-        appointment_type_normalized,
-        safeStatus,
-      ]
-    );
-
-    // Get dojo name for email
-    const [dojoRows]: any = await connection.execute(
-      "SELECT dojo_name FROM users WHERE dojo_tag = ? LIMIT 1",
-      [dojo_tag]
-    );
-    const dojoName = dojoRows.length > 0 ? dojoRows[0].dojo_name : "Trial Dojo";
-
-    // Send confirmation email to parent
-    await sendAppointmentRequestConfirmation(
-      email_address,
-      parent_name,
-      appointment_type_normalized,
-      reason_for_consultation,
-      preferred_time_range,
-      children,
-      dojoName
-    );
-
-    // Insert notification for dojo owner
-    const title = "New Appointment Request";
-    const message = `Hi, your dojo has a new consultation request from ${parent_name}.`;
-    await connection.execute(
-      `INSERT INTO notifications (user_email, title, message, type, event_id, status)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        dojo_email,
-        title,
-        message,
-        "consultation_request",
-        result.insertId.toString(),
-        "pending",
-      ]
-    );
-
-    res.status(201).json({
-      id: result.insertId,
-      dojo_tag,
-      dojo_email,
-      parent_name,
-      email_address,
-      contact_details,
-      reason_for_consultation: reason_for_consultation || null,
-      preferred_contact_method: preferred_contact_method || null,
-      preferred_time_range: preferred_time_range || null,
-      number_of_children: children,
-      additional_notes: additional_notes || null,
-      consent_acknowledged: !!consent_acknowledged,
-      appointment_type: appointment_type_normalized,
-      status: safeStatus,
-      created_at: new Date().toISOString(),
-    });
-  } catch (err: any) {
-    console.error("Error creating consultation request:", err);
-    res
-      .status(500)
-      .json({ error: "Internal Server Error", detail: err.message });
-  }
-});
-
-/* ------------------ FETCH ALL APPOINTMENT REQUESTS ------------------ */
-app.get("/appointment-requests", async (_req, res) => {
-  try {
-    const connection = await dbService.getBackOfficeDB();
-    const [rows] = await connection.execute(
-      `SELECT id, dojo_id, parent_name, email_address, contact_details, reason_for_consultation,
-              preferred_contact_method, preferred_time_range, number_of_children,
-              additional_notes, consent_acknowledged, appointment_type, status, created_at
-       FROM consultation_requests
-       ORDER BY created_at DESC`
-    );
-    res.json(rows);
-  } catch (err: any) {
-    console.error("Error fetching consultation requests:", err);
-    res
-      .status(500)
-      .json({ error: "Internal Server Error", detail: err.message });
-  }
-});
-
-/* ------------------ FETCH APPOINTMENT REQUEST BY ID ------------------ */
-app.get("/appointment-requests/:id", async (req, res) => {
-  try {
-    const connection = await dbService.getBackOfficeDB();
-    const [rows]: any = await connection.execute(
-      `SELECT id, dojo_id, parent_name, email_address, contact_details, reason_for_consultation,
-              preferred_contact_method, preferred_time_range, number_of_children,
-              additional_notes, consent_acknowledged, appointment_type, status, created_at
-       FROM consultation_requests
-       WHERE id = ?`,
-      [req.params.id]
-    );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: "Consultation request not found" });
-    }
-
-    res.json(rows[0]);
-  } catch (err: any) {
-    console.error("Error fetching consultation request details:", err);
-    res
-      .status(500)
-      .json({ error: "Internal Server Error", detail: err.message });
   }
 });
 
@@ -1972,7 +1421,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
     const displayTime = start_time; // Keep original format (e.g., "10:00 AM")
 
     if (address_text != null || address_text != "") {
-      await sendPhysicalAppointmentScheduled(
+      await mailerService.sendPhysicalAppointmentScheduled(
         parent_email,
         parent_name || "Parent",
         scheduled_date,
@@ -1982,7 +1431,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
         preferredContactMethod
       );
     } else if (meeting_link) {
-      await sendOnlineAppointmentScheduled(
+      await mailerService.sendOnlineAppointmentScheduled(
         parent_email,
         parent_name || "Parent",
         scheduled_date,
@@ -2126,7 +1575,7 @@ app.post("/admin/cancel-appointment", async (req, res) => {
     );
 
     // Send cancellation email
-    await sendAppointmentCancellation(
+    await mailerService.sendAppointmentCancellation(
       parent_email,
       parent_name || "Parent",
       scheduled_date,
@@ -2225,7 +1674,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
     const displayTime = new_start_time; // Keep original format (e.g., "10:00 AM")
 
     if (appointmentType === "Physical" && new_address_text) {
-      await sendPhysicalAppointmentReschedule(
+      await mailerService.sendPhysicalAppointmentReschedule(
         parent_email,
         parent_name || "Parent",
         new_scheduled_date,
@@ -2234,7 +1683,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
         new_address_text
       );
     } else if (new_meeting_link) {
-      await sendOnlineAppointmentReschedule(
+      await mailerService.sendOnlineAppointmentReschedule(
         parent_email,
         parent_name || "Parent",
         new_scheduled_date,
@@ -2811,7 +2260,7 @@ app.put("/admin/users/:email", async (req, res) => {
       .join(", ");
     const values = [...Object.values(updates), email];
 
-    const  dbConnection =  await dbService.getMobileApiDb();
+    const dbConnection = await dbService.getMobileApiDb();
 
     await dbConnection.query(
       `UPDATE users SET ${fields} WHERE email = ?`,
@@ -2879,10 +2328,9 @@ app.delete("/admin/users/:email", async (req, res) => {
         );
     }
 
-    
-    const  dbConnection =  await dbService.getMobileApiDb();
+    const dbConnection = await dbService.getMobileApiDb();
 
-await dbConnection.query(
+    await dbConnection.query(
       "UPDATE users SET subscription_status = ? WHERE email = ?",
       ["deleted", email]
     );
@@ -2910,7 +2358,7 @@ app.delete("/admin/users/:email/hard", async (req, res) => {
           )
         );
     }
-    const  dbConnection = await  dbService.getMobileApiDb();
+    const dbConnection = await dbService.getMobileApiDb();
 
     await dbConnection.query("DELETE FROM users WHERE email = ?", [email]);
     res.json(formatResponse(true, null, "User permanently deleted"));
@@ -2983,9 +2431,9 @@ app.post("/admin/classes/create", async (req, res) => {
         s.end_time,
         s.schedule_date || null,
       ]);
-      const  dbConnection =  await dbService.getMobileApiDb();
+      const dbConnection = await dbService.getMobileApiDb();
 
-await dbConnection.query(
+      await dbConnection.query(
         "INSERT INTO class_schedule (class_id, day, start_time, end_time, schedule_date) VALUES ?",
         [scheduleValues]
       );
@@ -3020,9 +2468,9 @@ app.put("/admin/classes/:class_uid", async (req, res) => {
       .map((key) => `${key} = ?`)
       .join(", ");
     const values = [...Object.values(updates), class_uid];
-    const  dbConnection =  await dbService.getMobileApiDb();
+    const dbConnection = await dbService.getMobileApiDb();
 
-await dbConnection.query(
+    await dbConnection.query(
       `UPDATE classes SET ${fields} WHERE class_uid = ?`,
       values
     );
@@ -3050,9 +2498,9 @@ app.delete("/admin/classes/:class_uid", async (req, res) => {
           )
         );
     }
-    const  dbConnection =  await dbService.getMobileApiDb();
+    const dbConnection = await dbService.getMobileApiDb();
 
-await dbConnection.query(
+    await dbConnection.query(
       "UPDATE classes SET status = ? WHERE class_uid = ?",
       ["deleted", class_uid]
     );
@@ -3085,9 +2533,9 @@ app.post("/admin/classes/:class_uid/enroll", async (req, res) => {
       "enr_" +
       Date.now().toString(16) +
       Math.random().toString(16).substr(2, 5);
-    const  dbConnection =  await dbService.getMobileApiDb();
+    const dbConnection = await dbService.getMobileApiDb();
 
-await dbConnection.query(
+    await dbConnection.query(
       "INSERT INTO enrollments (enrollment_id, class_id, parent_email, created_at) VALUES (?, ?, ?, NOW())",
       [enrollment_id, class_uid, parent_email]
     );
@@ -3121,9 +2569,9 @@ app.delete(
   async (req, res) => {
     try {
       const { class_uid, student_email } = req.params;
-      const  dbConnection =  await dbService.getMobileApiDb();
+      const dbConnection = await dbService.getMobileApiDb();
 
-await dbConnection.query(
+      await dbConnection.query(
         "DELETE FROM students WHERE email = ? AND class_id = ?",
         [student_email, class_uid]
       );
@@ -3255,7 +2703,7 @@ app.post("/test-email", async (req, res) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
+    await mailerService.getTransporter().sendMail(mailOptions);
     console.log(`📧 Test email sent to ${email}`);
 
     res.json({
@@ -3359,9 +2807,9 @@ app.post("/notifications", async (req, res) => {
 app.patch("/notifications/:id/read", async (req, res) => {
   try {
     const { id } = req.params;
-    const  dbConnection =  await dbService.getMobileApiDb();
+    const dbConnection = await dbService.getMobileApiDb();
 
-await dbConnection.query(
+    await dbConnection.query(
       "UPDATE notifications SET is_read = 1 WHERE id = ?",
       [id]
     );
@@ -3398,9 +2846,9 @@ app.patch("/notifications/read_all/:user_email", async (req, res) => {
 app.delete("/notifications/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const  dbConnection =  await dbService.getMobileApiDb();
+    const dbConnection = await dbService.getMobileApiDb();
 
-await dbConnection.query("DELETE FROM notifications WHERE id = ?", [id]);
+    await dbConnection.query("DELETE FROM notifications WHERE id = ?", [id]);
     res.json(formatResponse(true, null, "Notification deleted successfully"));
   } catch (error: any) {
     console.error("Delete notification error:", error);
