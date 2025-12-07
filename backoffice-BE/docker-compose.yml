@@ -1,0 +1,32 @@
+name: 'dojo-connect-dev'
+
+services:
+  # --- MariaDB Service ---
+  db:
+    image: mariadb:11.4
+    container_name: local_dev_db
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MAIN_DB_PASSWORD}"
+      MYSQL_DATABASE: "${MAIN_DB_NAME}"
+      MYSQL_USER: "${MAIN_DB_USER}"
+      MYSQL_PASSWORD: "${MAIN_DB_PASSWORD}"
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+  # --- phpMyAdmin Service ---
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: local_phpmyadmin
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db              # Must match the service name of the database above ('db')
+      PMA_PORT: 3306            # Default MariaDB port
+      UPLOAD_LIMIT: 64M         # Optional: Increases file upload limit for imports
+    ports:
+      - "8080:80"               # Access via localhost:8080
+
+volumes:
+  db_data:
