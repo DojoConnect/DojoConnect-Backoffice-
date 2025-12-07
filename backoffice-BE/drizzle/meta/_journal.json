@@ -8,6 +8,13 @@
       "when": 1765109360351,
       "tag": "0000_tearful_night_thrasher",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1765120407066,
+      "tag": "0001_thick_meteorite",
+      "breakpoints": true
     }
   ]
 }

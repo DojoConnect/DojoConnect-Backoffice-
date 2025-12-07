@@ -1,5 +1,7 @@
 import { sql } from "drizzle-orm";
-import { mysqlTable, tinyint, unique, int, varchar, timestamp, datetime, text, index, date, mysqlEnum, decimal, time } from "drizzle-orm/mysql-core"
+import { mysqlTable, tinyint, unique, int, varchar, timestamp, datetime, text, index, date, mysqlEnum, decimal, time, boolean } from "drizzle-orm/mysql-core"
+import { uuidv7 } from "uuidv7";
+
 
 export const admin = mysqlTable("admin", {
 	id: int().autoincrement().primaryKey(),
@@ -269,6 +271,23 @@ export const sessions = mysqlTable("sessions", {
 	index("user_email").on(table.userEmail),
 ]);
 
+// We store refresh tokens to allow revocation (banning a user/device)
+export const refreshTokens = mysqlTable("refresh_tokens", {
+  id: varchar("id", { length: 64 })
+    .primaryKey()
+    .$defaultFn(() => uuidv7()),
+  userId: varchar("user_id", { length: 64 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  hashedToken: varchar("hashed_token", { length: 255 }).notNull(), // Never store raw tokens
+  userIp: varchar("user_ip", { length: 50 }),
+  userAgent: text("user_agent"),
+  revoked: boolean("revoked").default(false),
+  expiresAt: datetime("expires_at").notNull(),
+  lastUsedAt: datetime("last_used_at"),
+  createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const students = mysqlTable("students", {
 	id: int().autoincrement().primaryKey(),
 	fullName: varchar("full_name", { length: 255 }),
@@ -306,38 +325,44 @@ export const transactions = mysqlTable("transactions", {
 	classId: int("class_id"),
 });
 
-export const users = mysqlTable("users", {
-	id: int().autoincrement().primaryKey(),
-	name: varchar({ length: 100 }).notNull(),
-	username: varchar({ length: 100 }),
-	email: varchar({ length: 150 }).notNull(),
-	password: varchar({ length: 255 }),
-	referredBy: varchar("referred_by", { length: 255 }),
-	avatar: text(),
-	role: mysqlEnum(['admin','instructor','parent','child']).default('child'),
-	balance: decimal({ precision: 10, scale: 2 }).default('0.00'),
-	referralCode: varchar("referral_code", { length: 255 }),
-	activeSub: varchar("active_sub", { length: 255 }),
-	createdAt: timestamp("created_at", { mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-	dob: varchar({ length: 20 }),
-	gender: varchar({ length: 10 }),
-	city: varchar({ length: 50 }),
-	street: varchar({ length: 100 }),
-	stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
-	stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
-	subscriptionStatus: varchar("subscription_status", { length: 50 }),
-	trialEndsAt: datetime("trial_ends_at", { mode: 'string'}),
-	stripeAccountId: varchar("stripe_account_id", { length: 255 }).notNull(),
-	fcmToken: text("fcm_token"),
-	sessionId: varchar("session_id", { length: 255 }),
-},
-(table) => [
-	unique("email").on(table.email),
-	unique("email_2").on(table.email),
-	unique("email_3").on(table.email),
-	unique("uc_users_email").on(table.email),
-	unique("username").on(table.username),
-]);
+export const users = mysqlTable(
+  "users",
+  {
+    id: varchar("id", { length: 64 })
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    name: varchar({ length: 100 }).notNull(),
+    username: varchar({ length: 100 }),
+    email: varchar({ length: 150 }).notNull(),
+    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    referredBy: varchar("referred_by", { length: 255 }),
+    avatar: text(),
+    role: mysqlEnum(["admin", "instructor", "parent", "child"]).default(
+      "child"
+    ),
+    balance: decimal({ precision: 10, scale: 2 }).default("0.00"),
+    referralCode: varchar("referral_code", { length: 255 }),
+    activeSub: varchar("active_sub", { length: 255 }),
+    dob: varchar({ length: 20 }),
+    gender: varchar({ length: 10 }),
+    city: varchar({ length: 50 }),
+    street: varchar({ length: 100 }),
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
+    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
+    subscriptionStatus: varchar("subscription_status", { length: 50 }),
+    trialEndsAt: datetime("trial_ends_at", { mode: "string" }),
+    stripeAccountId: varchar("stripe_account_id", { length: 255 }).notNull(),
+    fcmToken: text("fcm_token"),
+    sessionId: varchar("session_id", { length: 255 }),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    unique("email").on(table.email),
+    unique("username").on(table.username),
+  ]
+);
 
 export const userCards = mysqlTable("user_cards", {
 	id: int().autoincrement().primaryKey(),
