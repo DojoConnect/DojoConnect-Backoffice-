@@ -1,17 +1,17 @@
 // src/services/auth.service.ts
 import * as dbService from "../db";
 import { refreshTokens } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { eq, InferInsertModel } from "drizzle-orm";
 import {
   generateAccessToken,
   generateRefreshToken,
   hashPassword,
   hashToken,
+  verifyPassword,
 } from "../utils/auth.utils";
 import type { IUser } from "./users.service";
 import * as dojosService from "./dojos.service";
 import * as mailerService from "./mailer.service";
-import * as notificationsService from "./notifications.service";
 import * as stripeService from "./stripe.service";
 import * as userService from "./users.service";
 import { addDays, isAfter } from "date-fns";
@@ -21,11 +21,48 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "../core/errors";
-import { NotificationType, Role } from "../constants/enums";
-import { RegisterUserDTO } from "../validations/auth.schemas";
+import { LoginDTO, RegisterUserDTO } from "../validations/auth.schemas";
 import type { Transaction } from "../db";
+import { Role } from "../constants/enums";
 
-export const loginUser = async ({
+export type INewRefreshToken = InferInsertModel<typeof refreshTokens>;
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+export interface AuthResponse extends AuthTokens {
+  user: IUser;
+}
+
+export const saveRefreshToken = async (
+  token: INewRefreshToken,
+  txInstance?: Transaction
+) => {
+  const execute = async (tx: Transaction) => {
+    await tx.insert(refreshTokens).values(token);
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+/**
+ * Token Rotation: Revoke the old token (or delete it)
+     We mark it as revoked or delete it to prevent reuse.
+
+     We choose to delete now to remove the need for cleaning up later
+ */
+export const deleteRefreshToken = async (
+  tokenId: string,
+  txInstance?: Transaction
+) => {
+  const execute = async (tx: Transaction) => {
+    await tx.delete(refreshTokens).where(eq(refreshTokens.id, tokenId));
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const generateAuthTokens = async ({
   user,
   userIp,
   userAgent,
@@ -35,7 +72,7 @@ export const loginUser = async ({
   userIp?: string;
   userAgent?: string;
   txInstance?: Transaction;
-}) => {
+}): Promise<{ accessToken: string; refreshToken: string }> => {
   const execute = async (tx: Transaction) => {
     // 1. Generate tokens
     const accessToken = generateAccessToken({
@@ -51,16 +88,59 @@ export const loginUser = async ({
     // 3. Store refresh token with expiry (e.g., 7 days)
     const expiresAt = addDays(new Date(), 7);
 
-    await tx.insert(refreshTokens).values({
-      userId: user.id,
-      hashedToken: hashedRefreshToken,
-      expiresAt: expiresAt,
-      userAgent,
-      userIp,
-    });
+    await saveRefreshToken(
+      {
+        userId: user.id,
+        hashedToken: hashedRefreshToken,
+        expiresAt: expiresAt,
+        userAgent,
+        userIp,
+      },
+      tx
+    );
 
     // 4. Return raw tokens to the mobile app
     return { accessToken, refreshToken };
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const loginUser = async ({
+  dto,
+  userIp,
+  userAgent,
+  txInstance,
+}: {
+  dto: LoginDTO;
+  userIp?: string;
+  userAgent?: string;
+  txInstance?: Transaction;
+}): Promise<AuthResponse> => {
+  const execute = async (tx: Transaction) => {
+    const user = await userService.getOneUserByEmail({
+      email: dto.email,
+      txInstance: tx,
+      withPassword: true,
+    });
+
+    if (!user) throw new UnauthorizedException(`Invalid credentials-404`);
+
+    const isValid = await verifyPassword(user.passwordHash, dto.password);
+    if (!isValid) throw new UnauthorizedException(`Invalid credentials`);
+
+    const { accessToken, refreshToken } = await generateAuthTokens({
+      user,
+      userIp,
+      userAgent,
+      txInstance,
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user,
+    };
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
@@ -74,9 +154,9 @@ export const refreshUserToken = async ({
 }: {
   token: string;
   userIp: string;
-  userAgent;
+  userAgent: string;
   txInstance?: Transaction;
-}) => {
+}): Promise<AuthResponse> => {
   const execute = async (tx: Transaction) => {
     const hashedToken = hashToken(token);
 
@@ -96,7 +176,7 @@ export const refreshUserToken = async ({
 
     // 2. Token Rotation: Revoke the old token (or delete it)
     // We mark it as revoked or delete it to prevent reuse.
-    await tx.delete(refreshTokens).where(eq(refreshTokens.id, storedToken.id));
+    await deleteRefreshToken(storedToken.id, tx);
 
     // 3. Issue NEW pair
     const user = await userService.getOneUserByID({
@@ -104,136 +184,15 @@ export const refreshUserToken = async ({
     });
     if (!user) throw new NotFoundException("User not found");
 
-    return loginUser({ user, userIp, userAgent }); // Re-uses login logic to generate new pair & save
+    const authTokens = await generateAuthTokens({ user, userIp, userAgent });
+
+    return {
+      ...authTokens,
+      user,
+    };
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
-export const registerAdminUser = async ({
-  userDTO,
-  userIp,
-  userAgent,
-}: {
-  userDTO: RegisterUserDTO;
-  userIp: string;
-  userAgent: string;
-}) => {
-  try {
-    // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
-    const [existingUserWithEmail, existingUserWithUsername] = await Promise.all(
-      [
-        userService.getOneUserByEmail({
-          email: userDTO.email,
-        }),
-        userService.getOneUserByUserName(userDTO.fullName),
-      ]
-    );
-
-    if (existingUserWithEmail) {
-      throw new ConflictException("Email already registered");
-    }
-
-    if (existingUserWithUsername) {
-      throw new ConflictException("Username already taken");
-    }
-
-    // Generate Referral Code and Hash Password
-    const referral_code = userService.generateReferralCode();
-    const hashedPassword = await hashPassword(userDTO.password);
-
-    try {
-      // Stripe Customer & Subscription
-      const stripeCustomer = await stripeService.createCustomers(
-        userDTO.name,
-        userDTO.email,
-        userDTO.paymentMethod
-      );
-
-      const stripeSubscription = await stripeService.createSubscription(
-        stripeCustomer,
-        userDTO.plan
-      );
-
-      // Convert Stripe timestamp (seconds) to ISO string
-      const trialEndsAt = stripeSubscription.trial_end
-        ? new Date(stripeSubscription.trial_end * 1000).toISOString()
-        : null;
-
-      const newUser = await userService.saveUser({
-        name: userDTO.name,
-        username: userDTO.fullName,
-        email: userDTO.email,
-        passwordHash: hashedPassword,
-        role: userDTO.role,
-        activeSub: userDTO.plan,
-        referralCode: referral_code,
-        referredBy: userDTO.referredBy,
-        stripeCustomerId: stripeCustomer.id,
-        stripeSubscriptionId: stripeSubscription.id,
-        subscriptionStatus: stripeSubscription.status,
-        trialEndsAt,
-        // fcmToken: userDTO.fcmToken,
-      });
-
-      await userService.setDefaultPaymentMethod(newUser, userDTO.paymentMethod);
-
-      await dojosService.saveDojo({
-        userId: newUser.id,
-        name: userDTO.dojoName,
-        tag: userDTO.dojoTag,
-        tagline: userDTO.dojoTagline,
-      });
-
-      const { accessToken, refreshToken } = await loginUser({
-        user: newUser,
-        userAgent,
-        userIp,
-      });
-
-      try {
-        await mailerService.sendWelcomeEmail(
-          userDTO.email,
-          userDTO.name,
-          userDTO.role
-        );
-
-        // // Send Push Notification
-        // if (userDTO.fcmToken) {
-        //   const pushData =
-        //     userDTO.role === Role.Admin
-        //       ? { screen: "complete_profile" }
-        //       : { screen: "home" };
-
-        //   const body =
-        //     userDTO.role === Role.Admin
-        //       ? "Your admin account has been created successfully."
-        //       : "Your account has been created successfully.";
-
-        //   await notificationsService.sendNotification({
-        //     fcmToken: userDTO.fcmToken,
-        //     userId: newUser.id,
-        //     type: NotificationType.SignUp,
-        //     title: "Welcome to Dojo Connect",
-        //     body,
-        //     data: pushData,
-        //   });
-        // }
-      } catch (err) {
-        console.log(
-          "An Error occurred while trying to send email and notification. Error: ",
-          err
-        );
-      }
-
-      return {
-        accessToken,
-        refreshToken,
-        message: "User registered successfully",
-        user: newUser,
-      };
-    } catch (error) {}
-  } catch (err) {}
 };
 
 export const registerUser = async (
@@ -247,7 +206,7 @@ export const registerUser = async (
     userAgent?: string;
   },
   txInstance?: dbService.Transaction
-) => {
+): Promise<AuthResponse> => {
   const execute = async (tx: dbService.Transaction) => {
     try {
       // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
@@ -343,7 +302,7 @@ export const registerUser = async (
         );
       }
 
-      const { accessToken, refreshToken } = await loginUser({
+      const { accessToken, refreshToken } = await generateAuthTokens({
         user: newUser,
         userAgent,
         userIp,
@@ -366,7 +325,6 @@ export const registerUser = async (
       return {
         accessToken,
         refreshToken,
-        message: "User registered successfully",
         user: newUser,
       };
     } catch (err) {

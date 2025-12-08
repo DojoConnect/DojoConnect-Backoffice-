@@ -2,7 +2,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 
-import { registerUser } from "../controllers/auth.controller";
+import { loginUser, registerUser } from "../controllers/auth.controller";
 import { validateReqBody } from "../middlewares/validate.middleware";
 import { LoginSchema, RegisterUserSchema } from "../validations/auth.schemas";
 
@@ -16,7 +16,7 @@ const authLimiter = rateLimit({
 
 const router = Router();
 
-router.post("/login", authLimiter, validateReqBody(LoginSchema));
+router.post("/login", authLimiter, validateReqBody(LoginSchema), loginUser);
 router.post(
   "/register",
   authLimiter,

@@ -1,8 +1,4 @@
-import {
-  eq,
-  InferInsertModel,
-  InferSelectModel,
-} from "drizzle-orm";
+import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { userCards, users } from "../db/schema";
 import * as dbService from "../db";
 import type { Transaction } from "../db";
@@ -34,7 +30,7 @@ export const getOneUser = async (
 
     if (!withPassword) {
       const { passwordHash, ...rest } = user;
-      user = rest as IUser;
+      user = {...rest} as IUser;
     }
 
     return user;
@@ -45,19 +41,14 @@ export const getOneUser = async (
 
 export const getOneUserByID = async ({
   userId,
-  withPassword = false,
   txInstance,
 }: {
   userId: string;
-  withPassword?: boolean;
   txInstance?: Transaction;
 }): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
     try {
-      return await getOneUser(
-        { whereClause: eq(users.id, userId), withPassword },
-        tx
-      );
+      return await getOneUser({ whereClause: eq(users.id, userId) }, tx);
     } catch (err: any) {
       console.error(`Error fetching dojo by ID: ${userId}`, { err });
       throw new Error(err);
@@ -69,14 +60,19 @@ export const getOneUserByID = async ({
 
 export const getOneUserByEmail = async ({
   email,
+  withPassword = false,
   txInstance,
 }: {
   email: string;
+  withPassword?: boolean;
   txInstance?: Transaction;
 }): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
     try {
-      return await getOneUser({ whereClause: eq(users.email, email) }, tx);
+      return await getOneUser(
+        { whereClause: eq(users.email, email), withPassword },
+        tx
+      );
     } catch (err: any) {
       console.error(`Error fetching dojo by Email: ${email}`, { err });
       throw new Error(err);
@@ -189,7 +185,6 @@ export const saveUser = async (user: INewUser, txInstance?: Transaction) => {
 
     return (await getOneUserByID({
       userId: insertResult.id,
-      withPassword: true,
       txInstance,
     }))!;
   };
