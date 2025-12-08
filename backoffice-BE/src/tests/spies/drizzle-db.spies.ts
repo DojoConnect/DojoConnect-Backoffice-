@@ -8,6 +8,7 @@ export function createDrizzleDbSpies() {
   const mockWhere = jest.fn();
   const mockFrom = jest.fn();
   const mockSelect = jest.fn();
+  const mockTransaction = jest.fn();
 
   const mockChain = {
     from: mockFrom,
@@ -22,17 +23,24 @@ export function createDrizzleDbSpies() {
   mockLimit.mockReturnValue(mockChain);
 
   const mockDB = {
-      select: mockSelect.mockReturnValue(mockChain)
-    };
+    select: mockSelect.mockReturnValue(mockChain),
+    transaction: mockTransaction,
+  };
 
-    const getDbSpy = jest
+  // Instead of returning mockDB directly, we execute the callback (fn)
+  // passing the mockDB as the "transaction" instance.
+  mockTransaction.mockImplementation(async (txCallback) => {
+    return await txCallback(mockDB);
+  });
+
+  const getDbSpy = jest
     .spyOn(dbService, "getDB")
     .mockReturnValue(mockDB as any);
 
   return {
     mockDB,
     getDbSpy,
-    mockExecute
+    mockExecute,
   };
 }
 
