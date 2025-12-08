@@ -4,6 +4,7 @@ dotenv.config();
 
 import express, { Express } from "express";
 import cors from "cors";
+import helmet from "helmet";
 import { createObjectCsvWriter } from "csv-writer";
 import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
@@ -23,6 +24,8 @@ const corsOptions = {
 
 const app: Express = express();
 app.use(cors(corsOptions));
+app.use(helmet());
+
 app.use(express.json()); // bodyParser not needed
 
 /* ------------------ Backoffice Utilities (from combine.js) ------------------ */
