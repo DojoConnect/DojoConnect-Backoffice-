@@ -14,19 +14,46 @@ export interface IDojo {
   created_at: Date;
 }
 
-export const fetchDojoBySlug = async (slug: string) => {
-  const dbConnection = await dbService.getBackOfficeDB();
+export const fetchDojoBySlug = async (slug: string): Promise<IDojo|null> => {
+  try {
+    const dbConnection = await dbService.getBackOfficeDB();
 
-  const [rows] = await dbConnection.execute(
-    `SELECT id, name, email, role, dojo_id, dojo_name, dojo_tag, tagline, description, created_at
+    const [rows] = await dbConnection.execute(
+      `SELECT id, name, email, role, dojo_id, dojo_name, dojo_tag, tagline, description, created_at
        FROM users
        WHERE dojo_tag = ?`,
-    [slug]
-  );
+      [slug]
+    );
 
-  if ((rows as any[]).length === 0) {
-    throw new NotFoundException(`Dojo with slug ${slug} not found`);
+    if ((rows as any[]).length === 0) {
+      return null;
+    }
+
+    return rows[0];
+  } catch (err: any) {
+    console.error(`Error fetching dojo by slug: ${slug}`, {err});
+    throw new Error(err);
   }
+};
 
-  return rows[0];
+export const fetchDojoByID = async (dojoId: string): Promise<IDojo|null> => {
+  try {
+    const dbConnection = await dbService.getBackOfficeDB();
+
+    const [rows] = await dbConnection.execute(
+      `SELECT id, name, email, role, dojo_id, dojo_name, dojo_tag, tagline, description, created_at
+       FROM users
+       WHERE id = ?`,
+      [dojoId]
+    );
+
+    if ((rows as any[]).length === 0) {
+      return null;
+    }
+
+    return rows[0];
+  } catch (err: any) {
+    console.error(`Error fetching dojo by ID: ${dojoId}`, { err });
+    throw new Error(err);
+  }
 };

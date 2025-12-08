@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
 import * as dojosService from "../services/dojos.service";
 import { BadRequestException } from "../core/errors/BadRequestException";
+import { formatApiResponse } from "../utils/api.utils";
+import { NotFoundException } from "../core/errors/NotFoundException";
 
 export async function fetchDojoBySlug(req: Request, res: Response) {
   const slug = req.params.slug;
@@ -9,5 +11,10 @@ export async function fetchDojoBySlug(req: Request, res: Response) {
   }
 
   const dojo = await dojosService.fetchDojoBySlug(req.params.slug);
-  res.json(dojo);
+
+  if (!dojo) {
+      throw new NotFoundException(`Dojo with slug ${slug} not found`);
+    }
+
+  res.json(formatApiResponse({ data: dojo }));
 }
