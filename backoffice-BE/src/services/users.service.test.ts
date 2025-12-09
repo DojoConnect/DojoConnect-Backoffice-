@@ -12,7 +12,7 @@ import {
 } from "../tests/factories/user.factory";
 import { eq } from "drizzle-orm";
 import { NotFoundException } from "../core/errors";
-import { buildStripeCardMock } from "../tests/factories/stripe.factory";
+import { buildStripePaymentMethodCardMock } from "../tests/factories/stripe.factory";
 
 describe("Users Service", () => {
   let mockExecute: jest.Mock;
@@ -517,7 +517,7 @@ describe("Users Service", () => {
     let saveUserCardSpy: jest.SpyInstance;
     const mockUser = buildUserMock();
     const paymentMethodId = "pm_12345";
-    const mockStripeCard = buildStripeCardMock({
+    const mockStripeCard = buildStripePaymentMethodCardMock({
       brand: "visa",
       last4: "4242",
       exp_month: 12,
@@ -525,6 +525,8 @@ describe("Users Service", () => {
     });
 
     beforeEach(() => {
+      jest.clearAllMocks(); // Clear  all mocks
+
       retrievePaymentMethodSpy = jest
         .spyOn(stripeService, "retrievePaymentMethod")
         .mockResolvedValue({ card: mockStripeCard } as any);
@@ -567,15 +569,18 @@ describe("Users Service", () => {
         paymentMethodId,
         expect.anything()
       );
-      expect(saveUserCardSpy).toHaveBeenCalledWith({
-        userId: mockUser.id,
-        paymentMethodId: paymentMethodId,
-        brand: mockStripeCard.brand,
-        last4: mockStripeCard.last4,
-        expMonth: mockStripeCard.exp_month,
-        expYear: mockStripeCard.exp_year,
-        isDefault: true,
-      });
+      expect(saveUserCardSpy).toHaveBeenCalledWith(
+        {
+          userId: mockUser.id,
+          paymentMethodId: paymentMethodId,
+          brand: mockStripeCard.brand,
+          last4: mockStripeCard.last4,
+          expMonth: mockStripeCard.exp_month,
+          expYear: mockStripeCard.exp_year,
+          isDefault: true,
+        },
+        expect.anything() // for the transaction object
+      );
     });
 
     it("should update an existing card to be default if it exists", async () => {

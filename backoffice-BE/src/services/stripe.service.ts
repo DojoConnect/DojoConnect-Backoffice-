@@ -3,24 +3,23 @@ import AppConfig from "../config/AppConfig";
 import { StripePlans } from "../constants/enums";
 
 const StripePriceIDs = {
-  STARTER: "price_1S60ItDeXOegqDFkUiHdCJL3",
-  PRO: "price_1S60JKDeXOegqDFkO3Wjy2eg",
-  TRIAL: "price_1S60ItDeXOegqDFkUiHdCJL3",
+  [StripePlans.Starter]: "price_1S60ItDeXOegqDFkUiHdCJL3",
+  [StripePlans.Pro]: "price_1S60JKDeXOegqDFkO3Wjy2eg",
+  [StripePlans.Trial]: "price_1S60ItDeXOegqDFkUiHdCJL3",
 };
 
 type CreateStripeCustRes = Awaited<ReturnType<typeof createCustomers>>;
-export type StripePaymentMethodRes = Awaited<ReturnType<typeof retrievePaymentMethod>>;
-
+export type StripePaymentMethodRes = Awaited<
+  ReturnType<typeof retrievePaymentMethod>
+>;
 
 // Load stripe key
 let stripeInstance: Stripe | null = null;
 
 export const getStripeInstance = () => {
-  if (stripeInstance) {
-    return stripeInstance;
+  if (!stripeInstance) {
+    stripeInstance = new Stripe(AppConfig.STRIPE_SECRET_KEY!);
   }
-
-  stripeInstance = new Stripe(AppConfig.STRIPE_SECRET_KEY!);
 
   return stripeInstance;
 };
@@ -38,15 +37,18 @@ export const createCustomers = async (
   });
 };
 
-export const createSubscription = async (cust: CreateStripeCustRes, plan: StripePlans) => {
-    return await getStripeInstance().subscriptions.create({
-      customer: cust.id,
-      items: [{ price: StripePriceIDs[plan] }],
-      trial_period_days: 14,
-      expand: ["latest_invoice.payment_intent"],
-    });
-}
+export const createSubscription = async (
+  cust: Stripe.Customer,
+  plan: StripePlans
+) => {
+  return await getStripeInstance().subscriptions.create({
+    customer: cust.id,
+    items: [{ price: StripePriceIDs[plan] }],
+    trial_period_days: 14,
+    expand: ["latest_invoice.payment_intent"],
+  });
+};
 
 export const retrievePaymentMethod = async (paymentMethod: string) => {
-    return await getStripeInstance().paymentMethods.retrieve(paymentMethod);
-}
+  return await getStripeInstance().paymentMethods.retrieve(paymentMethod);
+};

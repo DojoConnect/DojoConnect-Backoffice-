@@ -30,7 +30,7 @@ export const getOneUser = async (
 
     if (!withPassword) {
       const { passwordHash, ...rest } = user;
-      user = {...rest} as IUser;
+      user = { ...rest } as IUser;
     }
 
     return user;
@@ -171,19 +171,25 @@ export const setDefaultPaymentMethod = async (
       .set({ isDefault: false })
       .where(eq(userCards.userId, user.id));
 
-    const existingCards = await fetchUserCardsByPaymentMethod(paymentMethod, tx);
+    const existingCards = await fetchUserCardsByPaymentMethod(
+      paymentMethod,
+      tx
+    );
 
     if (existingCards.length === 0) {
       // Insert Card
-      await saveUserCard({
-        userId: user.id,
-        paymentMethodId: paymentMethod,
-        brand: card.brand,
-        last4: card.last4,
-        expMonth: card.exp_month,
-        expYear: card.exp_year,
-        isDefault: true,
-      });
+      await saveUserCard(
+        {
+          userId: user.id,
+          paymentMethodId: paymentMethod,
+          brand: card.brand,
+          last4: card.last4,
+          expMonth: card.exp_month,
+          expYear: card.exp_year,
+          isDefault: true,
+        },
+        tx
+      );
     } else {
       // Update existing card to be the default
       await tx
