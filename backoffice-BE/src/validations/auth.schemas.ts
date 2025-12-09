@@ -12,6 +12,17 @@ export const RefreshTokenSchema = z.object({
   refreshToken: z.string().trim().nonempty(),
 });
 
+export const PasswordSchema = z
+  .string()
+  .trim()
+  .min(8, "Password must be at least 8 characters")
+  .max(128, "Password is too long")
+  // at least one lowercase, one uppercase, one digit, one special char, no spaces
+  .regex(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|\\:;"'<>,.?/~`])\S+$/,
+    "Password must contain uppercase, lowercase, number, and special character; and contain no spaces"
+  );
+
 
 export const RegisterUserSchema = z.object({
   fullName: z.string().trim().nonempty(),
@@ -20,7 +31,7 @@ export const RegisterUserSchema = z.object({
 
   email: z.string().trim().email().nonempty(),
 
-  password: z.string().trim().nonempty(),
+  password: PasswordSchema,
 
   role: z.nativeEnum(Role),
 
