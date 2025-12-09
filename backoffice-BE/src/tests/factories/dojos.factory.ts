@@ -1,4 +1,3 @@
-import { uuidv7 } from "uuidv7";
 import { IDojo } from "../../services/dojos.service";
 
 export const buildDojoMock = (overrides?: Partial<IDojo>): IDojo => {

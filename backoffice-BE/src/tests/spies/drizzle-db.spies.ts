@@ -37,10 +37,22 @@ export function createDrizzleDbSpies() {
     .spyOn(dbService, "getDB")
     .mockReturnValue(mockDB as any);
 
+  const runInTransactionSpy = jest
+    .spyOn(dbService, "runInTransaction")
+    .mockImplementation(async (txCallback) => {
+      return await txCallback(mockDB as any);
+    });
+
+
   return {
     mockDB,
     getDbSpy,
     mockExecute,
+    mockSelect,
+    mockFrom,
+    mockWhere,
+    mockLimit,
+    runInTransactionSpy
   };
 }
 
