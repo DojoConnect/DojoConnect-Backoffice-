@@ -52,7 +52,8 @@ export function createDrizzleDbSpies() {
     mockFrom,
     mockWhere,
     mockLimit,
-    runInTransactionSpy
+    runInTransactionSpy,
+    mockTx: mockDB as unknown as dbService.Transaction,
   };
 }
 
