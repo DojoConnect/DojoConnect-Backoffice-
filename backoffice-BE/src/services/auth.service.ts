@@ -1,7 +1,7 @@
 // src/services/auth.service.ts
 import * as dbService from "../db";
 import { refreshTokens } from "../db/schema";
-import { eq, InferInsertModel } from "drizzle-orm";
+import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -24,8 +24,11 @@ import {
 import { LoginDTO, RegisterUserDTO } from "../validations/auth.schemas";
 import type { Transaction } from "../db";
 import { Role } from "../constants/enums";
+import { returnFirst } from "../utils/db.utils";
 
 export type INewRefreshToken = InferInsertModel<typeof refreshTokens>;
+export type IRefreshToken = InferSelectModel<typeof refreshTokens>;
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
@@ -40,6 +43,26 @@ export const saveRefreshToken = async (
 ) => {
   const execute = async (tx: Transaction) => {
     await tx.insert(refreshTokens).values(token);
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const getOneRefreshToken = async (
+  token: string,
+  txInstance?: Transaction
+): Promise<IRefreshToken | null> => {
+  const execute = async (tx: Transaction) => {
+    const storedToken = returnFirst(
+      await tx
+        .select()
+        .from(refreshTokens)
+        .where(eq(refreshTokens.hashedToken, token))
+        .limit(1)
+        .execute()
+    );
+
+    return storedToken || null;
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
@@ -161,10 +184,7 @@ export const refreshUserToken = async ({
     const hashedToken = hashToken(token);
 
     // 1. Find the token in DB
-    const [storedToken] = await tx
-      .select()
-      .from(refreshTokens)
-      .where(eq(refreshTokens.hashedToken, hashedToken));
+    const storedToken = await getOneRefreshToken(hashedToken, tx);
 
     if (
       !storedToken ||
@@ -184,7 +204,12 @@ export const refreshUserToken = async ({
     });
     if (!user) throw new NotFoundException("User not found");
 
-    const authTokens = await generateAuthTokens({ user, userIp, userAgent });
+    const authTokens = await generateAuthTokens({
+      user,
+      userIp,
+      userAgent,
+      txInstance: tx,
+    });
 
     return {
       ...authTokens,

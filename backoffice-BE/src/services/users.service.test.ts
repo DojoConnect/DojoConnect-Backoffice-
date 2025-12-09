@@ -328,6 +328,10 @@ describe("Users Service", () => {
   });
 
   describe("fetchUserCards", () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+    
     it("should return user cards for a given user ID", async () => {
       const userId = "user-1";
       const mockCards = [

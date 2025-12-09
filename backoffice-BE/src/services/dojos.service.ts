@@ -1,7 +1,7 @@
 import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
 import * as dbService from "../db";
 import { dojos } from "../db/schema";
-import { findOne } from "../utils/db.utils";
+import { returnFirst } from "../utils/db.utils";
 import type { Transaction } from "../db";
 
 export type IDojo = InferSelectModel<typeof dojos>;
@@ -12,7 +12,7 @@ export const getOneDojo = async (
   txInstance?: Transaction
 ): Promise<IDojo | null> => {
   const execute = async (tx: Transaction) => {
-    const dojo = findOne(
+    const dojo = returnFirst(
       await tx.select().from(dojos).where(whereClause).limit(1).execute()
     );
 

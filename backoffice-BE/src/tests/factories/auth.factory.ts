@@ -1,5 +1,6 @@
 import { Role, StripePlans } from "../../constants/enums";
-import { RegisterUserDTO } from "../../validations/auth.schemas";
+import { INewRefreshToken, IRefreshToken } from "../../services/auth.service";
+import { LoginDTO, RegisterUserDTO } from "../../validations/auth.schemas";
 
 export const buildRegisterUserDTOMock = (
   overrides?: Partial<RegisterUserDTO>
@@ -17,5 +18,44 @@ export const buildRegisterUserDTOMock = (
     dojoTag: "phoenix-dojo",
     dojoTagline: "Rise and fight",
     ...overrides, // Allows overriding specific fields for different test scenarios
+  };
+};
+
+export const buildNewRefreshTokenMock = (
+  overrides: Partial<INewRefreshToken>
+): INewRefreshToken => {
+  return {
+    userId: "user-1",
+    hashedToken: "hashed",
+    expiresAt: new Date(),
+    userAgent: "jest",
+    userIp: "127.0.0.1",
+    ...overrides,
+  };
+};
+
+export const buildRefreshTokenMock = (
+  overrides: Partial<IRefreshToken>
+): IRefreshToken => {
+  return {
+    id: "token-id",
+    userId: "user-1",
+    hashedToken: "hashed",
+    expiresAt: new Date(),
+    userAgent: "jest",
+    userIp: "127.0.0.1",
+    createdAt: new Date(),
+    lastUsedAt: new Date(),
+    revoked: false,
+    ...overrides,
+  };
+};
+
+export const buildLoginDTOMock = (overrides: Partial<LoginDTO>): LoginDTO => {
+  return {
+    email: "john.doe@example.com",
+    password: "Password123!",
+    fcmToken: "fcm-token",
+    ...overrides,
   };
 };

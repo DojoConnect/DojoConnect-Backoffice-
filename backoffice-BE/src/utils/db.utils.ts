@@ -1,1 +1,1 @@
-export const findOne = <T>(rows: T[]): T | null => rows[0] ?? null;
+export const returnFirst = <T>(rows: T[]): T | null => rows[0] ?? null;

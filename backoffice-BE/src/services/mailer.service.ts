@@ -414,6 +414,5 @@ export const sendWelcomeEmail = async (
     await getTransporter().sendMail(mailOptions);
   } catch (error: any) {
     console.error(`Welcome email failed to ${dest}: ${error.message}`);
-    // Log the error, mirroring PHP's error_log
   }
 };

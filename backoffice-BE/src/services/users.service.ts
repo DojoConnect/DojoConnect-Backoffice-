@@ -4,7 +4,7 @@ import * as dbService from "../db";
 import type { Transaction } from "../db";
 import * as stripeService from "./stripe.service";
 
-import { findOne } from "../utils/db.utils";
+import { returnFirst } from "../utils/db.utils";
 import { NotFoundException } from "../core/errors";
 
 export type IUser = InferSelectModel<typeof users>;
@@ -20,7 +20,7 @@ export const getOneUser = async (
   txInstance?: Transaction
 ): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
-    let user = findOne(
+    let user = returnFirst(
       await tx.select().from(users).where(whereClause).limit(1).execute()
     );
 
@@ -51,7 +51,7 @@ export const getOneUserByID = async ({
       return await getOneUser({ whereClause: eq(users.id, userId) }, tx);
     } catch (err: any) {
       console.error(`Error fetching user by ID: ${userId}`, { err });
-      throw new Error(err);
+      throw err;
     }
   };
 
@@ -75,7 +75,7 @@ export const getOneUserByEmail = async ({
       );
     } catch (err: any) {
       console.error(`Error fetching user by Email: ${email}`, { err });
-      throw new Error(err);
+      throw err;
     }
   };
 
@@ -97,7 +97,7 @@ export const getOneUserByUserName = async ({
       );
     } catch (err: any) {
       console.error(`Error fetching user by Username: ${username}`, { err });
-      throw new Error(err);
+      throw err;
     }
   };
 

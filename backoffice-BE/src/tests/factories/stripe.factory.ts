@@ -35,3 +35,13 @@ export const buildStripePaymentMethodMock = (
     ...overrides,
   } as Stripe.PaymentMethod;
 };
+
+export const buildStripeSubMock = (
+  overrides?: Partial<Stripe.Subscription>
+): Stripe.Subscription => {
+  return {
+    id: "sub_123",
+    status: "active",
+    ...overrides,
+  } as Stripe.Subscription;
+};
