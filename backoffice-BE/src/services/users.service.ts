@@ -82,14 +82,19 @@ export const getOneUserByEmail = async ({
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
 
-export const getOneUserByUserName = async (
-  {username, txInstance}:
-  {username: string,
-  txInstance?: Transaction}
-): Promise<IUser | null> => {
+export const getOneUserByUserName = async ({
+  username,
+  txInstance,
+}: {
+  username: string;
+  txInstance?: Transaction;
+}): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
     try {
-      return await getOneUser({ whereClause: eq(users.username, username) }, tx);
+      return await getOneUser(
+        { whereClause: eq(users.username, username) },
+        tx
+      );
     } catch (err: any) {
       console.error(`Error fetching user by Username: ${username}`, { err });
       throw new Error(err);
@@ -113,8 +118,10 @@ export const fetchUserCards = async (
 
       return cards;
     } catch (err: any) {
-      console.error(`Error fetching dojo by Email: ${userId}`, { err });
-      throw new Error(err);
+      console.error(`Error fetching user cards for user ID: ${userId}`, {
+        err,
+      });
+      throw err;
     }
   };
 
@@ -135,8 +142,11 @@ export const fetchUserCardsByPaymentMethod = async (
 
       return cards;
     } catch (err: any) {
-      console.error(`Error fetching dojo by Email: ${paymentMethod}`, { err });
-      throw new Error(err);
+      console.error(
+        `Error fetching user cards by payment method: ${paymentMethod}`,
+        { err }
+      );
+      throw err;
     }
   };
 
@@ -161,7 +171,7 @@ export const setDefaultPaymentMethod = async (
       .set({ isDefault: false })
       .where(eq(userCards.userId, user.id));
 
-    const existingCards = await fetchUserCardsByPaymentMethod(paymentMethod);
+    const existingCards = await fetchUserCardsByPaymentMethod(paymentMethod, tx);
 
     if (existingCards.length === 0) {
       // Insert Card
@@ -174,6 +184,12 @@ export const setDefaultPaymentMethod = async (
         expYear: card.exp_year,
         isDefault: true,
       });
+    } else {
+      // Update existing card to be the default
+      await tx
+        .update(userCards)
+        .set({ isDefault: true })
+        .where(eq(userCards.paymentMethodId, paymentMethod));
     }
   };
 
@@ -186,7 +202,7 @@ export const saveUser = async (user: INewUser, txInstance?: Transaction) => {
 
     return (await getOneUserByID({
       userId: insertResult.id,
-      txInstance,
+      txInstance: tx,
     }))!;
   };
 

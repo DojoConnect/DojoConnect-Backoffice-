@@ -9,6 +9,8 @@ const StripePriceIDs = {
 };
 
 type CreateStripeCustRes = Awaited<ReturnType<typeof createCustomers>>;
+export type StripePaymentMethodRes = Awaited<ReturnType<typeof retrievePaymentMethod>>;
+
 
 // Load stripe key
 let stripeInstance: Stripe | null = null;

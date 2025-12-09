@@ -1,5 +1,10 @@
 import { Role, StripePlans } from "../../constants/enums";
-import { IUser } from "../../services/users.service";
+import {
+  INewUser,
+  INewUserCard,
+  IUser,
+  IUserCard,
+} from "../../services/users.service";
 
 export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   return {
@@ -25,7 +30,40 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
     stripeAccountId: "acct_83hf2h2f",
     fcmToken: "fcm_token_example_8293hf2f",
     sessionId: "sess_8f2h9f23fh2",
-    createdAt: new Date("2024-01-10T12:00:00Z").toISOString(),
+    createdAt: new Date("2024-01-10T12:00:00").toISOString(),
     ...overrides, // Allows overriding specific fields for different test scenarios
+  };
+};
+
+export const buildUserCardMock = (
+  overrides?: Partial<IUserCard>
+): IUserCard => {
+  return {
+    id: "card_01JH8B9Z3P9A7XQ2KM4D8S1L0F", // 64-char max, can mimic uuidv7
+    userId: "usr_01JH8A3Z9Q7X2TQPM8S4R1A9B7", // must match a user.id
+    paymentMethodId: "pm_1N2aBcDeFgHiJkLmNoPqRsTu",
+    brand: "visa",
+    last4: "4242",
+    expMonth: 12,
+    expYear: 2030,
+    isDefault: true,
+    createdAt: new Date("2024-01-10T12:00:00").toISOString(),
+    ...overrides,
+  };
+};
+
+export const buildNewUserMock = (overrides?: Partial<INewUser>): INewUser => {
+  return {
+    ...buildUserMock(overrides),
+    ...overrides,
+  };
+};
+
+export const buildNewUserCardMock = (
+  overrides?: Partial<INewUserCard>
+): INewUserCard => {
+  return {
+    ...buildUserCardMock(overrides),
+    ...overrides,
   };
 };
