@@ -1,6 +1,6 @@
 // src/utils/auth.ts
 import jwt from "jsonwebtoken";
-import argon2 from "argon2";
+import argon2 from "@node-rs/argon2";
 import crypto from "crypto";
 import AppConfig from "../config/AppConfig";
 

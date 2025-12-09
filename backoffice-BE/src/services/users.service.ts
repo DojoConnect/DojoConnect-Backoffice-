@@ -12,6 +12,8 @@ export type IUserCard = InferSelectModel<typeof userCards>;
 export type INewUser = InferInsertModel<typeof users>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
 
+export type IUpdateUser = Partial<Omit<INewUser, "id">>;
+
 export const getOneUser = async (
   {
     whereClause,
@@ -210,6 +212,22 @@ export const saveUser = async (user: INewUser, txInstance?: Transaction) => {
       userId: insertResult.id,
       txInstance: tx,
     }))!;
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const updateUser = async ({
+  userId,
+  update,
+  txInstance,
+}: {
+  userId: string;
+  update: IUpdateUser;
+  txInstance?: Transaction;
+}) => {
+  const execute = async (tx: Transaction) => {
+    await tx.update(users).set(update).where(eq(users.id, userId));
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);

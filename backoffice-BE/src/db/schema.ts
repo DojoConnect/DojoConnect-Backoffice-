@@ -16,7 +16,7 @@ import {
   boolean,
 } from "drizzle-orm/mysql-core";
 import { uuidv7 } from "uuidv7";
-import { NotificationType, Role } from "../constants/enums";
+import { NotificationType, Role, StripePlans } from "../constants/enums";
 
 export const admin = mysqlTable(
   "admin",
@@ -428,15 +428,15 @@ export const users = mysqlTable(
       .primaryKey()
       .$defaultFn(() => uuidv7()),
     name: varchar({ length: 100 }).notNull(),
-    username: varchar({ length: 100 }),
+    username: varchar({ length: 100 }).notNull(),
     email: varchar({ length: 150 }).notNull(),
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     referredBy: varchar("referred_by", { length: 255 }),
     avatar: text(),
     role: mysqlEnum(Role).notNull(),
-    balance: decimal({ precision: 10, scale: 2 }).default("0.00"),
-    referralCode: varchar("referral_code", { length: 255 }),
-    activeSub: varchar("active_sub", { length: 255 }),
+    balance: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
+    referralCode: varchar("referral_code", { length: 255 }).notNull(),
+    activeSub: mysqlEnum("active_sub", StripePlans).notNull(),
     dob: varchar({ length: 20 }),
     gender: varchar({ length: 10 }),
     city: varchar({ length: 50 }),

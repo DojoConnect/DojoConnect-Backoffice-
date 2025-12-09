@@ -1,4 +1,5 @@
 import { Role, StripePlans } from "../../constants/enums";
+import { UserDTO, UserDTOParams } from "../../dtos/user.dtos";
 import {
   INewUser,
   INewUserCard,
@@ -66,4 +67,10 @@ export const buildNewUserCardMock = (
     ...buildUserCardMock(overrides),
     ...overrides,
   };
+};
+
+export const buildUserDtoMock = (
+  overrides?: Partial<UserDTOParams>
+): UserDTO => {
+  return new UserDTO(buildUserMock(overrides));
 };

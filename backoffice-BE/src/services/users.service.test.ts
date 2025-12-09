@@ -515,6 +515,41 @@ describe("Users Service", () => {
     });
   });
 
+  describe("updateUser", () => {
+    it("should call update on the users table with the correct data and where clause", async () => {
+      const userId = "user-to-update-123";
+      const updateData = { name: "A New Name", fcmToken: "a-new-fcm-token" };
+
+      await usersService.updateUser({ userId, update: updateData });
+
+      expect(dbSpies.mockUpdate).toHaveBeenCalledWith(users);
+      expect(dbSpies.mockSet).toHaveBeenCalledWith(updateData);
+      expect(dbSpies.mockWhere).toHaveBeenCalledWith(eq(users.id, userId));
+    });
+
+    it("should call dbService.runInTransaction when no txInstance is provided", async () => {
+      const userId = "user-1";
+      const updateData = { name: "Another Name" };
+
+      await usersService.updateUser({ userId, update: updateData });
+
+      expect(dbSpies.runInTransactionSpy).toHaveBeenCalled();
+    });
+
+    it("should NOT call dbService.runInTransaction when a txInstance is provided", async () => {
+      const userId = "user-2";
+      const updateData = { username: "new-username" };
+
+      await usersService.updateUser({
+        userId,
+        update: updateData,
+        txInstance: dbSpies.mockTx,
+      });
+
+      expect(dbSpies.runInTransactionSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe("setDefaultPaymentMethod", () => {
     let retrievePaymentMethodSpy: jest.SpyInstance;
     let fetchUserCardsByPaymentMethodSpy: jest.SpyInstance;

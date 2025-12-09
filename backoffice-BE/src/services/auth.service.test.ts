@@ -30,6 +30,7 @@ import {
   buildRegisterUserDTOMock,
 } from "../tests/factories/auth.factory";
 import { buildDojoMock } from "../tests/factories/dojos.factory";
+import { UserDTO } from "../dtos/user.dtos";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -194,20 +195,23 @@ describe("Auth Service", () => {
     });
 
     let verifyPasswordSpy: jest.SpyInstance;
+    let updateUserSpy: jest.SpyInstance;
+    let generateAuthTokensSpy: jest.SpyInstance;
 
     beforeEach(() => {
       verifyPasswordSpy = jest.spyOn(authUtils, "verifyPassword");
-    });
-
-    it("should successfully log in a user and return tokens and user data", async () => {
-      getOneUserByEmailSpy.mockResolvedValue(mockUser);
-      verifyPasswordSpy.mockResolvedValue(true);
-      const generateAuthTokensSpy = jest
+      updateUserSpy = jest.spyOn(userService, "updateUser").mockResolvedValue();
+      generateAuthTokensSpy = jest
         .spyOn(authService, "generateAuthTokens")
         .mockResolvedValue({
           accessToken: "access",
           refreshToken: "refresh",
         });
+    });
+
+    it("should successfully log in a user and return tokens and user data", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(mockUser);
+      verifyPasswordSpy.mockResolvedValue(true);
 
       const result = await authService.loginUser({ dto: loginDTO });
 
@@ -220,12 +224,23 @@ describe("Auth Service", () => {
         "hashed_password",
         "password123"
       );
+      expect(updateUserSpy).toHaveBeenCalledWith({
+        userId: mockUser.id,
+        update: { fcmToken: loginDTO.fcmToken },
+        txInstance: dbSpies.mockTx,
+      });
       expect(generateAuthTokensSpy).toHaveBeenCalled();
       expect(result).toEqual({
         accessToken: "access",
         refreshToken: "refresh",
-        user: mockUser,
+        user: new UserDTO(mockUser).toJSON(),
       });
+    });
+
+    it("should not update user if fcmToken is not provided", async () => {
+      const noFcmTokenDTO = { ...loginDTO, fcmToken: undefined };
+      await authService.loginUser({ dto: noFcmTokenDTO });
+      expect(updateUserSpy).not.toHaveBeenCalled();
     });
 
     it("should throw UnauthorizedException if user is not found", async () => {
@@ -296,7 +311,7 @@ describe("Auth Service", () => {
       expect(result).toEqual({
         accessToken: "new_access",
         refreshToken: "new_refresh",
-        user: mockUser,
+        user: new UserDTO(mockUser).toJSON(),
       });
     });
 
@@ -460,10 +475,10 @@ describe("Auth Service", () => {
       expect(sendWelcomeEmailSpy).toHaveBeenCalled();
 
       // 7. Final response
-      expect(result).toEqual({
+      expect(result.toJSON()).toEqual({
         accessToken: "access",
         refreshToken: "refresh",
-        user: mockSavedUser,
+        user: new UserDTO(mockSavedUser).toJSON(),
       });
     });
 

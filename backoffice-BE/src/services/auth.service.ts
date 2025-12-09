@@ -25,17 +25,12 @@ import { LoginDTO, RegisterUserDTO } from "../validations/auth.schemas";
 import type { Transaction } from "../db";
 import { Role } from "../constants/enums";
 import { returnFirst } from "../utils/db.utils";
+import { UserDTO } from "../dtos/user.dtos";
+import { AuthResponseDTO } from "../dtos/auth.dto";
+import { formatDateForMySQL } from "../utils/date.utils";
 
 export type INewRefreshToken = InferInsertModel<typeof refreshTokens>;
 export type IRefreshToken = InferSelectModel<typeof refreshTokens>;
-
-export interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-export interface AuthResponse extends AuthTokens {
-  user: IUser;
-}
 
 export const saveRefreshToken = async (
   token: INewRefreshToken,
@@ -139,7 +134,7 @@ export const loginUser = async ({
   userIp?: string;
   userAgent?: string;
   txInstance?: Transaction;
-}): Promise<AuthResponse> => {
+}): Promise<AuthResponseDTO> => {
   const execute = async (tx: Transaction) => {
     const user = await userService.getOneUserByEmail({
       email: dto.email,
@@ -152,6 +147,16 @@ export const loginUser = async ({
     const isValid = await verifyPassword(user.passwordHash, dto.password);
     if (!isValid) throw new UnauthorizedException(`Invalid credentials`);
 
+    if (dto.fcmToken) {
+      await userService.updateUser({
+        userId: user.id,
+        update: {
+          fcmToken: dto.fcmToken,
+        },
+        txInstance: tx,
+      });
+    }
+
     const { accessToken, refreshToken } = await generateAuthTokens({
       user,
       userIp,
@@ -159,11 +164,11 @@ export const loginUser = async ({
       txInstance,
     });
 
-    return {
+    return new AuthResponseDTO({
       accessToken,
       refreshToken,
-      user,
-    };
+      user: new UserDTO(user),
+    });
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
@@ -179,7 +184,7 @@ export const refreshUserToken = async ({
   userIp?: string;
   userAgent?: string;
   txInstance?: Transaction;
-}): Promise<AuthResponse> => {
+}): Promise<AuthResponseDTO> => {
   const execute = async (tx: Transaction) => {
     const hashedToken = hashToken(token);
 
@@ -211,10 +216,10 @@ export const refreshUserToken = async ({
       txInstance: tx,
     });
 
-    return {
+    return new AuthResponseDTO({
       ...authTokens,
-      user,
-    };
+      user: new UserDTO(user),
+    });
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
@@ -231,7 +236,7 @@ export const registerUser = async (
     userAgent?: string;
   },
   txInstance?: dbService.Transaction
-): Promise<AuthResponse> => {
+): Promise<AuthResponseDTO> => {
   const execute = async (tx: dbService.Transaction) => {
     try {
       // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
@@ -262,7 +267,7 @@ export const registerUser = async (
       let stripeCustomerId: string | null = null;
       let stripeSubscriptionId: string | null = null;
       let subscriptionStatus: string | null = null;
-      let trialEndsAt: string | null = null;
+      let trialEndsAt: Date | null = null;
 
       if (userDTO.role === Role.DojoAdmin) {
         try {
@@ -284,7 +289,7 @@ export const registerUser = async (
 
           // Convert Stripe timestamp (seconds) to ISO string
           trialEndsAt = stripeSubscription.trial_end
-            ? new Date(stripeSubscription.trial_end * 1000).toISOString()
+            ? new Date(stripeSubscription.trial_end * 1000)
             : null;
         } catch (err: any) {
           console.error("Stripe API error:", err.message);
@@ -307,7 +312,7 @@ export const registerUser = async (
           stripeCustomerId,
           stripeSubscriptionId,
           subscriptionStatus,
-          trialEndsAt,
+          trialEndsAt: trialEndsAt ? formatDateForMySQL(trialEndsAt) : null,
         },
         tx
       );
@@ -350,11 +355,11 @@ export const registerUser = async (
         );
       }
 
-      return {
+      return new AuthResponseDTO({
         accessToken,
         refreshToken,
-        user: newUser,
-      };
+        user: new UserDTO(newUser),
+      });
     } catch (err) {
       console.log(`An error occurred while trying to register user: ${err}`);
       throw err;

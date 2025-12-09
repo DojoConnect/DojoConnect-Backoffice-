@@ -1,6 +1,8 @@
 import { Role, StripePlans } from "../../constants/enums";
+import { AuthResponseDTO, AuthResponseDTOParams } from "../../dtos/auth.dto";
 import { INewRefreshToken, IRefreshToken } from "../../services/auth.service";
 import { LoginDTO, RegisterUserDTO } from "../../validations/auth.schemas";
+import { buildUserDtoMock } from "./user.factory";
 
 export const buildRegisterUserDTOMock = (
   overrides?: Partial<RegisterUserDTO>
@@ -58,4 +60,25 @@ export const buildLoginDTOMock = (overrides: Partial<LoginDTO>): LoginDTO => {
     fcmToken: "fcm-token",
     ...overrides,
   };
+};
+
+const buildAuthResponseDTOParamsMMock = (
+  overrides?: Partial<AuthResponseDTOParams>
+): AuthResponseDTOParams => {
+  return {
+    accessToken: "access",
+    refreshToken: "refresh",
+    user: buildUserDtoMock(),
+    ...overrides,
+  };
+};
+
+export const buildAuthResponseDTOMock = (
+  overrides?: Partial<AuthResponseDTOParams>
+): AuthResponseDTO => {
+  return new AuthResponseDTO(
+    buildAuthResponseDTOParamsMMock({
+      ...overrides,
+    })
+  );
 };

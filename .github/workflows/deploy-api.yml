@@ -68,8 +68,15 @@ jobs:
           key: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
           port: ${{ secrets.CPANEL_SSH_PORT }}
           script: |
+            source /home/dojoburz/nodevenv/trial-dojo-apiv6/22/bin/activate 
+            
+            # 2. Go to the deploy path
             cd ${{ secrets.BACK_OFFICE_API_CPANEL_DEPLOY_PATH }}
-            npm install --production
+
+            # 3. Install production dependencies
+            npm install --omit=dev
+
+            # 4. Restart Node.js app
             mkdir -p tmp
             touch tmp/restart.txt
             echo "Restarted Node.js app!"
