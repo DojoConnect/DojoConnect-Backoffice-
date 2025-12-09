@@ -7,7 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "start": "node ./dist/server.js",
     "build": "rm -rf dist && tsc -b",
-    "test": "jest"
+    "test": "jest",
+    "test:onlyFailures": "jest --onlyFailures"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -15,10 +16,11 @@
     "cors": "^2.8.5",
     "csv-writer": "^1.6.0",
     "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.45.0",
     "exceljs": "^4.3.0",
     "express": "^4.21.2",
     "express-async-errors": "^3.1.1",
-    "mysql2": "^3.14.3",
+    "mysql2": "^3.15.3",
     "nodemailer": "^7.0.6",
     "pdfkit": "^0.13.0",
     "zod": "^3.25.76"
@@ -27,6 +29,7 @@
     "@types/express": "^5.0.5",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
+    "drizzle-kit": "^0.31.8",
     "jest": "^30.2.0",
     "supertest": "^7.1.4",
     "ts-jest": "^29.2.5",

@@ -2,21 +2,20 @@ import request from "supertest";
 
 // Import the mock execute function so we can control its behavior in our tests.
 import { buildDojoMock } from "../tests/factories/dojos.factory";
-import { createDbServiceSpies } from "../tests/spies/db.service.spies";
+import { createDrizzleDbSpies } from "../tests/spies/drizzle-db.spies";
 import app from "../app";
 
 describe("Dojo Routes", () => {
   let mockExecute: jest.Mock;
 
-  beforeEach(async () => {
-    const dbServiceSpy = createDbServiceSpies();
+  beforeEach(() => {
+    const dbServiceSpy = createDrizzleDbSpies();
 
     mockExecute = dbServiceSpy.mockExecute;
   });
 
   afterEach(() => {
-    // Clear mock history after each test.
-    mockExecute.mockClear();
+    jest.clearAllMocks();
   });
 
   describe("GET /api/dojos/slug/:slug", () => {
@@ -24,12 +23,10 @@ describe("Dojo Routes", () => {
       // Arrange: Mock the database response for a found dojo
       const mockDojo = buildDojoMock({
         id: 1,
-        name: "Test Dojo",
-        dojo_tag: "test-dojo",
-        description: "A dojo for testing.",
+        dojoTag: "test-dojo"
       });
 
-      mockExecute.mockResolvedValue([[mockDojo]]);
+      mockExecute.mockResolvedValue([mockDojo]);
 
       // Act: Make the API request
       const response = await request(app).get("/api/dojos/slug/test-dojo");
@@ -37,18 +34,14 @@ describe("Dojo Routes", () => {
       // Assert: Check the response
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
-        ...mockDojo,
-        created_at: mockDojo.created_at.toISOString(),
+        data: mockDojo,
       });
-      expect(mockExecute).toHaveBeenCalledWith(
-        expect.stringContaining("WHERE dojo_tag = ?"), // Check for the correct query
-        ["test-dojo"] // Check for the correct parameter
-      );
+      expect(mockExecute).toHaveBeenCalled();
     });
 
     it("should return a 404 status if the slug does not exist", async () => {
       // Arrange: Mock the database to return no results
-      mockExecute.mockResolvedValue([[]]); // Empty array signifies "not found"
+      mockExecute.mockResolvedValue([]); // Empty array signifies "not found"
 
       // Act & Assert
       await request(app).get("/api/dojos/slug/non-existent-dojo").expect(404);

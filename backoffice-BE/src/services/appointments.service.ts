@@ -54,9 +54,6 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
       throw new NotFoundException(`Dojo with ID ${dojo_id} not found`);
     }
 
-
-
-
     // Insert consultation request including dojo_email
     const [result]: any = await connection.execute(
       `INSERT INTO consultation_requests
@@ -65,8 +62,8 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
         additional_notes, consent_acknowledged, appointment_type, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        dojo.dojo_tag,
-        dojo.email,
+        dojo.dojoTag,
+        dojo.userEmail,
         parent_name,
         email_address,
         contact_details,
@@ -89,7 +86,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
       reason_for_consultation,
       preferred_time_range,
       children,
-      dojo.dojo_name
+      dojo.dojoName
     );
 
     // Insert notification for dojo owner
@@ -99,7 +96,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
       `INSERT INTO notifications (user_email, title, message, type, event_id, status)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        dojo.email,
+        dojo.userEmail,
         title,
         message,
         "consultation_request",
@@ -110,8 +107,8 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
 
     return {
       id: result.insertId,
-      dojo_tag: dojo.dojo_tag,
-      dojo_email: dojo.email,
+      dojo_tag: dojo.dojoTag,
+      dojo_email: dojo.userEmail,
       parent_name,
       email_address,
       contact_details,

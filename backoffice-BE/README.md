@@ -68,6 +68,17 @@ Upload project files to cPanel (via File Manager, FTP, or SSH). Exclude `node_mo
 3. Create users and grant ALL PRIVILEGES
 4. Note down actual database names and credentials
 
+#### Creating Users on local db
+Open the phpMyAdmin dashboard and run the following `sql`. Edit the username and password as you wish. The script is designed to be idempotent, so should run successfully no matter how many times you run it. 
+
+```sql
+CREATE USER IF NOT EXISTS 'devuser'@'localhost' IDENTIFIED BY 'devpassword';
+ALTER USER 'devuser'@'localhost' IDENTIFIED BY 'devpassword';
+GRANT ALL PRIVILEGES ON `dojoburz_dojoconnect`.* TO 'devuser'@'localhost';
+FLUSH PRIVILEGES;
+
+```
+
 ### 3. Update Database Config
 
 Edit `app.js` and update database credentials (lines 18-24 and 173-181) with your cPanel database names and passwords.

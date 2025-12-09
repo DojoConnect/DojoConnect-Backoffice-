@@ -2,7 +2,7 @@ import { z } from "zod";
 import { AppointmentStatus, AppointmentType } from "../constants/enums";
 
 export const CreateAppointmentSchema = z.object({
-  dojo_id: z.string().min(1, "dojo_id is required"),
+  dojo_id: z.number(),
 
   parent_name: z.string().min(1, "parent_name is required"),
   email_address: z.string().email("Invalid email_address"),
