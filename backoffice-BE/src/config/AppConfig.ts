@@ -26,6 +26,7 @@ export const appConfigSchema = z.object({
   JWT_REFRESH_SECRET: z.string().nonempty(),
 
   STRIPE_SECRET_KEY: z.string().nonempty(),
+  STRIPE_TEST_SECRET_KEY: z.string(),
 });
 
 // extract the inferred type
@@ -53,6 +54,7 @@ export const AppConfig: IAppConfig = {
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || "",
 
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
+  STRIPE_TEST_SECRET_KEY: process.env.STRIPE_TEST_SECRET_KEY || "",
 };
 
 export default AppConfig;
