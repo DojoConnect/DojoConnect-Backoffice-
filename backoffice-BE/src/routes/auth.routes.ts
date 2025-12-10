@@ -2,9 +2,18 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 
-import { loginUser, refreshUserToken, registerUser } from "../controllers/auth.controller";
+import {
+  loginUser,
+  logoutUser,
+  refreshUserToken,
+  registerUser,
+} from "../controllers/auth.controller";
 import { validateReqBody } from "../middlewares/validate.middleware";
-import { LoginSchema, RefreshTokenSchema, RegisterUserSchema } from "../validations/auth.schemas";
+import {
+  LoginSchema,
+  RefreshTokenSchema,
+  RegisterUserSchema,
+} from "../validations/auth.schemas";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -24,6 +33,6 @@ router.post(
   registerUser
 );
 router.post("/refresh", validateReqBody(RefreshTokenSchema), refreshUserToken);
-router.post("/logout");
+router.post("/logout", validateReqBody(RefreshTokenSchema), logoutUser);
 
 export default router;
