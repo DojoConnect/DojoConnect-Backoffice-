@@ -80,3 +80,7 @@ jobs:
             mkdir -p tmp
             touch tmp/restart.txt
             echo "Restarted Node.js app!"
+
+            # 5. Wake up the server (trigger the restart)
+            # Replace with your actual API URL
+            curl -I https://apis.dojoconnect.app/api > /dev/null 2>&1 || true

@@ -13,8 +13,11 @@ export const registerUser = async (req: Request, res: Response) => {
     userAgent,
   });
 
-  res.json(
-    formatApiResponse({ data: result, message: "User registered successfully" })
+  res.status(201).json(
+    formatApiResponse({
+      data: result,
+      message: "User registered successfully",
+    })
   );
 };
 
@@ -35,8 +38,8 @@ export const refreshUserToken = async (req: Request, res: Response) => {
   const userIp = req.ip;
   const userAgent = req.headers["user-agent"];
 
-  const result = await authService.refreshUserToken({
-    token: req.body.refreshToken!,
+  const result = await authService.refreshAccessToken({
+    dto: req.body,
     userIp,
     userAgent,
   });
@@ -44,4 +47,19 @@ export const refreshUserToken = async (req: Request, res: Response) => {
   res.json(
     formatApiResponse({ data: result, message: "Authentication successful" })
   );
+};
+
+export const logoutUser = async (req: Request, res: Response) => {
+  await authService.logoutUser({
+    dto: req.body,
+  });
+
+  res.json(formatApiResponse({ data: undefined, message: "successful" }));
+};
+
+export const isUsernameAvailable = async (req: Request, res: Response) => {
+  const username = req.query.username as string;
+  const available = await authService.isUsernameAvailable({ username });
+
+  res.json(formatApiResponse({ data: {available} }));
 };

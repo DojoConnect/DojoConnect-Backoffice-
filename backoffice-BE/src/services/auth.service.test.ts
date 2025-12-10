@@ -26,6 +26,7 @@ import { eq } from "drizzle-orm";
 import {
   buildLoginDTOMock,
   buildNewRefreshTokenMock,
+  buildRefreshTokenDtoMock,
   buildRefreshTokenMock,
   buildRegisterUserDTOMock,
 } from "../tests/factories/auth.factory";
@@ -259,7 +260,7 @@ describe("Auth Service", () => {
     });
   });
 
-  describe("refreshUserToken", () => {
+  describe("revokeRefreshToken", () => {
     const mockUser = buildUserMock();
     const storedToken = buildRefreshTokenMock({
       id: "token-id",
@@ -269,9 +270,9 @@ describe("Auth Service", () => {
       expiresAt: addDays(new Date(), 1),
     });
     const hashedToken = "hashed_token";
+    const dto = buildRefreshTokenDtoMock({ refreshToken: "raw_refresh_token" });
 
     let hashTokenSpy: jest.SpyInstance;
-    let generateAuthTokensSpy: jest.SpyInstance;
     let getOneRefreshTokenSpy: jest.SpyInstance;
 
     beforeEach(() => {
@@ -284,7 +285,80 @@ describe("Auth Service", () => {
       getOneRefreshTokenSpy = jest
         .spyOn(authService, "getOneRefreshToken")
         .mockResolvedValue(storedToken);
+    });
+
+    it("should successfully revoke a valid token", async () => {
+      const result = await authService.revokeRefreshToken({ dto });
+
+      expect(hashTokenSpy).toHaveBeenCalledWith(dto.refreshToken);
+      expect(getOneRefreshTokenSpy).toHaveBeenCalledWith(
+        hashedToken,
+        expect.anything()
+      );
+      expect(dbSpies.mockDelete).toHaveBeenCalledWith(refreshTokens);
+      expect(dbSpies.mockWhere).toHaveBeenCalledWith(
+        eq(refreshTokens.id, storedToken.id)
+      );
+      expect(result).toEqual(storedToken);
+    });
+
+    it("should throw UnauthorizedException if token is not found", async () => {
+      getOneRefreshTokenSpy.mockResolvedValue(null);
+      await expect(authService.revokeRefreshToken({ dto })).rejects.toThrow(
+        UnauthorizedException
+      );
+    });
+
+    it("should throw UnauthorizedException if token is already revoked", async () => {
+      getOneRefreshTokenSpy.mockResolvedValue({
+        ...storedToken,
+        revoked: true,
+      });
+      await expect(authService.revokeRefreshToken({ dto })).rejects.toThrow(
+        UnauthorizedException
+      );
+    });
+
+    it("should throw UnauthorizedException if token is expired", async () => {
+      getOneRefreshTokenSpy.mockResolvedValue({
+        ...storedToken,
+        expiresAt: subDays(new Date(), 1),
+      });
+      await expect(authService.revokeRefreshToken({ dto })).rejects.toThrow(
+        UnauthorizedException
+      );
+    });
+
+    it("should use provided transaction instance", async () => {
+      await authService.revokeRefreshToken({ dto, txInstance: dbSpies.mockTx });
+      expect(dbService.runInTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("refreshAccessToken", () => {
+    const mockUser = buildUserMock();
+    const storedToken = buildRefreshTokenMock({
+      id: "token-id",
+      userId: mockUser.id,
+      hashedToken: "hashed_token",
+      revoked: false,
+      expiresAt: addDays(new Date(), 1),
+    });
+
+    const dto = buildRefreshTokenDtoMock({ refreshToken: "old_refresh" });
+
+    let revokeRefreshTokenSpy: jest.SpyInstance;
+    let generateAuthTokensSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+
       getOneUserByIDSpy.mockResolvedValue(mockUser);
+
+      revokeRefreshTokenSpy = jest
+        .spyOn(authService, "revokeRefreshToken")
+        .mockResolvedValue(storedToken);
+
       generateAuthTokensSpy = jest
         .spyOn(authService, "generateAuthTokens")
         .mockResolvedValue({
@@ -294,17 +368,17 @@ describe("Auth Service", () => {
     });
 
     it("should successfully refresh tokens", async () => {
-      const result = await authService.refreshUserToken({
-        token: "old_refresh",
+      const result = await authService.refreshAccessToken({
+        dto,
         userIp: "127.0.0.1",
         userAgent: "jest",
       });
 
-      expect(getOneRefreshTokenSpy).toHaveBeenCalledWith(
-        hashedToken,
-        dbSpies.mockTx
-      );
-      expect(dbSpies.mockDelete).toHaveBeenCalledWith(refreshTokens); // Token rotation
+      expect(revokeRefreshTokenSpy).toHaveBeenCalledWith({
+        dto,
+        txInstance: dbSpies.mockTx,
+      });
+
       expect(getOneUserByIDSpy).toHaveBeenCalledWith({
         userId: mockUser.id,
       });
@@ -315,37 +389,16 @@ describe("Auth Service", () => {
       });
     });
 
-    it("should throw UnauthorizedException if token is not found", async () => {
-      getOneRefreshTokenSpy.mockResolvedValue(null);
-      await expect(authService.refreshUserToken({} as any)).rejects.toThrow(
-        UnauthorizedException
-      );
-    });
-
-    it("should throw UnauthorizedException if token is revoked", async () => {
-      getOneRefreshTokenSpy.mockResolvedValue({
-        ...storedToken,
-        revoked: true,
-      });
-      await expect(authService.refreshUserToken({} as any)).rejects.toThrow(
-        UnauthorizedException
-      );
-    });
-
-    it("should throw UnauthorizedException if token is expired", async () => {
-      getOneRefreshTokenSpy.mockResolvedValue({
-        ...storedToken,
-        expiresAt: subDays(new Date(), 7),
-      });
-
-      await expect(authService.refreshUserToken({} as any)).rejects.toThrow(
+    it("should propagate errors from revokeRefreshToken)", async () => {
+      revokeRefreshTokenSpy.mockRejectedValueOnce(new UnauthorizedException());
+      await expect(authService.refreshAccessToken({ dto })).rejects.toThrow(
         UnauthorizedException
       );
     });
 
     it("should throw NotFoundException if user associated with token is not found", async () => {
       getOneUserByIDSpy.mockResolvedValue(null);
-      await expect(authService.refreshUserToken({} as any)).rejects.toThrow(
+      await expect(authService.refreshAccessToken({ dto })).rejects.toThrow(
         NotFoundException
       );
     });
@@ -532,6 +585,82 @@ describe("Auth Service", () => {
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith(
         expect.objectContaining({ txInstance: dbSpies.mockTx })
       );
+    });
+  });
+
+  describe("logoutUser", () => {
+    const dto = buildRefreshTokenDtoMock({ refreshToken: "refresh_token" });
+    let revokeRefreshTokenSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      revokeRefreshTokenSpy = jest
+        .spyOn(authService, "revokeRefreshToken")
+        .mockResolvedValue({} as any);
+    });
+
+    it("should successfully logout user by revoking token", async () => {
+      await authService.logoutUser({ dto });
+      expect(revokeRefreshTokenSpy).toHaveBeenCalledWith({
+        dto,
+        txInstance: expect.anything(),
+      });
+    });
+
+    it("should propagate errors from revokeRefreshToken", async () => {
+      revokeRefreshTokenSpy.mockRejectedValue(new UnauthorizedException());
+      await expect(authService.logoutUser({ dto })).rejects.toThrow(
+        UnauthorizedException
+      );
+    });
+
+    it("should use provided transaction instance", async () => {
+      await authService.logoutUser({ dto, txInstance: dbSpies.mockTx });
+      expect(dbService.runInTransaction).not.toHaveBeenCalled();
+      expect(revokeRefreshTokenSpy).toHaveBeenCalledWith({
+        dto,
+        txInstance: dbSpies.mockTx,
+      });
+    });
+  });
+
+  describe("isUsernameAvailable", () => {
+    it("should return false if username is taken", async () => {
+      getOneUserByUsernameSpy.mockResolvedValue(buildUserMock());
+
+      const result = await authService.isUsernameAvailable({
+        username: "taken_user",
+      });
+
+      expect(result).toBe(false);
+      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
+        username: "taken_user",
+        txInstance: expect.anything(),
+      });
+    });
+
+    it("should return true if username is available", async () => {
+      getOneUserByUsernameSpy.mockResolvedValue(null);
+
+      const result = await authService.isUsernameAvailable({
+        username: "new_user",
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it("should use provided transaction instance", async () => {
+      getOneUserByUsernameSpy.mockResolvedValue(null);
+
+      await authService.isUsernameAvailable({
+        username: "test",
+        txInstance: dbSpies.mockTx,
+      });
+
+      expect(dbService.runInTransaction).not.toHaveBeenCalled();
+      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
+        username: "test",
+        txInstance: dbSpies.mockTx,
+      });
     });
   });
 });

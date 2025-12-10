@@ -1,7 +1,11 @@
 import { Role, StripePlans } from "../../constants/enums";
 import { AuthResponseDTO, AuthResponseDTOParams } from "../../dtos/auth.dto";
 import { INewRefreshToken, IRefreshToken } from "../../services/auth.service";
-import { LoginDTO, RegisterUserDTO } from "../../validations/auth.schemas";
+import {
+  LoginDTO,
+  RefreshTokenDTO,
+  RegisterUserDTO,
+} from "../../validations/auth.schemas";
 import { buildUserDtoMock } from "./user.factory";
 
 export const buildRegisterUserDTOMock = (
@@ -81,4 +85,13 @@ export const buildAuthResponseDTOMock = (
       ...overrides,
     })
   );
+};
+
+export const buildRefreshTokenDtoMock = (
+  overrides?: Partial<RefreshTokenDTO>
+): RefreshTokenDTO => {
+  return {
+    refreshToken: "refresh",
+    ...overrides,
+  };
 };

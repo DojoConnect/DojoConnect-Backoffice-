@@ -42,3 +42,29 @@ export const validateReqBody =
       next(error);
     }
   };
+
+export const validateReqQuery =
+  (schema: AnyZodObject) =>
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Parse req.query instead of req.body
+      const parsedQuery = await schema.parseAsync(req.query);
+
+      // Replace req.query with the parsed version.
+      // This allows Zod to perform "coercion" (converting strings to numbers/booleans)
+      req.query = parsedQuery;
+
+      return next();
+    } catch (error) {
+      if (error instanceof ZodError) {
+        // Log error for debugging
+        console.log(error);
+
+        throw new BadRequestException(
+          "Invalid query parameters",
+          error.flatten().fieldErrors
+        );
+      }
+      next(error);
+    }
+  };

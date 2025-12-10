@@ -21,7 +21,11 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "../core/errors";
-import { LoginDTO, RegisterUserDTO } from "../validations/auth.schemas";
+import {
+  LoginDTO,
+  RefreshTokenDTO,
+  RegisterUserDTO,
+} from "../validations/auth.schemas";
 import type { Transaction } from "../db";
 import { Role } from "../constants/enums";
 import { returnFirst } from "../utils/db.utils";
@@ -142,7 +146,7 @@ export const loginUser = async ({
       withPassword: true,
     });
 
-    if (!user) throw new UnauthorizedException(`Invalid credentials-404`);
+    if (!user) throw new UnauthorizedException(`Invalid credentials`);
 
     const isValid = await verifyPassword(user.passwordHash, dto.password);
     if (!isValid) throw new UnauthorizedException(`Invalid credentials`);
@@ -174,19 +178,15 @@ export const loginUser = async ({
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
 
-export const refreshUserToken = async ({
-  token,
-  userIp,
-  userAgent,
+export const revokeRefreshToken = async ({
+  dto,
   txInstance,
 }: {
-  token: string;
-  userIp?: string;
-  userAgent?: string;
+  dto: RefreshTokenDTO;
   txInstance?: Transaction;
-}): Promise<AuthResponseDTO> => {
+}) => {
   const execute = async (tx: Transaction) => {
-    const hashedToken = hashToken(token);
+    const hashedToken = hashToken(dto.refreshToken);
 
     // 1. Find the token in DB
     const storedToken = await getOneRefreshToken(hashedToken, tx);
@@ -203,10 +203,31 @@ export const refreshUserToken = async ({
     // We mark it as revoked or delete it to prevent reuse.
     await deleteRefreshToken(storedToken.id, tx);
 
+    return storedToken;
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const refreshAccessToken = async ({
+  dto,
+  userIp,
+  userAgent,
+  txInstance,
+}: {
+  dto: RefreshTokenDTO;
+  userIp?: string;
+  userAgent?: string;
+  txInstance?: Transaction;
+}): Promise<AuthResponseDTO> => {
+  const execute = async (tx: Transaction) => {
+    const revokedToken = await revokeRefreshToken({ dto, txInstance: tx });
+
     // 3. Issue NEW pair
     const user = await userService.getOneUserByID({
-      userId: storedToken.userId,
+      userId: revokedToken.userId,
     });
+
     if (!user) throw new NotFoundException("User not found");
 
     const authTokens = await generateAuthTokens({
@@ -368,3 +389,41 @@ export const registerUser = async (
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
+
+export const logoutUser = async ({
+  dto,
+  txInstance,
+}: {
+  dto: RefreshTokenDTO;
+  txInstance?: Transaction;
+}) => {
+  const execute = async (tx: Transaction) => {
+    await revokeRefreshToken({ dto, txInstance: tx });
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const isUsernameAvailable = async ({
+  username,
+  txInstance,
+}: {
+  username: string;
+  txInstance?: Transaction;
+}) => {
+  const execute = async (tx: Transaction) => {
+    const user = await userService.getOneUserByUserName({
+      username,
+      txInstance: tx,
+    });
+
+    if (user) {
+      return false;
+    }
+
+    return true;
+  };
+
+  return txInstance ?  execute(txInstance) : dbService.runInTransaction(execute);
+};
+
