@@ -81,21 +81,6 @@ jobs:
             touch tmp/restart.txt
             echo "Restarted Node.js app!"
 
-            # 5. Kill the PREVIOUS running instance (ignore error if none exists)
-            pkill -f "node dist/server.js" || true
-
-            # 6. Start new process (Fully Detached)
-            # < /dev/null : Cuts off input so it doesn't wait for keystrokes
-            # > /dev/null : Cuts off output
-            # 2>&1        : Cuts off errors
-            # &           : Backgrounds it
-            # The parenthesis ( ... ) runs it in a subshell
-            # The sleep ensures the detach happens before the session closes
-            (nohup node dist/server.js > /dev/null 2>&1 &)
-            sleep 5
-
-            # 7. Disown ensures the shell doesn't track it anymore
-            disown
-            
-            echo "Process started in background."
-            exit
+            # 5. Wake up the server (trigger the restart)
+            # Replace with your actual API URL
+            curl -I https://apis.dojoconnect.app/api > /dev/null 2>&1 || true
