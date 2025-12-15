@@ -5,6 +5,7 @@ import * as stripeService from "./stripe.service";
 import * as dojosService from "./dojos.service";
 import * as mailerService from "./mailer.service";
 import * as authUtils from "../utils/auth.utils";
+import * as firebaseService from "./firebase.service";
 import {
   createDrizzleDbSpies,
   DbServiceSpies,
@@ -19,19 +20,23 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "../core/errors";
-import { Role, StripePlans } from "../constants/enums";
+import { Role, StripePlans, SupportedOAuthProviders } from "../constants/enums";
 import { addDays, subDays } from "date-fns";
 import { refreshTokens } from "../db/schema";
 import { eq } from "drizzle-orm";
 import {
   buildLoginDTOMock,
   buildNewRefreshTokenMock,
+  buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
   buildRefreshTokenMock,
   buildRegisterUserDTOMock,
 } from "../tests/factories/auth.factory";
 import { buildDojoMock } from "../tests/factories/dojos.factory";
 import { UserDTO } from "../dtos/user.dtos";
+import { buildFirebaseUserMock } from "../tests/factories/firebase.factory";
+import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository";
+import { AuthResponseDTO } from "../dtos/auth.dto";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -254,6 +259,19 @@ describe("Auth Service", () => {
     it("should throw UnauthorizedException if password is invalid", async () => {
       getOneUserByEmailSpy.mockResolvedValue(mockUser);
       verifyPasswordSpy.mockResolvedValue(false);
+      await expect(authService.loginUser({ dto: loginDTO })).rejects.toThrow(
+        UnauthorizedException
+      );
+    });
+
+    it("should throw UnauthorizedException if password is empty or undefined", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(
+        buildUserMock({
+          ...mockUser,
+          passwordHash: undefined,
+        })
+      );
+
       await expect(authService.loginUser({ dto: loginDTO })).rejects.toThrow(
         UnauthorizedException
       );
@@ -661,6 +679,155 @@ describe("Auth Service", () => {
         username: "test",
         txInstance: dbSpies.mockTx,
       });
+    });
+  });
+
+  describe("firebaseSignIn", () => {
+    const tx = {} as any;
+
+    const dto = {
+      idToken: "firebase-token",
+    };
+
+    const firebaseUser = buildFirebaseUserMock({
+      uid: "firebase-uid",
+      email: "user@example.com",
+      emailVerified: true,
+      name: "John Doe",
+      picture: "avatar.png",
+      provider: SupportedOAuthProviders.Google,
+    });
+
+    const user = buildUserMock({
+      id: "user-id",
+      email: "user@example.com",
+    });
+
+    let runInTxSpy: jest.SpyInstance;
+    let verifyTokenSpy: jest.SpyInstance;
+    let findByProviderSpy: jest.SpyInstance;
+    let createOAuthAcctSpy: jest.SpyInstance;
+    let updateSpy: jest.SpyInstance;
+    let generateTokenSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      runInTxSpy = jest
+        .spyOn(dbService, "runInTransaction")
+        .mockImplementation(async (cb) => cb(tx));
+
+      verifyTokenSpy = jest
+        .spyOn(firebaseService, "verifyFirebaseToken")
+        .mockResolvedValue(firebaseUser);
+
+      findByProviderSpy = jest
+        .spyOn(UserOAuthAccountsRepository, "findByProviderAndProviderUserId")
+        .mockResolvedValue(null);
+
+      createOAuthAcctSpy = jest
+        .spyOn(UserOAuthAccountsRepository, "createOAuthAcct")
+        .mockResolvedValue(undefined);
+
+      updateSpy = jest
+        .spyOn(UserOAuthAccountsRepository, "updateOAuthAcct")
+        .mockResolvedValue(undefined);
+
+      generateTokenSpy = jest.spyOn(authService, "generateAuthTokens").mockResolvedValue({
+        accessToken: "access",
+        refreshToken: "refresh",
+      });
+
+      getOneUserByEmailSpy.mockResolvedValue(user);
+    });
+
+    describe("transaction handling", () => {
+      it("should run inside dbService.runInTransaction when txInstance is not provided", async () => {
+        const result = await authService.firebaseSignIn({ dto });
+
+        expect(runInTxSpy).toHaveBeenCalled();
+        expect(result).toBeInstanceOf(AuthResponseDTO);
+      });
+    });
+
+    it("should throw UnauthorizedException if Firebase email is not verified", async () => {
+      verifyTokenSpy.mockResolvedValue({
+        ...firebaseUser,
+        emailVerified: false,
+      });
+
+      await expect(
+        authService.firebaseSignIn({ dto, txInstance: tx })
+      ).rejects.toThrow(UnauthorizedException);
+
+      await expect(
+        authService.firebaseSignIn({ dto, txInstance: tx })
+      ).rejects.toThrow("Social Auth Email not verified");
+    });
+
+    it("should throw NotFoundException if user does not exist", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(null);
+
+      await expect(
+        authService.firebaseSignIn({ dto, txInstance: tx })
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("should create OAuth account if none exists", async () => {
+      findByProviderSpy.mockResolvedValue(null);
+
+      const result = await authService.firebaseSignIn({
+        dto,
+        txInstance: tx,
+      });
+
+      expect(createOAuthAcctSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dto: expect.objectContaining({
+            userId: user.id,
+            provider: firebaseUser.provider,
+            providerUserId: firebaseUser.uid,
+          }),
+        })
+      );
+
+      expect(result).toBeInstanceOf(AuthResponseDTO);
+    });
+
+    it("should update OAuth account if it already exists", async () => {
+
+      findByProviderSpy.mockResolvedValue(
+        buildOAuthAcctMock({ id: "oauth-id" })
+      );
+
+      const result = await authService.firebaseSignIn({
+        dto,
+        txInstance: tx,
+      });
+
+      expect(updateSpy).toHaveBeenCalled();
+      expect(result.user).toBeInstanceOf(UserDTO);
+    });
+
+    it("should pass userIp and userAgent to generateAuthTokens", async () => {
+
+      findByProviderSpy
+        .mockResolvedValue(null);
+
+      await authService.firebaseSignIn({
+        dto,
+        userIp: "127.0.0.1",
+        userAgent: "jest",
+        txInstance: tx,
+      });
+
+      expect(generateTokenSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user,
+          userIp: "127.0.0.1",
+          userAgent: "jest",
+        })
+      );
     });
   });
 });
