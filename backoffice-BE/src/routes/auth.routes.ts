@@ -8,12 +8,14 @@ import {
   logoutUser,
   refreshUserToken,
   registerUser,
+  handleFirebaseLogin,
 } from "../controllers/auth.controller";
 import {
   validateReqBody,
   validateReqQuery,
 } from "../middlewares/validate.middleware";
 import {
+  FirebaseSignInSchema,
   IsUsernameAvailableSchema,
   LoginSchema,
   RefreshTokenSchema,
@@ -51,6 +53,12 @@ router.post(
 );
 router.post("/refresh", validateReqBody(RefreshTokenSchema), refreshUserToken);
 router.post("/logout", validateReqBody(RefreshTokenSchema), logoutUser);
+
+router.post(
+  "/google",
+  validateReqBody(FirebaseSignInSchema),
+  handleFirebaseLogin
+);
 
 router.get(
   "/username/availability",

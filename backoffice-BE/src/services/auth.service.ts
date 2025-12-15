@@ -1,6 +1,6 @@
 // src/services/auth.service.ts
 import * as dbService from "../db";
-import { refreshTokens } from "../db/schema";
+import { userOAuthAccounts, refreshTokens } from "../db/schema";
 import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   generateAccessToken,
@@ -14,6 +14,7 @@ import * as dojosService from "./dojos.service";
 import * as mailerService from "./mailer.service";
 import * as stripeService from "./stripe.service";
 import * as userService from "./users.service";
+import * as firebaseService from "./firebase.service";
 import { addDays, isAfter } from "date-fns";
 import {
   ConflictException,
@@ -22,6 +23,7 @@ import {
   UnauthorizedException,
 } from "../core/errors";
 import {
+  FirebaseSignInDTO,
   LoginDTO,
   RefreshTokenDTO,
   RegisterUserDTO,
@@ -32,6 +34,7 @@ import { returnFirst } from "../utils/db.utils";
 import { UserDTO } from "../dtos/user.dtos";
 import { AuthResponseDTO } from "../dtos/auth.dto";
 import { formatDateForMySQL } from "../utils/date.utils";
+import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository";
 
 export type INewRefreshToken = InferInsertModel<typeof refreshTokens>;
 export type IRefreshToken = InferSelectModel<typeof refreshTokens>;
@@ -146,7 +149,8 @@ export const loginUser = async ({
       withPassword: true,
     });
 
-    if (!user) throw new UnauthorizedException(`Invalid credentials`);
+    if (!user || !user.passwordHash)
+      throw new UnauthorizedException(`Invalid credentials`);
 
     const isValid = await verifyPassword(user.passwordHash, dto.password);
     if (!isValid) throw new UnauthorizedException(`Invalid credentials`);
@@ -424,6 +428,85 @@ export const isUsernameAvailable = async ({
     return true;
   };
 
-  return txInstance ?  execute(txInstance) : dbService.runInTransaction(execute);
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
 
+export const firebaseSignIn = async ({
+  dto,
+  userIp,
+  userAgent,
+  txInstance,
+}: {
+  dto: FirebaseSignInDTO;
+  userIp?: string;
+  userAgent?: string;
+  txInstance?: Transaction;
+}) => {
+  const execute = async (tx: Transaction) => {
+    // 1. Verify with Firebase
+    const firebaseUser = await firebaseService.verifyFirebaseToken(dto.idToken);
+
+    if (!firebaseUser.emailVerified) {
+      throw new UnauthorizedException("Social Auth Email not verified");
+    }
+
+    let user = await userService.getOneUserByEmail({
+      email: firebaseUser.email!,
+      txInstance: tx,
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    let oAuthAcct =
+      await UserOAuthAccountsRepository.findByProviderAndProviderUserId({
+        provider: firebaseUser.provider,
+        providerUserId: firebaseUser.uid,
+      });
+
+    if (!oAuthAcct) {
+      // Create OAuth link
+      await UserOAuthAccountsRepository.createOAuthAcct({
+        txInstance: tx,
+        dto: {
+          userId: user.id,
+          provider: firebaseUser.provider,
+          providerUserId: firebaseUser.uid,
+          profileData: {
+            name: firebaseUser.name,
+            picture: firebaseUser.picture,
+          },
+        },
+      });
+    } else {
+      // Update existing OAuth Acct
+      await UserOAuthAccountsRepository.updateOAuthAcct({
+        oAuthAcctId: oAuthAcct.id,
+        txInstance: tx,
+        update: {
+          updatedAt: formatDateForMySQL(new Date()),
+          profileData: {
+            name: firebaseUser.name,
+            picture: firebaseUser.picture,
+          },
+        },
+      });
+    }
+
+    const { accessToken, refreshToken } = await generateAuthTokens({
+      user,
+      userIp,
+      userAgent,
+      txInstance,
+    });
+
+    return new AuthResponseDTO({
+      accessToken,
+      refreshToken,
+      user: new UserDTO(user),
+    });
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};

@@ -63,3 +63,16 @@ export const isUsernameAvailable = async (req: Request, res: Response) => {
 
   res.json(formatApiResponse({ data: {available} }));
 };
+
+export const handleFirebaseLogin = async (req: Request, res: Response) => {
+  const userIp = req.ip;
+  const userAgent = req.headers["user-agent"];
+
+  const result = await authService.firebaseSignIn({
+    dto: req.body,
+    userIp,
+    userAgent,
+  });
+
+  res.json(formatApiResponse({ data: result, message: "Login successful" }));
+}

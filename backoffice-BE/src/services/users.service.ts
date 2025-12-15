@@ -12,7 +12,7 @@ export type IUserCard = InferSelectModel<typeof userCards>;
 export type INewUser = InferInsertModel<typeof users>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
 
-export type IUpdateUser = Partial<Omit<INewUser, "id">>;
+export type IUpdateUser = Partial<Omit<INewUser, "id"|"createdAt">>;
 
 export const getOneUser = async (
   {
@@ -105,6 +105,7 @@ export const getOneUserByUserName = async ({
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
+
 
 export const fetchUserCards = async (
   userId: string,
