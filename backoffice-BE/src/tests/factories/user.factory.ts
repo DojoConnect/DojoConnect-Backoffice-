@@ -20,6 +20,7 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
     balance: "150.75",
     referralCode: "REFJOHN2024",
     activeSub: StripePlans.Trial,
+    emailVerified: true,
     dob: "1990-05-14",
     gender: "male",
     city: "Lagos",

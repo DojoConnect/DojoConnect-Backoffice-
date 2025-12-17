@@ -34,3 +34,7 @@ export enum StripePlans {
   Starter = "starter",
   Pro = "pro",
 }
+
+export enum SupportedOAuthProviders {
+  Google = "google",
+}

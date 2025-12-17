@@ -5,6 +5,7 @@ import * as stripeService from "./stripe.service";
 import * as dojosService from "./dojos.service";
 import * as mailerService from "./mailer.service";
 import * as authUtils from "../utils/auth.utils";
+import * as firebaseService from "./firebase.service";
 import {
   createDrizzleDbSpies,
   DbServiceSpies,
@@ -15,23 +16,31 @@ import {
   buildStripeSubMock,
 } from "../tests/factories/stripe.factory";
 import {
+  BadRequestException,
   ConflictException,
   NotFoundException,
   UnauthorizedException,
+  TooManyRequestsException,
 } from "../core/errors";
-import { Role, StripePlans } from "../constants/enums";
+import { Role, StripePlans, SupportedOAuthProviders } from "../constants/enums";
 import { addDays, subDays } from "date-fns";
 import { refreshTokens } from "../db/schema";
 import { eq } from "drizzle-orm";
 import {
   buildLoginDTOMock,
   buildNewRefreshTokenMock,
+  buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
   buildRefreshTokenMock,
   buildRegisterUserDTOMock,
 } from "../tests/factories/auth.factory";
 import { buildDojoMock } from "../tests/factories/dojos.factory";
 import { UserDTO } from "../dtos/user.dtos";
+import { buildFirebaseUserMock } from "../tests/factories/firebase.factory";
+import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository";
+import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository";
+import AppConstants from "../constants/AppConstants";
+import { AuthResponseDTO } from "../dtos/auth.dto";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -128,7 +137,7 @@ describe("Auth Service", () => {
   describe("deleteRefreshToken", () => {
     it("should delete a refresh token by its ID", async () => {
       const tokenId = "token-id-123";
-      await authService.deleteRefreshToken(tokenId);
+      await authService.deleteRefreshTokenById(tokenId);
       expect(dbSpies.mockDelete).toHaveBeenCalledWith(refreshTokens);
       expect(dbSpies.mockWhere).toHaveBeenCalledWith(
         eq(refreshTokens.id, tokenId)
@@ -136,7 +145,7 @@ describe("Auth Service", () => {
     });
 
     it("should use a provided transaction instance", async () => {
-      await authService.deleteRefreshToken("id", dbSpies.mockTx);
+      await authService.deleteRefreshTokenById("id", dbSpies.mockTx);
       expect(dbService.runInTransaction).not.toHaveBeenCalled();
     });
   });
@@ -254,6 +263,19 @@ describe("Auth Service", () => {
     it("should throw UnauthorizedException if password is invalid", async () => {
       getOneUserByEmailSpy.mockResolvedValue(mockUser);
       verifyPasswordSpy.mockResolvedValue(false);
+      await expect(authService.loginUser({ dto: loginDTO })).rejects.toThrow(
+        UnauthorizedException
+      );
+    });
+
+    it("should throw UnauthorizedException if password is empty or undefined", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(
+        buildUserMock({
+          ...mockUser,
+          passwordHash: undefined,
+        })
+      );
+
       await expect(authService.loginUser({ dto: loginDTO })).rejects.toThrow(
         UnauthorizedException
       );
@@ -660,6 +682,378 @@ describe("Auth Service", () => {
       expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
         username: "test",
         txInstance: dbSpies.mockTx,
+      });
+    });
+  });
+
+  describe("firebaseSignIn", () => {
+    const tx = {} as any;
+
+    const dto = {
+      idToken: "firebase-token",
+    };
+
+    const firebaseUser = buildFirebaseUserMock({
+      uid: "firebase-uid",
+      email: "user@example.com",
+      emailVerified: true,
+      name: "John Doe",
+      picture: "avatar.png",
+      provider: SupportedOAuthProviders.Google,
+    });
+
+    const user = buildUserMock({
+      id: "user-id",
+      email: "user@example.com",
+    });
+
+    let runInTxSpy: jest.SpyInstance;
+    let verifyTokenSpy: jest.SpyInstance;
+    let findByProviderSpy: jest.SpyInstance;
+    let createOAuthAcctSpy: jest.SpyInstance;
+    let updateSpy: jest.SpyInstance;
+    let generateTokenSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+
+      runInTxSpy = jest
+        .spyOn(dbService, "runInTransaction")
+        .mockImplementation(async (cb) => cb(tx));
+
+      verifyTokenSpy = jest
+        .spyOn(firebaseService, "verifyFirebaseToken")
+        .mockResolvedValue(firebaseUser);
+
+      findByProviderSpy = jest
+        .spyOn(UserOAuthAccountsRepository, "findByProviderAndProviderUserId")
+        .mockResolvedValue(null);
+
+      createOAuthAcctSpy = jest
+        .spyOn(UserOAuthAccountsRepository, "createOAuthAcct")
+        .mockResolvedValue(undefined);
+
+      updateSpy = jest
+        .spyOn(UserOAuthAccountsRepository, "updateOAuthAcct")
+        .mockResolvedValue(undefined);
+
+      generateTokenSpy = jest
+        .spyOn(authService, "generateAuthTokens")
+        .mockResolvedValue({
+          accessToken: "access",
+          refreshToken: "refresh",
+        });
+
+      getOneUserByEmailSpy.mockResolvedValue(user);
+    });
+
+    describe("transaction handling", () => {
+      it("should run inside dbService.runInTransaction when txInstance is not provided", async () => {
+        const result = await authService.firebaseSignIn({ dto });
+
+        expect(runInTxSpy).toHaveBeenCalled();
+        expect(result).toBeInstanceOf(AuthResponseDTO);
+      });
+    });
+
+    it("should throw UnauthorizedException if Firebase email is not verified", async () => {
+      verifyTokenSpy.mockResolvedValue({
+        ...firebaseUser,
+        emailVerified: false,
+      });
+
+      await expect(
+        authService.firebaseSignIn({ dto, txInstance: tx })
+      ).rejects.toThrow(UnauthorizedException);
+
+      await expect(
+        authService.firebaseSignIn({ dto, txInstance: tx })
+      ).rejects.toThrow("Social Auth Email not verified");
+    });
+
+    it("should throw NotFoundException if user does not exist", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(null);
+
+      await expect(
+        authService.firebaseSignIn({ dto, txInstance: tx })
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("should create OAuth account if none exists", async () => {
+      findByProviderSpy.mockResolvedValue(null);
+
+      const result = await authService.firebaseSignIn({
+        dto,
+        txInstance: tx,
+      });
+
+      expect(createOAuthAcctSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dto: expect.objectContaining({
+            userId: user.id,
+            provider: firebaseUser.provider,
+            providerUserId: firebaseUser.uid,
+          }),
+        })
+      );
+
+      expect(result).toBeInstanceOf(AuthResponseDTO);
+    });
+
+    it("should update OAuth account if it already exists", async () => {
+      findByProviderSpy.mockResolvedValue(
+        buildOAuthAcctMock({ id: "oauth-id" })
+      );
+
+      const result = await authService.firebaseSignIn({
+        dto,
+        txInstance: tx,
+      });
+
+      expect(updateSpy).toHaveBeenCalled();
+      expect(result.user).toBeInstanceOf(UserDTO);
+    });
+
+    it("should pass userIp and userAgent to generateAuthTokens", async () => {
+      findByProviderSpy.mockResolvedValue(null);
+
+      await authService.firebaseSignIn({
+        dto,
+        userIp: "127.0.0.1",
+        userAgent: "jest",
+        txInstance: tx,
+      });
+
+      expect(generateTokenSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user,
+          userIp: "127.0.0.1",
+          userAgent: "jest",
+        })
+      );
+    });
+  });
+
+  describe("initForgetPassword", () => {
+    const dto = { email: "test@example.com" };
+    const user = buildUserMock({ email: dto.email });
+
+    let updateOTPSpy: jest.SpyInstance;
+    let createOTPSpy: jest.SpyInstance;
+    let generateOTPSpy: jest.SpyInstance;
+    let hashTokenSpy: jest.SpyInstance;
+    let sendPasswordResetMailSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      updateOTPSpy = jest
+        .spyOn(PasswordResetOTPRepository, "updateOTP")
+        .mockResolvedValue(undefined);
+      createOTPSpy = jest
+        .spyOn(PasswordResetOTPRepository, "createOTP")
+        .mockResolvedValue(undefined);
+      generateOTPSpy = jest
+        .spyOn(authUtils, "generateOTP")
+        .mockReturnValue("123456");
+      hashTokenSpy = jest
+        .spyOn(authUtils, "hashToken")
+        .mockReturnValue("hashed_otp");
+      sendPasswordResetMailSpy = jest
+        .spyOn(mailerService, "sendPasswordResetMail")
+        .mockResolvedValue(undefined);
+    });
+
+    it("should initiate password reset for existing user", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(user);
+
+      await authService.initForgetPassword({ dto });
+
+      expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
+        email: dto.email,
+        txInstance: expect.anything(),
+      });
+      expect(updateOTPSpy).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        update: { used: true },
+        whereClause: expect.anything(),
+      });
+      expect(generateOTPSpy).toHaveBeenCalled();
+      expect(hashTokenSpy).toHaveBeenCalledWith("123456");
+      expect(createOTPSpy).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        dto: expect.objectContaining({
+          userId: user.id,
+          hashedOTP: "hashed_otp",
+          attempts: 0,
+        }),
+      });
+      expect(sendPasswordResetMailSpy).toHaveBeenCalledWith({
+        dest: user.email,
+        name: user.name,
+        otp: "123456",
+      });
+    });
+
+    it("should silently fail if user is not found", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(null);
+
+      await authService.initForgetPassword({ dto });
+
+      expect(getOneUserByEmailSpy).toHaveBeenCalled();
+      expect(updateOTPSpy).not.toHaveBeenCalled();
+      expect(sendPasswordResetMailSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("resetPassword", () => {
+    const dto = { resetToken: "valid_token", newPassword: "new_password" };
+    const decodedToken = { userId: "user-1", scope: "password_reset" };
+
+    let verifyTokenSpy: jest.SpyInstance;
+    let hashPasswordSpy: jest.SpyInstance;
+    let updateUserSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      verifyTokenSpy = jest
+        .spyOn(authUtils, "verifyPasswordResetToken")
+        .mockReturnValue(decodedToken);
+      hashPasswordSpy = jest
+        .spyOn(authUtils, "hashPassword")
+        .mockResolvedValue("new_hashed_password");
+      updateUserSpy = jest
+        .spyOn(userService, "updateUser")
+        .mockResolvedValue(undefined);
+    });
+
+    it("should reset password and revoke refresh tokens", async () => {
+      await authService.resetPassword({ dto });
+
+      expect(verifyTokenSpy).toHaveBeenCalledWith(dto.resetToken);
+      expect(hashPasswordSpy).toHaveBeenCalledWith(dto.newPassword);
+      expect(updateUserSpy).toHaveBeenCalledWith({
+        txInstance: expect.anything(),
+        userId: decodedToken.userId,
+        update: { passwordHash: "new_hashed_password" },
+      });
+
+      expect(dbSpies.mockDelete).toHaveBeenCalledWith(refreshTokens);
+      expect(dbSpies.mockWhere).toHaveBeenCalledWith(
+        eq(refreshTokens.userId, decodedToken.userId)
+      );
+    });
+
+    it("should throw if token verification fails", async () => {
+      verifyTokenSpy.mockImplementation(() => {
+        throw new BadRequestException("Invalid token");
+      });
+
+      await expect(authService.resetPassword({ dto })).rejects.toThrow(
+        BadRequestException
+      );
+      expect(updateUserSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("verifyOtp", () => {
+    const dto = { email: "test@example.com", otp: "123456" };
+    const user = buildUserMock({ email: dto.email });
+    const otpRecord = {
+      id: "otp-id",
+      userId: user.id,
+      hashedOTP: "hashed_otp",
+      attempts: 0,
+      expiresAt: addDays(new Date(), 1),
+      used: false,
+    };
+
+    let findOneOTPSpy: jest.SpyInstance;
+    let incrementAttemptsSpy: jest.SpyInstance;
+    let updateOneOTPSpy: jest.SpyInstance;
+    let generateResetTokenSpy: jest.SpyInstance;
+    let hashTokenSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      findOneOTPSpy = jest.spyOn(PasswordResetOTPRepository, "findOne");
+      incrementAttemptsSpy = jest
+        .spyOn(PasswordResetOTPRepository, "incrementActiveOTPsAttempts")
+        .mockResolvedValue(undefined);
+      updateOneOTPSpy = jest
+        .spyOn(PasswordResetOTPRepository, "updateOneOTP")
+        .mockResolvedValue(undefined);
+      generateResetTokenSpy = jest
+        .spyOn(authUtils, "generatePasswordResetToken")
+        .mockReturnValue("reset_token");
+      hashTokenSpy = jest
+        .spyOn(authUtils, "hashToken")
+        .mockReturnValue("hashed_otp");
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("should verify OTP successfully and return reset token", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(user);
+      findOneOTPSpy.mockResolvedValue(otpRecord);
+
+      const result = await authService.verifyOtp({ dto });
+
+      expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
+        email: dto.email,
+        txInstance: expect.anything(),
+      });
+      expect(hashTokenSpy).toHaveBeenCalledWith(dto.otp);
+      expect(findOneOTPSpy).toHaveBeenCalled();
+      expect(updateOneOTPSpy).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        otpID: otpRecord.id,
+        update: { used: true },
+      });
+      expect(generateResetTokenSpy).toHaveBeenCalledWith(user.id);
+      expect(result).toEqual({ resetToken: "reset_token" });
+    });
+
+    it("should throw BadRequestException if user not found", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(null);
+      await expect(authService.verifyOtp({ dto })).rejects.toThrow(
+        BadRequestException
+      );
+
+    }, 10000);
+
+    it("should throw BadRequestException if OTP not found or invalid", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(user);
+      findOneOTPSpy.mockResolvedValue(null);
+
+      await expect(authService.verifyOtp({ dto })).rejects.toThrow(
+        BadRequestException
+      );
+
+      expect(incrementAttemptsSpy).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        userId: user.id,
+      });
+    });
+
+    it("should throw TooManyRequestsException if max attempts reached", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(user);
+      const exhaustedOtp = {
+        ...otpRecord,
+        attempts: AppConstants.MAX_OTP_VERIFICATION_ATTEMPTS,
+      };
+      findOneOTPSpy.mockResolvedValue(exhaustedOtp);
+
+      await expect(authService.verifyOtp({ dto })).rejects.toThrow(
+        TooManyRequestsException
+      );
+
+      expect(updateOneOTPSpy).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        otpID: exhaustedOtp.id,
+        update: {
+          used: true,
+          attempts: exhaustedOtp.attempts + 1,
+        },
       });
     });
   });

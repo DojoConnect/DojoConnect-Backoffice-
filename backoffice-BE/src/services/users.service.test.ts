@@ -15,6 +15,8 @@ import { NotFoundException } from "../core/errors";
 import { buildStripePaymentMethodCardMock } from "../tests/factories/stripe.factory";
 
 describe("Users Service", () => {
+  const whereClause = eq(users.id, "1");
+
   let mockExecute: jest.Mock;
   let mockSelect: jest.Mock;
   let mockFrom: jest.Mock;
@@ -41,7 +43,7 @@ describe("Users Service", () => {
     it("should return null when no user is found", async () => {
       mockExecute.mockResolvedValue([]);
 
-      const result = await usersService.getOneUser({ whereClause: { id: 1 } });
+      const result = await usersService.getOneUser({ whereClause });
 
       expect(mockSelect).toHaveBeenCalled();
       expect(mockFrom).toHaveBeenCalledWith(users);
@@ -61,7 +63,7 @@ describe("Users Service", () => {
       mockExecute.mockResolvedValue([mockUser]);
 
       const result = await usersService.getOneUser({
-        whereClause: { id: 1 },
+        whereClause,
         withPassword: false,
       });
 
@@ -79,7 +81,7 @@ describe("Users Service", () => {
       mockExecute.mockResolvedValue([mockUser]);
 
       const result = await usersService.getOneUser({
-        whereClause: { id: 1 },
+        whereClause,
         withPassword: true,
       });
 
@@ -91,7 +93,7 @@ describe("Users Service", () => {
       const mockUser = buildUserMock({ id: "1", passwordHash: "hash" });
       mockExecute.mockResolvedValue([mockUser]);
 
-      const result = await usersService.getOneUser({ whereClause: { id: 1 } });
+      const result = await usersService.getOneUser({ whereClause });
 
       expect(dbSpies.runInTransactionSpy).toHaveBeenCalled();
     });
@@ -100,13 +102,13 @@ describe("Users Service", () => {
       const mockUser = buildUserMock({ id: "1", passwordHash: "pw" });
       mockExecute.mockResolvedValue([mockUser]);
 
+      const whereClause = eq(users.email, "test@example.com");
+
       await usersService.getOneUser({
-        whereClause: { email: "test@example.com" },
+        whereClause,
       });
 
-      expect(dbSpies.mockWhere).toHaveBeenCalledWith({
-        email: "test@example.com",
-      });
+      expect(dbSpies.mockWhere).toHaveBeenCalledWith(whereClause);
       expect(mockLimit).toHaveBeenCalledWith(1);
     });
   });

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import argon2 from "@node-rs/argon2";
 import crypto from "crypto";
 import AppConfig from "../config/AppConfig";
+import { BadRequestException } from "../core/errors";
 
 export interface TokenPayload {
   userId: string;
@@ -10,6 +11,13 @@ export interface TokenPayload {
   role: string;
   // Keep payload minimal - don't include sensitive data
 }
+
+export interface PasswordResetTokenPayload {
+  userId: string;
+  scope: string;
+}
+
+export const PASSWORD_RESET_SCOPE = "password_reset";
 
 export const hashPassword = async (password: string) => {
   return await argon2.hash(password);
@@ -32,4 +40,42 @@ export const generateAccessToken = (payload: TokenPayload) => {
 
 export const hashToken = (token: string) => {
   return crypto.createHash("sha256").update(token).digest("hex");
+};
+
+export const generateOTP = () => {
+  // Generates a cryptographically strong integer between 100000 and 999999
+  const otp = crypto.randomInt(100000, 1000000).toString();
+  return otp;
+};
+
+export const generatePasswordResetToken = (userId: string) => {
+  const payload: PasswordResetTokenPayload = {
+    userId,
+    scope: PASSWORD_RESET_SCOPE, // Critical: This token cannot be used for login!
+  };
+  return jwt.sign(payload, AppConfig.JWT_ACCESS_SECRET, { expiresIn: "5m" });
+};
+
+export const verifyPasswordResetToken = (
+  resetToken: string
+): PasswordResetTokenPayload => {
+  // A. Verify the JWT
+  let payload: PasswordResetTokenPayload;
+  try {
+    payload = jwt.verify(
+      resetToken,
+      AppConfig.JWT_ACCESS_SECRET
+    ) as PasswordResetTokenPayload;
+  } catch (err) {
+    throw new BadRequestException(
+      "Reset token expired. Please verify OTP again."
+    );
+  }
+
+  // B. Security Check: Ensure this is a RESET token, not a login token
+  if (payload.scope !== PASSWORD_RESET_SCOPE) {
+    throw new BadRequestException("Invalid token type");
+  }
+
+  return payload;
 };

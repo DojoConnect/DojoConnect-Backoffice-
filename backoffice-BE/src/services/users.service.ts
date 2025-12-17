@@ -1,4 +1,4 @@
-import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
 import { userCards, users } from "../db/schema";
 import * as dbService from "../db";
 import type { Transaction } from "../db";
@@ -12,13 +12,13 @@ export type IUserCard = InferSelectModel<typeof userCards>;
 export type INewUser = InferInsertModel<typeof users>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
 
-export type IUpdateUser = Partial<Omit<INewUser, "id">>;
+export type IUpdateUser = Partial<Omit<INewUser, "id"|"createdAt">>;
 
 export const getOneUser = async (
   {
     whereClause,
     withPassword = false,
-  }: { whereClause: any; withPassword?: boolean },
+  }: { whereClause: SQL; withPassword?: boolean },
   txInstance?: Transaction
 ): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
@@ -105,6 +105,7 @@ export const getOneUserByUserName = async ({
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
+
 
 export const fetchUserCards = async (
   userId: string,

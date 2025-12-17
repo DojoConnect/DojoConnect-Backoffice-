@@ -14,9 +14,15 @@ import {
   decimal,
   time,
   boolean,
+  json,
 } from "drizzle-orm/mysql-core";
 import { uuidv7 } from "uuidv7";
-import { NotificationType, Role, StripePlans } from "../constants/enums";
+import {
+  NotificationType,
+  SupportedOAuthProviders,
+  Role,
+  StripePlans,
+} from "../constants/enums";
 
 export const admin = mysqlTable(
   "admin",
@@ -317,6 +323,30 @@ export const notifications = mysqlTable("notifications", {
   status: varchar({ length: 20 }).default("pending"),
 });
 
+export const userOAuthAccounts = mysqlTable(
+  "user_oauth_accounts",
+  {
+    id: varchar("id", { length: 64 })
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    userId: varchar("user_id", { length: 64 })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: mysqlEnum(SupportedOAuthProviders).notNull(),
+    providerUserId: varchar("provider_user_id", { length: 255 }).notNull(),
+    profileData: json("profile_data"),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+  },
+  (table) => [
+    unique("provider_user_unique").on(table.provider, table.providerUserId),
+  ]
+);
+
 export const parents = mysqlTable(
   "parents",
   {
@@ -334,10 +364,19 @@ export const parents = mysqlTable(
   ]
 );
 
-export const passwordResets = mysqlTable("password_resets", {
-  email: varchar({ length: 255 }).notNull(),
-  token: varchar({ length: 64 }).notNull(),
-  expiresAt: datetime("expires_at", { mode: "string" }).notNull(),
+export const passwordResetOTPs = mysqlTable("password_reset_otps", {
+  id: varchar("id", { length: 64 })
+    .primaryKey()
+    .$defaultFn(() => uuidv7()),
+  userId: varchar("user_id", { length: 64 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  hashedOTP: varchar("hashed_otp", { length: 255 }).notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  expiresAt: datetime("expires_at").notNull(),
+  used: boolean("used").default(false).notNull(),
+  blockedAt: datetime("blocked_at"), // Block after max attempts
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const sessions = mysqlTable(
@@ -430,7 +469,8 @@ export const users = mysqlTable(
     name: varchar({ length: 100 }).notNull(),
     username: varchar({ length: 100 }).notNull(),
     email: varchar({ length: 150 }).notNull(),
-    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    passwordHash: varchar("password_hash", { length: 255 }),
+    emailVerified: boolean("email_verified").default(false).notNull(),
     referredBy: varchar("referred_by", { length: 255 }),
     avatar: text(),
     role: mysqlEnum(Role).notNull(),
