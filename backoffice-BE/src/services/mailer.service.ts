@@ -2,6 +2,12 @@ import AppConfig from "../config/AppConfig";
 import nodemailer from "nodemailer";
 import { Role } from "../constants/enums";
 
+type SendPasswordResetMailParams = {
+  dest: string;
+  name: string;
+  otp: string;
+};
+
 let transporterInstance: any = null;
 
 export const getTransporter = () => {
@@ -89,7 +95,7 @@ export const sendPhysicalAppointmentScheduled = async (
 
   const mailOptions = {
     from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
+      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
     }>`,
     to,
     subject: "Your Appointment Has Been Scheduled",
@@ -142,7 +148,7 @@ export const sendOnlineAppointmentScheduled = async (
 
   const mailOptions = {
     from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
+      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
     }>`,
     to,
     subject: "Your Online Appointment Has Been Scheduled",
@@ -193,7 +199,7 @@ export const sendAppointmentCancellation = async (
 
   const mailOptions = {
     from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
+      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
     }>`,
     to,
     subject: "Appointment Canceled",
@@ -239,7 +245,7 @@ export const sendOnlineAppointmentReschedule = async (
 
   const mailOptions = {
     from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
+      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
     }>`,
     to,
     subject: "Appointment Update – Rescheduled",
@@ -285,9 +291,7 @@ export const sendPhysicalAppointmentReschedule = async (
   });
 
   const mailOptions = {
-    from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
+    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
     to,
     subject: "Appointment Update – Rescheduled",
     html: `
@@ -335,7 +339,7 @@ export const sendTrialClassBookingConfirmation = async (
 
   const mailOptions = {
     from: `"Dojo Connect" <${
-      process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
+      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
     }>`,
     to,
     subject: "Your Trial Class Booking Has Been Confirmed",
@@ -414,5 +418,34 @@ export const sendWelcomeEmail = async (
     await getTransporter().sendMail(mailOptions);
   } catch (error: any) {
     console.error(`Welcome email failed to ${dest}: ${error.message}`);
+  }
+};
+
+
+export const sendPasswordResetMail = async ({
+  dest,
+  name,
+  otp,
+}: SendPasswordResetMailParams): Promise<void> => {
+
+  try {
+    const mailOptions = {
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+      to: dest,
+      subject: "Your Dojo Connect Password Reset Code",
+      html: `
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>We received a request to reset your password.</p>
+      <p>Your password reset code is:</p>
+      <h2 style="color:#e51b1b; font-size:24px;">${otp}</h2>
+      <p>This code will expire in 15 mins.</p>
+      <p>If you didn’t request this, you can ignore this email.</p>
+      <p>– Dojo Connect Team</p>
+    `,
+    };
+
+    await getTransporter().sendMail(mailOptions);
+  } catch (error: any) {
+    console.error(`Password reset email failed to ${dest}: ${error.message}`);
   }
 };

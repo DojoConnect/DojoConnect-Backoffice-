@@ -1,4 +1,4 @@
-import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
 import { userCards, users } from "../db/schema";
 import * as dbService from "../db";
 import type { Transaction } from "../db";
@@ -18,7 +18,7 @@ export const getOneUser = async (
   {
     whereClause,
     withPassword = false,
-  }: { whereClause: any; withPassword?: boolean },
+  }: { whereClause: SQL; withPassword?: boolean },
   txInstance?: Transaction
 ): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {

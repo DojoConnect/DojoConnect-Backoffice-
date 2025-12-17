@@ -1,13 +1,27 @@
 // src/services/auth.service.ts
 import * as dbService from "../db";
-import { userOAuthAccounts, refreshTokens } from "../db/schema";
-import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import {
+  refreshTokens,
+  passwordResetOTPs,
+} from "../db/schema";
+import {
+  and,
+  eq,
+  gt,
+  InferInsertModel,
+  InferSelectModel,
+  isNull,
+  SQL,
+} from "drizzle-orm";
 import {
   generateAccessToken,
+  generateOTP,
+  generatePasswordResetToken,
   generateRefreshToken,
   hashPassword,
   hashToken,
   verifyPassword,
+  verifyPasswordResetToken,
 } from "../utils/auth.utils";
 import type { IUser } from "./users.service";
 import * as dojosService from "./dojos.service";
@@ -15,18 +29,23 @@ import * as mailerService from "./mailer.service";
 import * as stripeService from "./stripe.service";
 import * as userService from "./users.service";
 import * as firebaseService from "./firebase.service";
-import { addDays, isAfter } from "date-fns";
+import { addDays, addMinutes, isAfter } from "date-fns";
 import {
+  BadRequestException,
   ConflictException,
   InternalServerErrorException,
   NotFoundException,
+  TooManyRequestsException,
   UnauthorizedException,
 } from "../core/errors";
 import {
   FirebaseSignInDTO,
+  ForgotPasswordDTO,
   LoginDTO,
   RefreshTokenDTO,
   RegisterUserDTO,
+  ResetPasswordDTO,
+  VerifyOtpDTO,
 } from "../validations/auth.schemas";
 import type { Transaction } from "../db";
 import { Role } from "../constants/enums";
@@ -35,6 +54,8 @@ import { UserDTO } from "../dtos/user.dtos";
 import { AuthResponseDTO } from "../dtos/auth.dto";
 import { formatDateForMySQL } from "../utils/date.utils";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository";
+import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository";
+import AppConstants from "../constants/AppConstants";
 
 export type INewRefreshToken = InferInsertModel<typeof refreshTokens>;
 export type IRefreshToken = InferSelectModel<typeof refreshTokens>;
@@ -76,12 +97,37 @@ export const getOneRefreshToken = async (
 
      We choose to delete now to remove the need for cleaning up later
  */
-export const deleteRefreshToken = async (
+export const deleteRefreshTokenById = async (
   tokenId: string,
   txInstance?: Transaction
 ) => {
   const execute = async (tx: Transaction) => {
-    await tx.delete(refreshTokens).where(eq(refreshTokens.id, tokenId));
+    await deleteRefreshToken({txInstance: tx, whereClause: eq(refreshTokens.id, tokenId) });
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const deleteRefreshTokenByUserId = async (
+  userId: string,
+  txInstance?: Transaction
+) => {
+  const execute = async (tx: Transaction) => {
+    await deleteRefreshToken({
+      txInstance: tx,
+      whereClause: eq(refreshTokens.userId, userId),
+    });
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const deleteRefreshToken = async (
+  {whereClause, txInstance}:{whereClause: SQL,
+  txInstance?: Transaction}
+) => {
+  const execute = async (tx: Transaction) => {
+    await tx.delete(refreshTokens).where(whereClause);
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
@@ -205,7 +251,7 @@ export const revokeRefreshToken = async ({
 
     // 2. Token Rotation: Revoke the old token (or delete it)
     // We mark it as revoked or delete it to prevent reuse.
-    await deleteRefreshToken(storedToken.id, tx);
+    await deleteRefreshTokenById(storedToken.id, tx);
 
     return storedToken;
   };
@@ -461,6 +507,7 @@ export const firebaseSignIn = async ({
 
     let oAuthAcct =
       await UserOAuthAccountsRepository.findByProviderAndProviderUserId({
+        tx,
         provider: firebaseUser.provider,
         providerUserId: firebaseUser.uid,
       });
@@ -468,7 +515,7 @@ export const firebaseSignIn = async ({
     if (!oAuthAcct) {
       // Create OAuth link
       await UserOAuthAccountsRepository.createOAuthAcct({
-        txInstance: tx,
+        tx,
         dto: {
           userId: user.id,
           provider: firebaseUser.provider,
@@ -483,7 +530,7 @@ export const firebaseSignIn = async ({
       // Update existing OAuth Acct
       await UserOAuthAccountsRepository.updateOAuthAcct({
         oAuthAcctId: oAuthAcct.id,
-        txInstance: tx,
+        tx,
         update: {
           updatedAt: formatDateForMySQL(new Date()),
           profileData: {
@@ -506,6 +553,160 @@ export const firebaseSignIn = async ({
       refreshToken,
       user: new UserDTO(user),
     });
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const initForgetPassword = async ({
+  dto,
+  txInstance,
+}: {
+  dto: ForgotPasswordDTO;
+  txInstance?: Transaction;
+}) => {
+  const execute = async (tx: Transaction) => {
+    const user = await userService.getOneUserByEmail({
+      email: dto.email,
+      txInstance: tx,
+    });
+
+    if (!user) return; // Silent fail (security: prevent email enumeration)
+
+    // Invalidate ANY previous unused tokens for this user
+    // (Prevents stacking valid OTPs)
+    await PasswordResetOTPRepository.updateOTP({
+      tx,
+      update: { used: true },
+      whereClause: eq(passwordResetOTPs.userId, user.id),
+    });
+
+    // Generate  OTP
+    const otp = generateOTP();
+    const hashedOTP = hashToken(otp); // Still hash it!
+
+    // Short Expiry (15 Minutes max for OTPs)
+    const expiresAt = addMinutes(new Date(), 15);
+
+    await PasswordResetOTPRepository.createOTP({
+      tx,
+      dto: {
+        userId: user.id,
+        hashedOTP,
+        expiresAt,
+        attempts: 0, // Reset attempts
+      },
+    });
+
+    await mailerService.sendPasswordResetMail({
+      dest: user.email,
+      name: user.name,
+      otp,
+    });
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const verifyOtp = async ({
+  dto,
+  txInstance,
+}: {
+  dto: VerifyOtpDTO;
+  txInstance?: Transaction;
+}) => {
+  const execute = async (tx: Transaction) => {
+    const user = await userService.getOneUserByEmail({
+      email: dto.email,
+      txInstance: tx,
+    });
+
+    if (!user) {
+      throw new BadRequestException("Invalid OTP");
+    }
+
+    // Hash the provided OTP
+    const otpHash = hashToken(dto.otp);
+
+    const otpRecord = await PasswordResetOTPRepository.findOne({
+      tx,
+      whereClause: and(
+        eq(passwordResetOTPs.userId, user.id),
+        eq(passwordResetOTPs.hashedOTP, otpHash),
+        eq(passwordResetOTPs.used, false),
+        isNull(passwordResetOTPs.blockedAt),
+        gt(passwordResetOTPs.expiresAt, new Date())
+      ),
+    });
+
+    if (!otpRecord) {
+      // OTP not found - increment attempts on all active OTPs
+      await PasswordResetOTPRepository.incrementActiveOTPsAttempts({
+        tx,
+        userId: user.id,
+      });
+      throw new BadRequestException("Invalid or expired OTP");
+    }
+
+    // CHECK ATTEMPTS (Security Critical)
+    if (otpRecord.attempts! >= AppConstants.MAX_OTP_VERIFICATION_ATTEMPTS) {
+      // Burn the token immediately if it hasn't been burned yet
+      await PasswordResetOTPRepository.updateOneOTP({
+        tx,
+        otpID: otpRecord.id,
+        update: {
+          used: true,
+          attempts: otpRecord.attempts! + 1,
+        },
+      });
+
+      throw new TooManyRequestsException(
+        "Too many failed attempts. Request a new code."
+      );
+    }
+
+    // SUCCESS: Burn the OTP immediately!
+    // The OTP is now dead. It cannot be used again.
+    await PasswordResetOTPRepository.updateOneOTP({
+      tx,
+      otpID: otpRecord.id,
+      update: {
+        used: true,
+      },
+    });
+
+    // D. ISSUE THE "PERMISSION SLIP" (Exchange Token)
+    // This is a JWT specifically for resetting the password.
+    // It expires in 5 minutes (enough time to type a new password).
+    const resetToken = generatePasswordResetToken(user.id);
+    return { resetToken };
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const resetPassword = async ({
+  txInstance,
+  dto,
+}: {
+  dto: ResetPasswordDTO;
+  txInstance?: Transaction;
+}) => {
+  const execute = async (tx: Transaction) => {
+    const decoded = verifyPasswordResetToken(dto.resetToken);
+
+    // Hash new password
+    const newPasswordHash = await hashPassword(dto.newPassword);
+
+    // Update Password
+    await userService.updateUser({
+      txInstance: tx,
+      userId: decoded.userId,
+      update: { passwordHash: newPasswordHash },
+    });
+
+    // Security: Kill all sessions (Log out all devices)
+    await deleteRefreshTokenByUserId(decoded.userId, tx)
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
