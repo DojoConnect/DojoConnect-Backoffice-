@@ -1,17 +1,13 @@
 // src/services/auth.service.ts
 import * as dbService from "../db";
 import {
-  refreshTokens,
   passwordResetOTPs,
 } from "../db/schema";
 import {
   and,
   eq,
   gt,
-  InferInsertModel,
-  InferSelectModel,
   isNull,
-  SQL,
 } from "drizzle-orm";
 import {
   generateAccessToken,
@@ -49,89 +45,13 @@ import {
 } from "../validations/auth.schemas";
 import type { Transaction } from "../db";
 import { Role } from "../constants/enums";
-import { returnFirst } from "../utils/db.utils";
-import { UserDTO } from "../dtos/user.dtos";
 import { AuthResponseDTO } from "../dtos/auth.dto";
 import { formatDateForMySQL } from "../utils/date.utils";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository";
 import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository";
 import AppConstants from "../constants/AppConstants";
-
-export type INewRefreshToken = InferInsertModel<typeof refreshTokens>;
-export type IRefreshToken = InferSelectModel<typeof refreshTokens>;
-
-export const saveRefreshToken = async (
-  token: INewRefreshToken,
-  txInstance?: Transaction
-) => {
-  const execute = async (tx: Transaction) => {
-    await tx.insert(refreshTokens).values(token);
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
-export const getOneRefreshToken = async (
-  token: string,
-  txInstance?: Transaction
-): Promise<IRefreshToken | null> => {
-  const execute = async (tx: Transaction) => {
-    const storedToken = returnFirst(
-      await tx
-        .select()
-        .from(refreshTokens)
-        .where(eq(refreshTokens.hashedToken, token))
-        .limit(1)
-        .execute()
-    );
-
-    return storedToken || null;
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
-/**
- * Token Rotation: Revoke the old token (or delete it)
-     We mark it as revoked or delete it to prevent reuse.
-
-     We choose to delete now to remove the need for cleaning up later
- */
-export const deleteRefreshTokenById = async (
-  tokenId: string,
-  txInstance?: Transaction
-) => {
-  const execute = async (tx: Transaction) => {
-    await deleteRefreshToken({txInstance: tx, whereClause: eq(refreshTokens.id, tokenId) });
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
-export const deleteRefreshTokenByUserId = async (
-  userId: string,
-  txInstance?: Transaction
-) => {
-  const execute = async (tx: Transaction) => {
-    await deleteRefreshToken({
-      txInstance: tx,
-      whereClause: eq(refreshTokens.userId, userId),
-    });
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
-export const deleteRefreshToken = async (
-  {whereClause, txInstance}:{whereClause: SQL,
-  txInstance?: Transaction}
-) => {
-  const execute = async (tx: Transaction) => {
-    await tx.delete(refreshTokens).where(whereClause);
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
+import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
+import { UserDTO } from "../dtos/user.dtos";
 
 export const generateAuthTokens = async ({
   user,
@@ -159,7 +79,7 @@ export const generateAuthTokens = async ({
     // 3. Store refresh token with expiry (e.g., 30 days)
     const expiresAt = addDays(new Date(), 30);
 
-    await saveRefreshToken(
+    await RefreshTokenRepository.create(
       {
         userId: user.id,
         hashedToken: hashedRefreshToken,
@@ -239,7 +159,10 @@ export const revokeRefreshToken = async ({
     const hashedToken = hashToken(dto.refreshToken);
 
     // 1. Find the token in DB
-    const storedToken = await getOneRefreshToken(hashedToken, tx);
+    const storedToken = await RefreshTokenRepository.getOne(
+      hashedToken,
+      tx
+    );
 
     if (
       !storedToken ||
@@ -251,7 +174,7 @@ export const revokeRefreshToken = async ({
 
     // 2. Token Rotation: Revoke the old token (or delete it)
     // We mark it as revoked or delete it to prevent reuse.
-    await deleteRefreshTokenById(storedToken.id, tx);
+    await RefreshTokenRepository.deleteById(storedToken.id, tx);
 
     return storedToken;
   };
@@ -706,7 +629,7 @@ export const resetPassword = async ({
     });
 
     // Security: Kill all sessions (Log out all devices)
-    await deleteRefreshTokenByUserId(decoded.userId, tx)
+    await RefreshTokenRepository.deleteByUserId(decoded.userId, tx);
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);

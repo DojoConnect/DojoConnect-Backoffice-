@@ -41,6 +41,7 @@ import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.rep
 import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository";
 import AppConstants from "../constants/AppConstants";
 import { AuthResponseDTO } from "../dtos/auth.dto";
+import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -65,89 +66,6 @@ describe("Auth Service", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-  });
-
-  describe("getOneUser", () => {
-    const hashedToken = "hashed_token";
-
-    const storedToken = buildRefreshTokenMock({
-      id: "token-id",
-      userId: "user-123",
-      hashedToken: "hashed_token",
-      revoked: false,
-      expiresAt: addDays(new Date(), 1),
-    });
-
-    beforeEach(() => {
-      jest.clearAllMocks();
-    });
-    it("should return null when no token is found", async () => {
-      dbSpies.mockExecute.mockResolvedValue([]);
-
-      const result = await authService.getOneRefreshToken(
-        hashedToken,
-        dbSpies.mockTx
-      );
-
-      expect(dbSpies.mockSelect).toHaveBeenCalled();
-      expect(dbSpies.mockFrom).toHaveBeenCalledWith(refreshTokens);
-      expect(dbSpies.mockLimit).toHaveBeenCalledWith(1);
-      expect(result).toBeNull();
-    });
-
-    it("should return refresh token when there is a match in db", async () => {
-      dbSpies.mockExecute.mockResolvedValue([storedToken]);
-
-      const result = await authService.getOneRefreshToken(
-        hashedToken,
-        dbSpies.mockTx
-      );
-
-      expect(result).toEqual(storedToken);
-    });
-
-    it("calls dbService.runInTransaction when no transaction instance is provided", async () => {
-      dbSpies.mockExecute.mockResolvedValue([storedToken]);
-
-      const result = await authService.getOneRefreshToken(hashedToken);
-
-      expect(dbSpies.runInTransactionSpy).toHaveBeenCalled();
-    });
-  });
-
-  describe("saveRefreshToken", () => {
-    const tokenData = buildNewRefreshTokenMock({
-      userId: "user-1",
-      hashedToken: "hashed",
-      expiresAt: new Date(),
-    });
-
-    it("should insert a new refresh token", async () => {
-      await authService.saveRefreshToken(tokenData);
-      expect(dbSpies.mockInsert).toHaveBeenCalledWith(refreshTokens);
-      expect(dbSpies.mockValues).toHaveBeenCalledWith(tokenData);
-    });
-
-    it("should use a provided transaction instance", async () => {
-      await authService.saveRefreshToken(tokenData, dbSpies.mockTx);
-      expect(dbService.runInTransaction).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("deleteRefreshToken", () => {
-    it("should delete a refresh token by its ID", async () => {
-      const tokenId = "token-id-123";
-      await authService.deleteRefreshTokenById(tokenId);
-      expect(dbSpies.mockDelete).toHaveBeenCalledWith(refreshTokens);
-      expect(dbSpies.mockWhere).toHaveBeenCalledWith(
-        eq(refreshTokens.id, tokenId)
-      );
-    });
-
-    it("should use a provided transaction instance", async () => {
-      await authService.deleteRefreshTokenById("id", dbSpies.mockTx);
-      expect(dbService.runInTransaction).not.toHaveBeenCalled();
-    });
   });
 
   describe("generateAuthTokens", () => {
@@ -305,7 +223,7 @@ describe("Auth Service", () => {
         .mockReturnValue(hashedToken);
 
       getOneRefreshTokenSpy = jest
-        .spyOn(authService, "getOneRefreshToken")
+        .spyOn(RefreshTokenRepository, "getOne")
         .mockResolvedValue(storedToken);
     });
 
@@ -1018,7 +936,6 @@ describe("Auth Service", () => {
       await expect(authService.verifyOtp({ dto })).rejects.toThrow(
         BadRequestException
       );
-
     }, 10000);
 
     it("should throw BadRequestException if OTP not found or invalid", async () => {
