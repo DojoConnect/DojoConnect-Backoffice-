@@ -12,7 +12,6 @@ import {
   verifyPassword,
   verifyPasswordResetToken,
 } from "../utils/auth.utils";
-import type { IUser } from "./users.service";
 import * as dojosService from "./dojos.service";
 import * as mailerService from "./mailer.service";
 import * as stripeService from "./stripe.service";
@@ -32,7 +31,7 @@ import {
   ForgotPasswordDTO,
   LoginDTO,
   RefreshTokenDTO,
-  RegisterUserDTO,
+  RegisterDojoAdminDTO,
   ResetPasswordDTO,
   VerifyOtpDTO,
 } from "../validations/auth.schemas";
@@ -45,6 +44,7 @@ import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.
 import AppConstants from "../constants/AppConstants";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
 import { UserDTO } from "../dtos/user.dtos";
+import { IUser } from "../repositories/user.repository";
 
 export const generateAuthTokens = async ({
   user,
@@ -209,13 +209,13 @@ export const refreshAccessToken = async ({
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
 
-export const registerUser = async (
+export const registerDojoAdmin = async (
   {
-    userDTO,
+    dto,
     userIp,
     userAgent,
   }: {
-    userDTO: RegisterUserDTO;
+    dto: RegisterDojoAdminDTO;
     userIp?: string;
     userAgent?: string;
   },
@@ -227,11 +227,11 @@ export const registerUser = async (
       const [existingUserWithEmail, existingUserWithUsername] =
         await Promise.all([
           userService.getOneUserByEmail({
-            email: userDTO.email,
+            email: dto.email,
             txInstance: tx,
           }),
           userService.getOneUserByUserName({
-            username: userDTO.username,
+            username: dto.username,
             txInstance: tx,
           }),
         ]);
@@ -246,25 +246,25 @@ export const registerUser = async (
 
       // Generate Referral Code and Hash Password
       const referral_code = userService.generateReferralCode();
-      const hashedPassword = await hashPassword(userDTO.password);
+      const hashedPassword = await hashPassword(dto.password);
 
       let stripeCustomerId: string | null = null;
       let stripeSubscriptionId: string | null = null;
       let subscriptionStatus: string | null = null;
       let trialEndsAt: Date | null = null;
 
-      if (userDTO.role === Role.DojoAdmin) {
+      if (dto.role === Role.DojoAdmin) {
         try {
           // Stripe Customer & Subscription
           const stripeCustomer = await stripeService.createCustomers(
-            userDTO.fullName,
-            userDTO.email,
-            userDTO.paymentMethod
+            dto.fullName,
+            dto.email,
+            dto.paymentMethod
           );
 
           const stripeSubscription = await stripeService.createSubscription(
             stripeCustomer,
-            userDTO.plan
+            dto.plan
           );
 
           stripeCustomerId = stripeCustomer.id;
@@ -285,14 +285,13 @@ export const registerUser = async (
 
       const newUser = await userService.saveUser(
         {
-          name: userDTO.fullName,
-          username: userDTO.username,
-          email: userDTO.email,
+          name: dto.fullName,
+          username: dto.username,
+          email: dto.email,
           passwordHash: hashedPassword,
-          role: userDTO.role,
-          activeSub: userDTO.plan,
+          role: dto.role,
           referralCode: referral_code,
-          referredBy: userDTO.referredBy,
+          referredBy: dto.referredBy,
           stripeCustomerId,
           stripeSubscriptionId,
           subscriptionStatus,
@@ -301,19 +300,20 @@ export const registerUser = async (
         tx
       );
 
-      if (userDTO.role === Role.DojoAdmin) {
+      if (dto.role === Role.DojoAdmin) {
         await userService.setDefaultPaymentMethod(
           newUser,
-          userDTO.paymentMethod,
+          dto.paymentMethod,
           tx
         );
 
         await dojosService.createDojo(
           {
             userId: newUser.id,
-            name: userDTO.dojoName,
-            tag: userDTO.dojoTag,
-            tagline: userDTO.dojoTagline,
+            name: dto.dojoName,
+            tag: dto.dojoTag,
+            tagline: dto.dojoTagline,
+            activeSub: dto.plan,
           },
           tx
         );
@@ -328,9 +328,9 @@ export const registerUser = async (
 
       try {
         await mailerService.sendWelcomeEmail(
-          userDTO.email,
-          userDTO.fullName,
-          userDTO.role
+          dto.email,
+          dto.fullName,
+          dto.role
         );
       } catch (err) {
         console.log(

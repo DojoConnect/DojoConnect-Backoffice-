@@ -10,7 +10,6 @@ export interface UserDTOParams {
   role: Role;
   balance: string;
   referralCode: string;
-  activeSub: StripePlans;
   dob: string | null;
   gender: string | null;
   city: string | null;
@@ -29,7 +28,6 @@ export class UserDTO implements UserDTOParams {
   role: Role;
   balance: string;
   referralCode: string;
-  activeSub: StripePlans;
   dob: string | null;
   gender: string | null;
   city: string | null;
@@ -47,7 +45,6 @@ export class UserDTO implements UserDTOParams {
     this.role = params.role;
     this.balance = params.balance;
     this.referralCode = params.referralCode;
-    this.activeSub = params.activeSub;
     this.dob = params.dob;
     this.gender = params.gender;
     this.city = params.city;
@@ -67,7 +64,6 @@ export class UserDTO implements UserDTOParams {
       role: this.role,
       balance: this.balance,
       referralCode: this.referralCode,
-      activeSub: this.activeSub,
       dob: this.dob,
       gender: this.gender,
       city: this.city,

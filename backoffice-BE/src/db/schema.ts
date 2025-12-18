@@ -206,6 +206,7 @@ export const dojos = mysqlTable(
     name: varchar("name", { length: 255 }).notNull(),
     tag: varchar("tag", { length: 50 }).notNull(),
     tagline: varchar("tagline", { length: 255 }).notNull(),
+    activeSub: mysqlEnum("active_sub", StripePlans).notNull(),
     createdAt: timestamp("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -476,7 +477,6 @@ export const users = mysqlTable(
     role: mysqlEnum(Role).notNull(),
     balance: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
     referralCode: varchar("referral_code", { length: 255 }).notNull(),
-    activeSub: mysqlEnum("active_sub", StripePlans).notNull(),
     dob: varchar({ length: 20 }),
     gender: varchar({ length: 10 }),
     city: varchar({ length: 50 }),

@@ -7,7 +7,7 @@ import {
   loginUser,
   logoutUser,
   refreshUserToken,
-  registerUser,
+  handleRegisterDojoAdmin,
   handleFirebaseLogin,
   handleInitForgetPassword,
   handleVerifyOtp,
@@ -23,7 +23,7 @@ import {
   IsUsernameAvailableSchema,
   LoginSchema,
   RefreshTokenSchema,
-  RegisterUserSchema,
+  RegisterDojoAdminSchema,
   ResetPasswordSchema,
   VerifyOtpSchema,
 } from "../validations/auth.schemas";
@@ -91,10 +91,10 @@ const router = Router();
 
 router.post("/login", authLimiter, validateReqBody(LoginSchema), loginUser);
 router.post(
-  "/register",
+  "/register/dojo-admin",
   authLimiter,
-  validateReqBody(RegisterUserSchema),
-  registerUser
+  validateReqBody(RegisterDojoAdminSchema),
+  handleRegisterDojoAdmin
 );
 router.post("/refresh", validateReqBody(RefreshTokenSchema), refreshUserToken);
 router.post("/logout", validateReqBody(RefreshTokenSchema), logoutUser);
@@ -120,8 +120,18 @@ router.post(
   handleInitForgetPassword
 );
 
-router.post("/verify-otp", otpVerifyLimiter, otpVerifyIpLimiter, validateReqBody(VerifyOtpSchema), handleVerifyOtp);
+router.post(
+  "/verify-otp",
+  otpVerifyLimiter,
+  otpVerifyIpLimiter,
+  validateReqBody(VerifyOtpSchema),
+  handleVerifyOtp
+);
 
-router.post("/reset-password", validateReqBody(ResetPasswordSchema), handleResetPassword)
+router.post(
+  "/reset-password",
+  validateReqBody(ResetPasswordSchema),
+  handleResetPassword
+);
 
 export default router;

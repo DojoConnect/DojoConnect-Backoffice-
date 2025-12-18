@@ -23,7 +23,7 @@ export const PasswordSchema = z
     "Password must contain uppercase, lowercase, number, and special character; and contain no spaces"
   );
 
-export const RegisterUserSchema = z.object({
+export const RegisterDojoAdminSchema = z.object({
   fullName: z.string().trim().nonempty(),
 
   username: z.string().trim().nonempty(),
@@ -67,10 +67,10 @@ export const VerifyOtpSchema = z.object({
 
 export const ResetPasswordSchema = z.object({
   resetToken: z.string().trim().nonempty(),
-  newPassword: PasswordSchema
-})
+  newPassword: PasswordSchema,
+});
 
-export type RegisterUserDTO = z.infer<typeof RegisterUserSchema>;
+export type RegisterDojoAdminDTO = z.infer<typeof RegisterDojoAdminSchema>;
 export type LoginDTO = z.infer<typeof LoginSchema>;
 export type RefreshTokenDTO = z.infer<typeof RefreshTokenSchema>;
 export type FirebaseSignInDTO = z.infer<typeof FirebaseSignInSchema>;
