@@ -408,7 +408,7 @@ describe("Auth Service", () => {
     });
 
     it("should successfully register a DojoAdmin user", async () => {
-      const result = await authService.registerUser({ userDTO });
+      const result = await authService.registerDojoAdmin({ dto: userDTO });
 
       // 1. Check for existing users
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
@@ -477,21 +477,21 @@ describe("Auth Service", () => {
 
     it("should throw ConflictException if email is already registered", async () => {
       getOneUserByEmailSpy.mockResolvedValue(buildUserMock());
-      await expect(authService.registerUser({ userDTO })).rejects.toThrow(
-        ConflictException
-      );
+      await expect(
+        authService.registerDojoAdmin({ dto: userDTO })
+      ).rejects.toThrow(ConflictException);
     });
 
     it("should throw ConflictException if username is already taken", async () => {
       getOneUserByUsernameSpy.mockResolvedValue(buildUserMock());
-      await expect(authService.registerUser({ userDTO })).rejects.toThrow(
-        ConflictException
-      );
+      await expect(
+        authService.registerDojoAdmin({ dto: userDTO })
+      ).rejects.toThrow(ConflictException);
     });
 
     it("should not make stripe/dojo calls for a non-DojoAdmin role", async () => {
       const nonAdminDTO = { ...userDTO, role: Role.Parent };
-      await authService.registerUser({ userDTO: nonAdminDTO });
+      await authService.registerDojoAdmin({ dto: nonAdminDTO });
 
       expect(createStripeCustomerSpy).not.toHaveBeenCalled();
       expect(createStripeSubscriptionSpy).not.toHaveBeenCalled();
@@ -510,7 +510,7 @@ describe("Auth Service", () => {
       sendWelcomeEmailSpy.mockRejectedValue(mailError);
 
       await expect(
-        authService.registerUser({ userDTO })
+        authService.registerDojoAdmin({ dto: userDTO })
       ).resolves.toBeDefined();
 
       expect(logSpy).toHaveBeenCalledWith(
@@ -520,7 +520,7 @@ describe("Auth Service", () => {
     });
 
     it("should use a provided transaction instance", async () => {
-      await authService.registerUser({ userDTO }, dbSpies.mockTx);
+      await authService.registerDojoAdmin({ dto: userDTO }, dbSpies.mockTx);
       expect(dbService.runInTransaction).not.toHaveBeenCalled();
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith(
         expect.objectContaining({ txInstance: dbSpies.mockTx })

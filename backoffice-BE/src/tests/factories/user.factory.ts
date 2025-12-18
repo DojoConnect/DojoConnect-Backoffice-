@@ -1,9 +1,8 @@
-import { Role, StripePlans } from "../../constants/enums";
+import { Role } from "../../constants/enums";
 import { UserDTO, UserDTOParams } from "../../dtos/user.dtos";
+import { INewUser, IUser } from "../../repositories/user.repository";
 import {
-  INewUser,
   INewUserCard,
-  IUser,
   IUserCard,
 } from "../../services/users.service";
 
@@ -19,7 +18,6 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
     role: Role.DojoAdmin,
     balance: "150.75",
     referralCode: "REFJOHN2024",
-    activeSub: StripePlans.Trial,
     emailVerified: true,
     dob: "1990-05-14",
     gender: "male",
