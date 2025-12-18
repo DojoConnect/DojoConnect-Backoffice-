@@ -3,7 +3,6 @@ import { Role, StripePlans } from "../constants/enums";
 export interface UserDTOParams {
   id: string;
   name: string;
-  username: string;
   email: string;
   referredBy: string | null;
   avatar: string | null;
@@ -21,7 +20,6 @@ export interface UserDTOParams {
 export class UserDTO implements UserDTOParams {
   id: string;
   name: string;
-  username: string;
   email: string;
   referredBy: string | null;
   avatar: string | null;
@@ -38,7 +36,6 @@ export class UserDTO implements UserDTOParams {
   constructor(params: UserDTOParams) {
     this.id = params.id;
     this.name = params.name;
-    this.username = params.username;
     this.email = params.email;
     this.referredBy = params.referredBy;
     this.avatar = params.avatar;
@@ -57,7 +54,6 @@ export class UserDTO implements UserDTOParams {
     return {
       id: this.id,
       name: this.name,
-      username: this.username,
       email: this.email,
       referredBy: this.referredBy,
       avatar: this.avatar,

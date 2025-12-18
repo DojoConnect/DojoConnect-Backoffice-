@@ -1,7 +1,10 @@
 import * as dbService from "../db";
 import type { Transaction } from "../db";
-import { DojoRepository, IDojo, INewDojo } from "../repositories/dojo.repository";
-
+import {
+  DojoRepository,
+  IDojo,
+  INewDojo,
+} from "../repositories/dojo.repository";
 
 export const getOneDojo = async (
   whereClause: any,
@@ -40,6 +43,25 @@ export const getOneDojoByID = async (
     } catch (err: any) {
       console.error(`Error fetching dojo by ID: ${dojoId}`, { err });
       throw new Error(err);
+    }
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const getOneDojoByUserName = async ({
+  username,
+  txInstance,
+}: {
+  username: string;
+  txInstance?: Transaction;
+}): Promise<IDojo | null> => {
+  const execute = async (tx: Transaction) => {
+    try {
+      return await DojoRepository.getOneByUserName({ username, tx });
+    } catch (err: any) {
+      console.error(`Error fetching dojo by Username: ${username}`, { err });
+      throw err;
     }
   };
 

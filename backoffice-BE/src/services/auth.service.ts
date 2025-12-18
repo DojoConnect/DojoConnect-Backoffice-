@@ -224,14 +224,14 @@ export const registerDojoAdmin = async (
   const execute = async (tx: dbService.Transaction) => {
     try {
       // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
-      const [existingUserWithEmail, existingUserWithUsername] =
+      const [existingUserWithEmail, existingDojoWithUsername] =
         await Promise.all([
           userService.getOneUserByEmail({
             email: dto.email,
             txInstance: tx,
           }),
-          userService.getOneUserByUserName({
-            username: dto.username,
+          dojosService.getOneDojoByUserName({
+            username: dto.dojoUsername,
             txInstance: tx,
           }),
         ]);
@@ -240,7 +240,7 @@ export const registerDojoAdmin = async (
         throw new ConflictException("Email already registered");
       }
 
-      if (existingUserWithUsername) {
+      if (existingDojoWithUsername) {
         throw new ConflictException("Username already taken");
       }
 
@@ -286,7 +286,6 @@ export const registerDojoAdmin = async (
       const newUser = await userService.saveUser(
         {
           name: dto.fullName,
-          username: dto.username,
           email: dto.email,
           passwordHash: hashedPassword,
           role: dto.role,
@@ -314,6 +313,7 @@ export const registerDojoAdmin = async (
             tag: dto.dojoTag,
             tagline: dto.dojoTagline,
             activeSub: dto.plan,
+            username: dto.dojoUsername,
           },
           tx
         );
@@ -327,11 +327,7 @@ export const registerDojoAdmin = async (
       });
 
       try {
-        await mailerService.sendWelcomeEmail(
-          dto.email,
-          dto.fullName,
-          dto.role
-        );
+        await mailerService.sendWelcomeEmail(dto.email, dto.fullName, dto.role);
       } catch (err) {
         console.log(
           "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
@@ -375,12 +371,12 @@ export const isUsernameAvailable = async ({
   txInstance?: Transaction;
 }) => {
   const execute = async (tx: Transaction) => {
-    const user = await userService.getOneUserByUserName({
+    const dojo = await dojosService.getOneDojoByUserName({
       username,
       txInstance: tx,
     });
 
-    if (user) {
+    if (dojo) {
       return false;
     }
 

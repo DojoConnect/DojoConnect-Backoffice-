@@ -48,7 +48,7 @@ describe("Auth Service", () => {
   let logSpy: jest.SpyInstance;
 
   let getOneUserByEmailSpy: jest.SpyInstance;
-  let getOneUserByUsernameSpy: jest.SpyInstance;
+  let getOneDojoByUsernameSpy: jest.SpyInstance;
   let saveUserSpy: jest.SpyInstance;
   let getOneUserByIDSpy: jest.SpyInstance;
 
@@ -57,7 +57,7 @@ describe("Auth Service", () => {
 
     getOneUserByEmailSpy = jest.spyOn(userService, "getOneUserByEmail");
     getOneUserByIDSpy = jest.spyOn(userService, "getOneUserByID");
-    getOneUserByUsernameSpy = jest.spyOn(userService, "getOneUserByUserName");
+    getOneDojoByUsernameSpy = jest.spyOn(dojosService, "getOneDojoByUserName");
     saveUserSpy = jest.spyOn(userService, "saveUser");
 
     logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
@@ -353,7 +353,7 @@ describe("Auth Service", () => {
 
     const userDTO = buildRegisterUserDTOMock({
       email: "new@user.com",
-      username: "newuser",
+      dojoUsername: "newuser",
       password: "password123",
       fullName: "New User",
       role: Role.DojoAdmin,
@@ -378,7 +378,7 @@ describe("Auth Service", () => {
     beforeEach(() => {
       // Default success path mocks
       getOneUserByEmailSpy.mockResolvedValue(null);
-      getOneUserByUsernameSpy.mockResolvedValue(null);
+      getOneDojoByUsernameSpy.mockResolvedValue(null);
 
       hashPasswordSpy = jest
         .spyOn(authUtils, "hashPassword")
@@ -415,8 +415,8 @@ describe("Auth Service", () => {
         email: userDTO.email,
         txInstance: dbSpies.mockTx,
       });
-      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
-        username: userDTO.username,
+      expect(getOneDojoByUsernameSpy).toHaveBeenCalledWith({
+        username: userDTO.dojoUsername,
         txInstance: dbSpies.mockTx,
       });
 
@@ -483,7 +483,7 @@ describe("Auth Service", () => {
     });
 
     it("should throw ConflictException if username is already taken", async () => {
-      getOneUserByUsernameSpy.mockResolvedValue(buildUserMock());
+      getOneDojoByUsernameSpy.mockResolvedValue(buildUserMock());
       await expect(
         authService.registerDojoAdmin({ dto: userDTO })
       ).rejects.toThrow(ConflictException);
@@ -565,21 +565,21 @@ describe("Auth Service", () => {
 
   describe("isUsernameAvailable", () => {
     it("should return false if username is taken", async () => {
-      getOneUserByUsernameSpy.mockResolvedValue(buildUserMock());
+      getOneDojoByUsernameSpy.mockResolvedValue(buildUserMock());
 
       const result = await authService.isUsernameAvailable({
         username: "taken_user",
       });
 
       expect(result).toBe(false);
-      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
+      expect(getOneDojoByUsernameSpy).toHaveBeenCalledWith({
         username: "taken_user",
         txInstance: expect.anything(),
       });
     });
 
     it("should return true if username is available", async () => {
-      getOneUserByUsernameSpy.mockResolvedValue(null);
+      getOneDojoByUsernameSpy.mockResolvedValue(null);
 
       const result = await authService.isUsernameAvailable({
         username: "new_user",
@@ -589,7 +589,7 @@ describe("Auth Service", () => {
     });
 
     it("should use provided transaction instance", async () => {
-      getOneUserByUsernameSpy.mockResolvedValue(null);
+      getOneDojoByUsernameSpy.mockResolvedValue(null);
 
       await authService.isUsernameAvailable({
         username: "test",
@@ -597,7 +597,7 @@ describe("Auth Service", () => {
       });
 
       expect(dbService.runInTransaction).not.toHaveBeenCalled();
-      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
+      expect(getOneDojoByUsernameSpy).toHaveBeenCalledWith({
         username: "test",
         txInstance: dbSpies.mockTx,
       });

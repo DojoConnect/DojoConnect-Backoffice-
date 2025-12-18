@@ -10,7 +10,6 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   return {
     id: "usr_01",
     name: "John Doe",
-    username: "john_d",
     email: "john@example.com",
     passwordHash: "$argon2id$v=19$m=65536,t=3,p=4$examplehashhere",
     referredBy: "ref_12345",

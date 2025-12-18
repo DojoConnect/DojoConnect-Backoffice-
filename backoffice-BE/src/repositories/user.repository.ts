@@ -67,23 +67,6 @@ export class UserRepository {
     }
   };
 
-  static getOneByUserName = async ({
-    username,
-    tx,
-  }: {
-    username: string;
-    tx: Transaction;
-  }): Promise<IUser | null> => {
-    try {
-      return await this.getOne(
-        { whereClause: eq(users.username, username), tx }
-      );
-    } catch (err: any) {
-      console.error(`Error fetching user by Username: ${username}`, { err });
-      throw err;
-    }
-  };
-
   static create = async (user: INewUser, tx: Transaction) => {
     const [insertResult] = await tx.insert(users).values(user).$returningId();
 

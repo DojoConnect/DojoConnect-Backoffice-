@@ -274,61 +274,6 @@ describe("Users Service", () => {
     });
   });
 
-  describe("getOneUserByUsername", () => {
-    let getOneUserSpy: jest.SpyInstance;
-
-    beforeEach(() => {
-      getOneUserSpy = jest.spyOn(usersService, "getOneUser");
-    });
-
-    afterEach(() => {
-      jest.clearAllMocks();
-    });
-
-    it("should call getOneUser with correct whereClause and return user", async () => {
-      const username = "user-123";
-      const mockUser = buildUserMock({ username });
-
-      getOneUserSpy.mockResolvedValue(mockUser);
-
-      const result = await usersService.getOneUserByUserName({ username });
-
-      expect(getOneUserSpy).toHaveBeenCalledWith(
-        { whereClause: eq(users.username, username) },
-        expect.anything() // tx
-      );
-      expect(result).toEqual(mockUser);
-    });
-
-    it("should return null when no user is found", async () => {
-      const username = "non-existent-username";
-
-      getOneUserSpy.mockResolvedValue(null);
-
-      const result = await usersService.getOneUserByUserName({ username });
-
-      expect(result).toBeNull();
-    });
-
-    it("should log error and throw when underlying getOneUser throws", async () => {
-      const username = "failure";
-
-      const testError = new Error("DB failed");
-      getOneUserSpy.mockRejectedValueOnce(testError);
-
-      logErrorSpy.mockImplementation(() => {});
-
-      await expect(
-        usersService.getOneUserByUserName({ username })
-      ).rejects.toThrow("DB failed");
-
-      expect(logErrorSpy).toHaveBeenCalledWith(
-        `Error fetching user by Username: ${username}`,
-        { err: testError }
-      );
-    });
-  });
-
   describe("fetchUserCards", () => {
     beforeEach(() => {
       jest.clearAllMocks();
@@ -456,7 +401,6 @@ describe("Users Service", () => {
     it("should insert a new user, fetch it, and return it", async () => {
       const newUser = buildNewUserMock({
         email: "new@user.com",
-        username: "newuser",
       });
       const newUserId = "new-user-id-123";
       const mockSavedUser = buildUserMock({ id: newUserId, ...newUser });
@@ -480,7 +424,6 @@ describe("Users Service", () => {
     it("should use the provided transaction instance", async () => {
       const newUser = buildNewUserMock({
         email: "tx@user.com",
-        username: "txuser",
       });
       const newUserId = "new-user-id-456";
       const mockSavedUser = buildUserMock({ id: newUserId, ...newUser });
@@ -540,7 +483,7 @@ describe("Users Service", () => {
 
     it("should NOT call dbService.runInTransaction when a txInstance is provided", async () => {
       const userId = "user-2";
-      const updateData = { username: "new-username" };
+      const updateData = { name: "new-name" };
 
       await usersService.updateUser({
         userId,

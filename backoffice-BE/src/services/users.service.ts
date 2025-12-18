@@ -79,28 +79,6 @@ export const getOneUserByEmail = async ({
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
 
-export const getOneUserByUserName = async ({
-  username,
-  txInstance,
-}: {
-  username: string;
-  txInstance?: Transaction;
-}): Promise<IUser | null> => {
-  const execute = async (tx: Transaction) => {
-    try {
-      return await getOneUser(
-        { whereClause: eq(users.username, username) },
-        tx
-      );
-    } catch (err: any) {
-      console.error(`Error fetching user by Username: ${username}`, { err });
-      throw err;
-    }
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
 export const fetchUserCards = async (
   userId: string,
   txInstance?: Transaction

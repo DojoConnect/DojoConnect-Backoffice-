@@ -5,7 +5,10 @@ import {
 } from "../../constants/enums";
 import { AuthResponseDTO, AuthResponseDTOParams } from "../../dtos/auth.dto";
 import { IOAuthAcct } from "../../repositories/oauth-providers.repository";
-import { INewRefreshToken, IRefreshToken } from "../../repositories/refresh-token.repository";
+import {
+  INewRefreshToken,
+  IRefreshToken,
+} from "../../repositories/refresh-token.repository";
 import {
   LoginDTO,
   RefreshTokenDTO,
@@ -18,7 +21,7 @@ export const buildRegisterUserDTOMock = (
 ): RegisterDojoAdminDTO => {
   return {
     fullName: "John",
-    username: "John Doe",
+    dojoUsername: "John Doe",
     email: "john.doe@example.com",
     password: "Password123!",
     role: Role.DojoAdmin, // must be a valid Role enum value

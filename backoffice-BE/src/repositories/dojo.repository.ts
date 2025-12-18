@@ -32,6 +32,16 @@ export class DojoRepository {
     return await this.getOne(eq(dojos.id, dojoId), tx);
   }
 
+  static getOneByUserName = async ({
+    username,
+    tx,
+  }: {
+    username: string;
+    tx: Transaction;
+  }): Promise<IDojo | null> => {
+    return await this.getOne(eq(dojos.username, username), tx);
+  };
+
   static async create(newDojoDTO: INewDojo, tx: Transaction) {
     const [insertResult] = await tx
       .insert(dojos)

@@ -26,8 +26,6 @@ export const PasswordSchema = z
 export const RegisterDojoAdminSchema = z.object({
   fullName: z.string().trim().nonempty(),
 
-  username: z.string().trim().nonempty(),
-
   email: z.string().trim().email().nonempty(),
 
   password: PasswordSchema,
@@ -39,6 +37,7 @@ export const RegisterDojoAdminSchema = z.object({
   plan: z.nativeEnum(StripePlans).optional().default(StripePlans.Trial),
   paymentMethod: z.string().trim().nonempty(),
 
+  dojoUsername: z.string().trim().nonempty(),
   dojoName: z.string().trim().nonempty(),
   dojoTag: z.string().trim().nonempty(),
   dojoTagline: z.string().trim().nonempty(),
