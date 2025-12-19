@@ -15,6 +15,7 @@ import {
   time,
   boolean,
   json,
+  uniqueIndex,
 } from "drizzle-orm/mysql-core";
 import { uuidv7 } from "uuidv7";
 import {
@@ -22,7 +23,16 @@ import {
   SupportedOAuthProviders,
   Role,
   StripePlans,
+  DojoStatus,
+  BillingStatus,
+  ACTIVE_BILLING_STATUSES,
+  StripeSubscriptionStatus,
 } from "../constants/enums";
+
+const activeBillingStatusesSql = sql.join(
+  ACTIVE_BILLING_STATUSES.map((status) => sql.raw(`'${status}'`)),
+  sql`, `
+);
 
 export const admin = mysqlTable(
   "admin",
@@ -204,14 +214,53 @@ export const dojos = mysqlTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 255 }).notNull(),
-    tag: varchar("tag", { length: 50 }).notNull(),
+    tag: varchar("tag", { length: 50 }).unique().notNull(),
     tagline: varchar("tagline", { length: 255 }).notNull(),
+    status: mysqlEnum(DojoStatus).notNull(),
     activeSub: mysqlEnum("active_sub", StripePlans).notNull(),
+    hasUsedTrial: boolean("has_used_trial").notNull().default(false),
+    trialEndsAt: datetime("trial_ends_at"),
     createdAt: timestamp("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
-  (table) => [unique("tag").on(table.tag)]
+  (table) => []
+);
+
+export const dojoSubscriptions = mysqlTable(
+  "dojo_subscriptions",
+  {
+    id: varchar("id", { length: 64 })
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    dojoId: varchar("dojo_id", { length: 64 })
+      .notNull()
+      .references(() => dojos.id, { onDelete: "cascade" }),
+    billingStatus: mysqlEnum("billing_status", BillingStatus).notNull(),
+    stripeSubId: varchar("stripe_sub_id", {
+      length: 255,
+    }).unique(),
+    stripeSetupIntentId: varchar("stripe_setup_intent_id", { length: 255 }),
+    stripeSubStatus: mysqlEnum("strip_sub_status", StripeSubscriptionStatus),
+    createdAt: timestamp("created_at")
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP`),
+    /**
+     * 👇 Generated column for "one active subscription per dojo"
+     */
+    activeDojoId: varchar("active_dojo_id", { length: 36 }).generatedAlwaysAs(
+      sql`
+        CASE
+          WHEN billing_status IN (${activeBillingStatusesSql})
+          THEN dojo_id
+          ELSE NULL
+        END
+      `
+    ),
+  },
+  (table) => [
+    uniqueIndex("one_active_subscription_per_user").on(table.activeDojoId),
+  ]
 );
 
 export const enrolledChildren = mysqlTable(
@@ -468,8 +517,8 @@ export const users = mysqlTable(
       .primaryKey()
       .$defaultFn(() => uuidv7()),
     name: varchar({ length: 100 }).notNull(),
-    username: varchar({ length: 100 }).notNull(),
-    email: varchar({ length: 150 }).notNull(),
+    email: varchar({ length: 150 }).unique().notNull(),
+    username: varchar({ length: 100 }).unique().notNull(),
     passwordHash: varchar("password_hash", { length: 255 }),
     emailVerified: boolean("email_verified").default(false).notNull(),
     referredBy: varchar("referred_by", { length: 255 }),
@@ -477,25 +526,18 @@ export const users = mysqlTable(
     role: mysqlEnum(Role).notNull(),
     balance: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
     referralCode: varchar("referral_code", { length: 255 }).notNull(),
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
     dob: varchar({ length: 20 }),
     gender: varchar({ length: 10 }),
     city: varchar({ length: 50 }),
     street: varchar({ length: 100 }),
-    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
-    stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
-    subscriptionStatus: varchar("subscription_status", { length: 50 }),
-    trialEndsAt: datetime("trial_ends_at", { mode: "string" }),
-    stripeAccountId: varchar("stripe_account_id", { length: 255 }),
     fcmToken: text("fcm_token"),
     sessionId: varchar("session_id", { length: 255 }),
     createdAt: timestamp("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
-  (table) => [
-    unique("email").on(table.email),
-    unique("username").on(table.username),
-  ]
+  (table) => []
 );
 
 export const userCards = mysqlTable("user_cards", {
