@@ -274,6 +274,62 @@ describe("Users Service", () => {
     });
   });
 
+
+  describe("getOneUserByUsername", () => {
+    let getOneUserSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      getOneUserSpy = jest.spyOn(usersService, "getOneUser");
+    });
+
+    afterEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it("should call getOneDojo with correct whereClause and return user", async () => {
+      const username = "user-123";
+      const mockDojo = buildUserMock({ username });
+
+      getOneUserSpy.mockResolvedValue(mockDojo);
+
+      const result = await usersService.getOneUserByUserName({ username });
+
+      expect(getOneUserSpy).toHaveBeenCalledWith(
+        {whereClause: eq(users.username, username)},
+        expect.anything(),
+      );
+      expect(result).toEqual(mockDojo);
+    });
+
+    it("should return null when no dojo is found", async () => {
+      const username = "non-existent-username";
+
+      getOneUserSpy.mockResolvedValue(null);
+
+      const result = await usersService.getOneUserByUserName({ username });
+
+      expect(result).toBeNull();
+    });
+
+    it("should log error and throw when underlying getOneDojo throws", async () => {
+      const username = "failure";
+
+      const testError = new Error("DB failed");
+      getOneUserSpy.mockRejectedValueOnce(testError);
+
+      logErrorSpy.mockImplementation(() => {});
+
+      await expect(
+        usersService.getOneUserByUserName({ username })
+      ).rejects.toThrow("DB failed");
+
+      expect(logErrorSpy).toHaveBeenCalledWith(
+        `Error fetching dojo by Username: ${username}`,
+        { err: testError }
+      );
+    });
+  });
+
   describe("fetchUserCards", () => {
     beforeEach(() => {
       jest.clearAllMocks();

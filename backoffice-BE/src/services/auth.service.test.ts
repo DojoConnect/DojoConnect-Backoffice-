@@ -32,7 +32,7 @@ import {
   buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
   buildRefreshTokenMock,
-  buildRegisterUserDTOMock,
+  buildRegisterUserDTOMock as buildRegisterDojoAdminDTOMock,
 } from "../tests/factories/auth.factory";
 import { buildDojoMock } from "../tests/factories/dojos.factory";
 import { UserDTO } from "../dtos/user.dtos";
@@ -42,13 +42,15 @@ import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.
 import AppConstants from "../constants/AppConstants";
 import { AuthResponseDTO } from "../dtos/auth.dto";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
+import { SubscriptionService } from "./subscription.service";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
   let logSpy: jest.SpyInstance;
 
   let getOneUserByEmailSpy: jest.SpyInstance;
-  let getOneDojoByUsernameSpy: jest.SpyInstance;
+  let getOneUserByUsernameSpy: jest.SpyInstance;
+  let getOneDojoByTagSpy: jest.SpyInstance;
   let saveUserSpy: jest.SpyInstance;
   let getOneUserByIDSpy: jest.SpyInstance;
 
@@ -57,7 +59,8 @@ describe("Auth Service", () => {
 
     getOneUserByEmailSpy = jest.spyOn(userService, "getOneUserByEmail");
     getOneUserByIDSpy = jest.spyOn(userService, "getOneUserByID");
-    getOneDojoByUsernameSpy = jest.spyOn(dojosService, "getOneDojoByUserName");
+    getOneUserByUsernameSpy = jest.spyOn(userService, "getOneUserByUserName");
+    getOneDojoByTagSpy = jest.spyOn(dojosService, "getOneDojoByTag")
     saveUserSpy = jest.spyOn(userService, "saveUser");
 
     logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
@@ -344,27 +347,28 @@ describe("Auth Service", () => {
     });
   });
 
-  describe("registerUser", () => {
+  describe("registerDojoAdmin", () => {
+    const mockSavedUser = buildUserMock({ id: "new-user-id" });
+
     const mockDojo = buildDojoMock({
       name: "My Dojo",
       tag: "DOJO",
       tagline: "The best",
+      userId: mockSavedUser.id
     });
 
-    const userDTO = buildRegisterUserDTOMock({
+    const userDTO = buildRegisterDojoAdminDTOMock({
       email: "new@user.com",
-      dojoUsername: "newuser",
+      username: "newuser",
       password: "password123",
       fullName: "New User",
-      role: Role.DojoAdmin,
-      plan: StripePlans.Starter,
-      paymentMethod: "pm_123",
+      plan: StripePlans.Monthly,
       dojoName: mockDojo.name,
       dojoTag: mockDojo.tag,
       dojoTagline: mockDojo.tagline,
     });
 
-    const mockSavedUser = buildUserMock({ id: "new-user-id" });
+
     const mockStripeCustomer = buildStripeCustMock();
     const mockStripeSubscription = buildStripeSubMock();
 
@@ -372,31 +376,33 @@ describe("Auth Service", () => {
     let createStripeCustomerSpy: jest.SpyInstance;
     let createStripeSubscriptionSpy: jest.SpyInstance;
     let createDojoSpy: jest.SpyInstance;
-    let setDefaultPaymentMethodSpy: jest.SpyInstance;
+    let setupBillingSpy: jest.SpyInstance
     let sendWelcomeEmailSpy: jest.SpyInstance;
 
     beforeEach(() => {
       // Default success path mocks
       getOneUserByEmailSpy.mockResolvedValue(null);
-      getOneDojoByUsernameSpy.mockResolvedValue(null);
+      getOneUserByUsernameSpy.mockResolvedValue(null);
+      getOneDojoByTagSpy.mockResolvedValue(null)
 
       hashPasswordSpy = jest
         .spyOn(authUtils, "hashPassword")
         .mockResolvedValue("hashed_password");
       createStripeCustomerSpy = jest
-        .spyOn(stripeService, "createCustomers")
+        .spyOn(stripeService, "createCustomer")
         .mockResolvedValue(mockStripeCustomer as any);
 
       createStripeSubscriptionSpy = jest
         .spyOn(stripeService, "createSubscription")
         .mockResolvedValue(mockStripeSubscription as any);
+
+      setupBillingSpy= jest.spyOn(SubscriptionService, "setupDojoAdminBilling").mockResolvedValue({
+        clientSecret: "test_secret"
+      })
       saveUserSpy.mockResolvedValue(mockSavedUser);
-      setDefaultPaymentMethodSpy = jest
-        .spyOn(userService, "setDefaultPaymentMethod")
-        .mockResolvedValue();
       createDojoSpy = jest
         .spyOn(dojosService, "createDojo")
-        .mockResolvedValue(mockDojo.id);
+        .mockResolvedValue(mockDojo);
       sendWelcomeEmailSpy = jest
         .spyOn(mailerService, "sendWelcomeEmail")
         .mockResolvedValue();
@@ -415,39 +421,32 @@ describe("Auth Service", () => {
         email: userDTO.email,
         txInstance: dbSpies.mockTx,
       });
-      expect(getOneDojoByUsernameSpy).toHaveBeenCalledWith({
-        username: userDTO.dojoUsername,
+      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
+        username: userDTO.username,
         txInstance: dbSpies.mockTx,
       });
+      expect(getOneDojoByTagSpy).toHaveBeenCalledWith(
+         userDTO.dojoTag,
+         dbSpies.mockTx,
+      );
 
       // 2. Stripe calls
-      expect(createStripeCustomerSpy).toHaveBeenCalledWith(
-        userDTO.fullName,
-        userDTO.email,
-        userDTO.paymentMethod
-      );
-      expect(createStripeSubscriptionSpy).toHaveBeenCalledWith(
-        mockStripeCustomer,
-        userDTO.plan
-      );
+      expect(setupBillingSpy).toHaveBeenCalledWith({
+        dojo: mockDojo,
+        user: mockSavedUser,
+        txInstance:dbSpies.mockTx
+      })
 
       // 3. Save user
       expect(saveUserSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           email: userDTO.email,
           passwordHash: "hashed_password",
-          stripeCustomerId: mockStripeCustomer.id,
-          stripeSubscriptionId: mockStripeSubscription.id,
+          role: Role.DojoAdmin,
         }),
         dbSpies.mockTx
       );
 
-      // 4. Set default payment and save dojo
-      expect(setDefaultPaymentMethodSpy).toHaveBeenCalledWith(
-        mockSavedUser,
-        userDTO.paymentMethod,
-        dbSpies.mockTx
-      );
       expect(createDojoSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: mockSavedUser.id,
@@ -469,6 +468,7 @@ describe("Auth Service", () => {
 
       // 7. Final response
       expect(result.toJSON()).toEqual({
+        stripeClientSecret: "test_secret",
         accessToken: "access",
         refreshToken: "refresh",
         user: new UserDTO(mockSavedUser).toJSON(),
@@ -483,26 +483,17 @@ describe("Auth Service", () => {
     });
 
     it("should throw ConflictException if username is already taken", async () => {
-      getOneDojoByUsernameSpy.mockResolvedValue(buildUserMock());
+      getOneUserByUsernameSpy.mockResolvedValue(buildUserMock());
       await expect(
         authService.registerDojoAdmin({ dto: userDTO })
       ).rejects.toThrow(ConflictException);
     });
 
-    it("should not make stripe/dojo calls for a non-DojoAdmin role", async () => {
-      const nonAdminDTO = { ...userDTO, role: Role.Parent };
-      await authService.registerDojoAdmin({ dto: nonAdminDTO });
-
-      expect(createStripeCustomerSpy).not.toHaveBeenCalled();
-      expect(createStripeSubscriptionSpy).not.toHaveBeenCalled();
-      expect(setDefaultPaymentMethodSpy).not.toHaveBeenCalled();
-      expect(createDojoSpy).not.toHaveBeenCalled();
-      expect(saveUserSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stripeCustomerId: null,
-        }),
-        dbSpies.mockTx
-      );
+    it("should throw ConflictException if dojo tag is already taken", async () => {
+      getOneDojoByTagSpy.mockResolvedValue(buildDojoMock());
+      await expect(
+        authService.registerDojoAdmin({ dto: userDTO })
+      ).rejects.toThrow(ConflictException);
     });
 
     it("should consume and log mailer errors without failing the registration", async () => {
@@ -552,34 +543,25 @@ describe("Auth Service", () => {
         UnauthorizedException
       );
     });
-
-    it("should use provided transaction instance", async () => {
-      await authService.logoutUser({ dto, txInstance: dbSpies.mockTx });
-      expect(dbService.runInTransaction).not.toHaveBeenCalled();
-      expect(revokeRefreshTokenSpy).toHaveBeenCalledWith({
-        dto,
-        txInstance: dbSpies.mockTx,
-      });
-    });
   });
 
   describe("isUsernameAvailable", () => {
     it("should return false if username is taken", async () => {
-      getOneDojoByUsernameSpy.mockResolvedValue(buildUserMock());
+      getOneUserByUsernameSpy.mockResolvedValue(buildUserMock());
 
       const result = await authService.isUsernameAvailable({
         username: "taken_user",
       });
 
       expect(result).toBe(false);
-      expect(getOneDojoByUsernameSpy).toHaveBeenCalledWith({
+      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
         username: "taken_user",
         txInstance: expect.anything(),
       });
     });
 
     it("should return true if username is available", async () => {
-      getOneDojoByUsernameSpy.mockResolvedValue(null);
+      getOneUserByUsernameSpy.mockResolvedValue(null);
 
       const result = await authService.isUsernameAvailable({
         username: "new_user",
@@ -589,7 +571,7 @@ describe("Auth Service", () => {
     });
 
     it("should use provided transaction instance", async () => {
-      getOneDojoByUsernameSpy.mockResolvedValue(null);
+      getOneUserByUsernameSpy.mockResolvedValue(null);
 
       await authService.isUsernameAvailable({
         username: "test",
@@ -597,10 +579,36 @@ describe("Auth Service", () => {
       });
 
       expect(dbService.runInTransaction).not.toHaveBeenCalled();
-      expect(getOneDojoByUsernameSpy).toHaveBeenCalledWith({
+      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
         username: "test",
         txInstance: dbSpies.mockTx,
       });
+    });
+  });
+
+  describe("isDojoTagAvailable", () => {
+    it("should return false if username is taken", async () => {
+      getOneDojoByTagSpy.mockResolvedValue(buildDojoMock());
+
+      const result = await authService.isDojoTagAvailable({
+        tag: "taken_tag",
+      });
+
+      expect(result).toBe(false);
+      expect(getOneDojoByTagSpy).toHaveBeenCalledWith(
+        "taken_tag",
+        expect.anything(),
+      );
+    });
+
+    it("should return true if username is available", async () => {
+      getOneDojoByTagSpy.mockResolvedValue(null);
+
+      const result = await authService.isDojoTagAvailable({
+        tag: "new_tag",
+      });
+
+      expect(result).toBe(true);
     });
   });
 

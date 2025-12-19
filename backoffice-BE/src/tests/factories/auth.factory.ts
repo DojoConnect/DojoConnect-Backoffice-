@@ -21,13 +21,11 @@ export const buildRegisterUserDTOMock = (
 ): RegisterDojoAdminDTO => {
   return {
     fullName: "John",
-    dojoUsername: "John Doe",
+    username: "John Doe",
     email: "john.doe@example.com",
     password: "Password123!",
-    role: Role.DojoAdmin, // must be a valid Role enum value
     referredBy: "", // optional, defaults to ""
-    plan: StripePlans.Trial, // optional, defaults to Trial
-    paymentMethod: "pm_1234567890", // any non-empty string
+    plan: StripePlans.Monthly, // optional, defaults to Trial
     dojoName: "Phoenix Dojo",
     dojoTag: "phoenix-dojo",
     dojoTagline: "Rise and fight",

@@ -9,6 +9,7 @@ import {
 export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   return {
     id: "usr_01",
+    username: "john_d",
     name: "John Doe",
     email: "john@example.com",
     passwordHash: "$argon2id$v=19$m=65536,t=3,p=4$examplehashhere",
@@ -23,10 +24,6 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
     city: "Lagos",
     street: "42 Ikoyi Crescent",
     stripeCustomerId: "cus_9f3h28fh32",
-    stripeSubscriptionId: "sub_93hf2h923",
-    subscriptionStatus: "active",
-    trialEndsAt: "2025-02-01T10:00:00.000Z",
-    stripeAccountId: "acct_83hf2h2f",
     fcmToken: "fcm_token_example_8293hf2f",
     sessionId: "sess_8f2h9f23fh2",
     createdAt: new Date("2024-01-10T12:00:00").toISOString(),

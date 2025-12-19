@@ -72,17 +72,16 @@ describe("Stripe Service", () => {
       const mockCustomer = buildStripeCustMock({ id: "cus_123", email });
       mockCustomersCreate.mockResolvedValue(mockCustomer);
 
-      const result = await stripeService.createCustomers(
+      const result = await stripeService.createCustomer(
         name,
         email,
-        paymentMethod
+        {userId: "1"}
       );
 
       expect(mockCustomersCreate).toHaveBeenCalledWith({
         name,
         email,
-        payment_method: paymentMethod,
-        invoice_settings: { default_payment_method: paymentMethod },
+        metadata: expect.objectContaining({userId: "1"})
       });
       expect(result).toEqual(mockCustomer);
     });
@@ -91,18 +90,37 @@ describe("Stripe Service", () => {
   describe("createSubscription", () => {
     it("should call stripe.subscriptions.create with correct parameters for a STARTER plan", async () => {
       const mockCust = buildStripeCustMock({ id: "cus_123" });
-      const plan = StripePlans.Starter;
+      const plan = StripePlans.Monthly;
+      const priceId = stripeService.StripePriceIDsMap[plan]
       const mockSubscription = { id: "sub_123", status: "active" };
+      const idempotencyKey = "idempotent-key";
+      const paymentMethodId = "test-payment-method-id";
+
       mockSubscriptionsCreate.mockResolvedValue(mockSubscription);
 
-      const result = await stripeService.createSubscription(mockCust, plan);
-
-      expect(mockSubscriptionsCreate).toHaveBeenCalledWith({
-        customer: mockCust.id,
-        items: [{ price: "price_1S60ItDeXOegqDFkUiHdCJL3" }], // Corresponds to STARTER
-        trial_period_days: 14,
-        expand: ["latest_invoice.payment_intent"],
+      const result = await stripeService.createSubscription({
+        custId: mockCust.id,
+        plan,
+        paymentMethodId,
+        idempotencyKey,
+        grantTrial: true
       });
+
+      expect(mockSubscriptionsCreate).toHaveBeenCalledWith(
+        {
+          customer: mockCust.id,
+          items: [{ price: priceId }],
+          trial_period_days: 14,
+          default_payment_method: paymentMethodId,
+          payment_behavior: "default_incomplete",
+          payment_settings: { save_default_payment_method: "on_subscription" },
+        },
+        {
+          idempotencyKey,
+        }
+      );
+
+      
       expect(result).toEqual(mockSubscription);
     });
   });
