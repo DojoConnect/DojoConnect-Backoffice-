@@ -1,26 +1,31 @@
-import { Role, StripePlans, SupportedOAuthProviders } from "../../constants/enums";
+import {
+  Role,
+  StripePlans,
+  SupportedOAuthProviders,
+} from "../../constants/enums";
 import { AuthResponseDTO, AuthResponseDTOParams } from "../../dtos/auth.dto";
 import { IOAuthAcct } from "../../repositories/oauth-providers.repository";
-import { INewRefreshToken, IRefreshToken } from "../../services/auth.service";
+import {
+  INewRefreshToken,
+  IRefreshToken,
+} from "../../repositories/refresh-token.repository";
 import {
   LoginDTO,
   RefreshTokenDTO,
-  RegisterUserDTO,
+  RegisterDojoAdminDTO,
 } from "../../validations/auth.schemas";
 import { buildUserDtoMock } from "./user.factory";
 
 export const buildRegisterUserDTOMock = (
-  overrides?: Partial<RegisterUserDTO>
-): RegisterUserDTO => {
+  overrides?: Partial<RegisterDojoAdminDTO>
+): RegisterDojoAdminDTO => {
   return {
     fullName: "John",
     username: "John Doe",
     email: "john.doe@example.com",
     password: "Password123!",
-    role: Role.DojoAdmin, // must be a valid Role enum value
     referredBy: "", // optional, defaults to ""
-    plan: StripePlans.Trial, // optional, defaults to Trial
-    paymentMethod: "pm_1234567890", // any non-empty string
+    plan: StripePlans.Monthly, // optional, defaults to Trial
     dojoName: "Phoenix Dojo",
     dojoTag: "phoenix-dojo",
     dojoTagline: "Rise and fight",
@@ -97,7 +102,9 @@ export const buildRefreshTokenDtoMock = (
   };
 };
 
-export const buildOAuthAcctMock = (overrides?: Partial<IOAuthAcct>): IOAuthAcct => {
+export const buildOAuthAcctMock = (
+  overrides?: Partial<IOAuthAcct>
+): IOAuthAcct => {
   return {
     id: "oauth-id",
     userId: "user-1",
@@ -108,4 +115,4 @@ export const buildOAuthAcctMock = (overrides?: Partial<IOAuthAcct>): IOAuthAcct 
     updatedAt: new Date().toISOString(),
     ...overrides,
   };
-}
+};

@@ -3,10 +3,10 @@ import jwt, { TokenExpiredError } from "jsonwebtoken";
 import AppConfig from "../config/AppConfig";
 import * as userService from "../services/users.service";
 import { NotFoundException } from "../core/errors/NotFoundException";
-import type { IUser } from "../services/users.service";
 import type { TokenPayload } from "../utils/auth.utils";
 import { UnauthorizedException } from "../core/errors/UnauthorizedException";
 import { HttpException } from "../core/errors/HttpException";
+import { IUser } from "../repositories/user.repository";
 
 // Extend Express Request type to include user
 declare global {

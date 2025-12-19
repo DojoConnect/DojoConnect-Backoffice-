@@ -1,26 +1,17 @@
-import { InferInsertModel } from "drizzle-orm";
 import { NotificationType } from "../constants/enums";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException";
+import { NotificationRepository } from "../repositories/notification.repository";
 import * as firebaseService from "./firebase.service";
-import * as dbService from "../db";
 
-import { notifications } from "../db/schema";
-
-type INewNotification = InferInsertModel<typeof notifications>;
-
-
-export type BaseNotificationData = {
-};
+export type BaseNotificationData = {};
 
 export type SignUpSuccessfulNotificationData = {
-  push_data: string
-}
+  push_data: string;
+};
 
-export type NotificationData = BaseNotificationData | SignUpSuccessfulNotificationData;
-
-export const saveNotification = async (notification: INewNotification) => {
-  await dbService.getDB().insert(notifications).values(notification);
-}
+export type NotificationData =
+  | BaseNotificationData
+  | SignUpSuccessfulNotificationData;
 
 export const sendNotification = async ({
   type,
@@ -44,7 +35,7 @@ export const sendNotification = async ({
       notification: { title, body },
     };
 
-    await saveNotification({
+    await NotificationRepository.create({
       type,
       userId: userId,
       title,

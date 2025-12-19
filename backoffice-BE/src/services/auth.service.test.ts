@@ -32,7 +32,7 @@ import {
   buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
   buildRefreshTokenMock,
-  buildRegisterUserDTOMock,
+  buildRegisterUserDTOMock as buildRegisterDojoAdminDTOMock,
 } from "../tests/factories/auth.factory";
 import { buildDojoMock } from "../tests/factories/dojos.factory";
 import { UserDTO } from "../dtos/user.dtos";
@@ -41,6 +41,8 @@ import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.rep
 import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository";
 import AppConstants from "../constants/AppConstants";
 import { AuthResponseDTO } from "../dtos/auth.dto";
+import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
+import { SubscriptionService } from "./subscription.service";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -48,6 +50,7 @@ describe("Auth Service", () => {
 
   let getOneUserByEmailSpy: jest.SpyInstance;
   let getOneUserByUsernameSpy: jest.SpyInstance;
+  let getOneDojoByTagSpy: jest.SpyInstance;
   let saveUserSpy: jest.SpyInstance;
   let getOneUserByIDSpy: jest.SpyInstance;
 
@@ -57,6 +60,7 @@ describe("Auth Service", () => {
     getOneUserByEmailSpy = jest.spyOn(userService, "getOneUserByEmail");
     getOneUserByIDSpy = jest.spyOn(userService, "getOneUserByID");
     getOneUserByUsernameSpy = jest.spyOn(userService, "getOneUserByUserName");
+    getOneDojoByTagSpy = jest.spyOn(dojosService, "getOneDojoByTag")
     saveUserSpy = jest.spyOn(userService, "saveUser");
 
     logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
@@ -65,89 +69,6 @@ describe("Auth Service", () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-  });
-
-  describe("getOneUser", () => {
-    const hashedToken = "hashed_token";
-
-    const storedToken = buildRefreshTokenMock({
-      id: "token-id",
-      userId: "user-123",
-      hashedToken: "hashed_token",
-      revoked: false,
-      expiresAt: addDays(new Date(), 1),
-    });
-
-    beforeEach(() => {
-      jest.clearAllMocks();
-    });
-    it("should return null when no token is found", async () => {
-      dbSpies.mockExecute.mockResolvedValue([]);
-
-      const result = await authService.getOneRefreshToken(
-        hashedToken,
-        dbSpies.mockTx
-      );
-
-      expect(dbSpies.mockSelect).toHaveBeenCalled();
-      expect(dbSpies.mockFrom).toHaveBeenCalledWith(refreshTokens);
-      expect(dbSpies.mockLimit).toHaveBeenCalledWith(1);
-      expect(result).toBeNull();
-    });
-
-    it("should return refresh token when there is a match in db", async () => {
-      dbSpies.mockExecute.mockResolvedValue([storedToken]);
-
-      const result = await authService.getOneRefreshToken(
-        hashedToken,
-        dbSpies.mockTx
-      );
-
-      expect(result).toEqual(storedToken);
-    });
-
-    it("calls dbService.runInTransaction when no transaction instance is provided", async () => {
-      dbSpies.mockExecute.mockResolvedValue([storedToken]);
-
-      const result = await authService.getOneRefreshToken(hashedToken);
-
-      expect(dbSpies.runInTransactionSpy).toHaveBeenCalled();
-    });
-  });
-
-  describe("saveRefreshToken", () => {
-    const tokenData = buildNewRefreshTokenMock({
-      userId: "user-1",
-      hashedToken: "hashed",
-      expiresAt: new Date(),
-    });
-
-    it("should insert a new refresh token", async () => {
-      await authService.saveRefreshToken(tokenData);
-      expect(dbSpies.mockInsert).toHaveBeenCalledWith(refreshTokens);
-      expect(dbSpies.mockValues).toHaveBeenCalledWith(tokenData);
-    });
-
-    it("should use a provided transaction instance", async () => {
-      await authService.saveRefreshToken(tokenData, dbSpies.mockTx);
-      expect(dbService.runInTransaction).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("deleteRefreshToken", () => {
-    it("should delete a refresh token by its ID", async () => {
-      const tokenId = "token-id-123";
-      await authService.deleteRefreshTokenById(tokenId);
-      expect(dbSpies.mockDelete).toHaveBeenCalledWith(refreshTokens);
-      expect(dbSpies.mockWhere).toHaveBeenCalledWith(
-        eq(refreshTokens.id, tokenId)
-      );
-    });
-
-    it("should use a provided transaction instance", async () => {
-      await authService.deleteRefreshTokenById("id", dbSpies.mockTx);
-      expect(dbService.runInTransaction).not.toHaveBeenCalled();
-    });
   });
 
   describe("generateAuthTokens", () => {
@@ -305,7 +226,7 @@ describe("Auth Service", () => {
         .mockReturnValue(hashedToken);
 
       getOneRefreshTokenSpy = jest
-        .spyOn(authService, "getOneRefreshToken")
+        .spyOn(RefreshTokenRepository, "getOne")
         .mockResolvedValue(storedToken);
     });
 
@@ -426,59 +347,62 @@ describe("Auth Service", () => {
     });
   });
 
-  describe("registerUser", () => {
+  describe("registerDojoAdmin", () => {
+    const mockSavedUser = buildUserMock({ id: "new-user-id" });
+
     const mockDojo = buildDojoMock({
       name: "My Dojo",
       tag: "DOJO",
       tagline: "The best",
+      userId: mockSavedUser.id
     });
 
-    const userDTO = buildRegisterUserDTOMock({
+    const userDTO = buildRegisterDojoAdminDTOMock({
       email: "new@user.com",
       username: "newuser",
       password: "password123",
       fullName: "New User",
-      role: Role.DojoAdmin,
-      plan: StripePlans.Starter,
-      paymentMethod: "pm_123",
+      plan: StripePlans.Monthly,
       dojoName: mockDojo.name,
       dojoTag: mockDojo.tag,
       dojoTagline: mockDojo.tagline,
     });
 
-    const mockSavedUser = buildUserMock({ id: "new-user-id" });
+
     const mockStripeCustomer = buildStripeCustMock();
     const mockStripeSubscription = buildStripeSubMock();
 
     let hashPasswordSpy: jest.SpyInstance;
     let createStripeCustomerSpy: jest.SpyInstance;
     let createStripeSubscriptionSpy: jest.SpyInstance;
-    let saveDojoSpy: jest.SpyInstance;
-    let setDefaultPaymentMethodSpy: jest.SpyInstance;
+    let createDojoSpy: jest.SpyInstance;
+    let setupBillingSpy: jest.SpyInstance
     let sendWelcomeEmailSpy: jest.SpyInstance;
 
     beforeEach(() => {
       // Default success path mocks
       getOneUserByEmailSpy.mockResolvedValue(null);
       getOneUserByUsernameSpy.mockResolvedValue(null);
+      getOneDojoByTagSpy.mockResolvedValue(null)
 
       hashPasswordSpy = jest
         .spyOn(authUtils, "hashPassword")
         .mockResolvedValue("hashed_password");
       createStripeCustomerSpy = jest
-        .spyOn(stripeService, "createCustomers")
+        .spyOn(stripeService, "createCustomer")
         .mockResolvedValue(mockStripeCustomer as any);
 
       createStripeSubscriptionSpy = jest
         .spyOn(stripeService, "createSubscription")
         .mockResolvedValue(mockStripeSubscription as any);
+
+      setupBillingSpy= jest.spyOn(SubscriptionService, "setupDojoAdminBilling").mockResolvedValue({
+        clientSecret: "test_secret"
+      })
       saveUserSpy.mockResolvedValue(mockSavedUser);
-      setDefaultPaymentMethodSpy = jest
-        .spyOn(userService, "setDefaultPaymentMethod")
-        .mockResolvedValue();
-      saveDojoSpy = jest
-        .spyOn(dojosService, "saveDojo")
-        .mockResolvedValue(mockDojo.id);
+      createDojoSpy = jest
+        .spyOn(dojosService, "createDojo")
+        .mockResolvedValue(mockDojo);
       sendWelcomeEmailSpy = jest
         .spyOn(mailerService, "sendWelcomeEmail")
         .mockResolvedValue();
@@ -490,7 +414,7 @@ describe("Auth Service", () => {
     });
 
     it("should successfully register a DojoAdmin user", async () => {
-      const result = await authService.registerUser({ userDTO });
+      const result = await authService.registerDojoAdmin({ dto: userDTO });
 
       // 1. Check for existing users
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
@@ -501,36 +425,29 @@ describe("Auth Service", () => {
         username: userDTO.username,
         txInstance: dbSpies.mockTx,
       });
+      expect(getOneDojoByTagSpy).toHaveBeenCalledWith(
+         userDTO.dojoTag,
+         dbSpies.mockTx,
+      );
 
       // 2. Stripe calls
-      expect(createStripeCustomerSpy).toHaveBeenCalledWith(
-        userDTO.fullName,
-        userDTO.email,
-        userDTO.paymentMethod
-      );
-      expect(createStripeSubscriptionSpy).toHaveBeenCalledWith(
-        mockStripeCustomer,
-        userDTO.plan
-      );
+      expect(setupBillingSpy).toHaveBeenCalledWith({
+        dojo: mockDojo,
+        user: mockSavedUser,
+        txInstance:dbSpies.mockTx
+      })
 
       // 3. Save user
       expect(saveUserSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           email: userDTO.email,
           passwordHash: "hashed_password",
-          stripeCustomerId: mockStripeCustomer.id,
-          stripeSubscriptionId: mockStripeSubscription.id,
+          role: Role.DojoAdmin,
         }),
         dbSpies.mockTx
       );
 
-      // 4. Set default payment and save dojo
-      expect(setDefaultPaymentMethodSpy).toHaveBeenCalledWith(
-        mockSavedUser,
-        userDTO.paymentMethod,
-        dbSpies.mockTx
-      );
-      expect(saveDojoSpy).toHaveBeenCalledWith(
+      expect(createDojoSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: mockSavedUser.id,
           name: userDTO.dojoName,
@@ -551,6 +468,7 @@ describe("Auth Service", () => {
 
       // 7. Final response
       expect(result.toJSON()).toEqual({
+        stripeClientSecret: "test_secret",
         accessToken: "access",
         refreshToken: "refresh",
         user: new UserDTO(mockSavedUser).toJSON(),
@@ -559,32 +477,23 @@ describe("Auth Service", () => {
 
     it("should throw ConflictException if email is already registered", async () => {
       getOneUserByEmailSpy.mockResolvedValue(buildUserMock());
-      await expect(authService.registerUser({ userDTO })).rejects.toThrow(
-        ConflictException
-      );
+      await expect(
+        authService.registerDojoAdmin({ dto: userDTO })
+      ).rejects.toThrow(ConflictException);
     });
 
     it("should throw ConflictException if username is already taken", async () => {
       getOneUserByUsernameSpy.mockResolvedValue(buildUserMock());
-      await expect(authService.registerUser({ userDTO })).rejects.toThrow(
-        ConflictException
-      );
+      await expect(
+        authService.registerDojoAdmin({ dto: userDTO })
+      ).rejects.toThrow(ConflictException);
     });
 
-    it("should not make stripe/dojo calls for a non-DojoAdmin role", async () => {
-      const nonAdminDTO = { ...userDTO, role: Role.Parent };
-      await authService.registerUser({ userDTO: nonAdminDTO });
-
-      expect(createStripeCustomerSpy).not.toHaveBeenCalled();
-      expect(createStripeSubscriptionSpy).not.toHaveBeenCalled();
-      expect(setDefaultPaymentMethodSpy).not.toHaveBeenCalled();
-      expect(saveDojoSpy).not.toHaveBeenCalled();
-      expect(saveUserSpy).toHaveBeenCalledWith(
-        expect.objectContaining({
-          stripeCustomerId: null,
-        }),
-        dbSpies.mockTx
-      );
+    it("should throw ConflictException if dojo tag is already taken", async () => {
+      getOneDojoByTagSpy.mockResolvedValue(buildDojoMock());
+      await expect(
+        authService.registerDojoAdmin({ dto: userDTO })
+      ).rejects.toThrow(ConflictException);
     });
 
     it("should consume and log mailer errors without failing the registration", async () => {
@@ -592,7 +501,7 @@ describe("Auth Service", () => {
       sendWelcomeEmailSpy.mockRejectedValue(mailError);
 
       await expect(
-        authService.registerUser({ userDTO })
+        authService.registerDojoAdmin({ dto: userDTO })
       ).resolves.toBeDefined();
 
       expect(logSpy).toHaveBeenCalledWith(
@@ -602,7 +511,7 @@ describe("Auth Service", () => {
     });
 
     it("should use a provided transaction instance", async () => {
-      await authService.registerUser({ userDTO }, dbSpies.mockTx);
+      await authService.registerDojoAdmin({ dto: userDTO }, dbSpies.mockTx);
       expect(dbService.runInTransaction).not.toHaveBeenCalled();
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith(
         expect.objectContaining({ txInstance: dbSpies.mockTx })
@@ -633,15 +542,6 @@ describe("Auth Service", () => {
       await expect(authService.logoutUser({ dto })).rejects.toThrow(
         UnauthorizedException
       );
-    });
-
-    it("should use provided transaction instance", async () => {
-      await authService.logoutUser({ dto, txInstance: dbSpies.mockTx });
-      expect(dbService.runInTransaction).not.toHaveBeenCalled();
-      expect(revokeRefreshTokenSpy).toHaveBeenCalledWith({
-        dto,
-        txInstance: dbSpies.mockTx,
-      });
     });
   });
 
@@ -683,6 +583,32 @@ describe("Auth Service", () => {
         username: "test",
         txInstance: dbSpies.mockTx,
       });
+    });
+  });
+
+  describe("isDojoTagAvailable", () => {
+    it("should return false if username is taken", async () => {
+      getOneDojoByTagSpy.mockResolvedValue(buildDojoMock());
+
+      const result = await authService.isDojoTagAvailable({
+        tag: "taken_tag",
+      });
+
+      expect(result).toBe(false);
+      expect(getOneDojoByTagSpy).toHaveBeenCalledWith(
+        "taken_tag",
+        expect.anything(),
+      );
+    });
+
+    it("should return true if username is available", async () => {
+      getOneDojoByTagSpy.mockResolvedValue(null);
+
+      const result = await authService.isDojoTagAvailable({
+        tag: "new_tag",
+      });
+
+      expect(result).toBe(true);
     });
   });
 
@@ -1018,7 +944,6 @@ describe("Auth Service", () => {
       await expect(authService.verifyOtp({ dto })).rejects.toThrow(
         BadRequestException
       );
-
     }, 10000);
 
     it("should throw BadRequestException if OTP not found or invalid", async () => {

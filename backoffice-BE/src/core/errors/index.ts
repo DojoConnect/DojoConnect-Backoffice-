@@ -5,3 +5,4 @@ export * from "./InternalServerErrorException";
 export * from "./NotFoundException";
 export * from "./UnauthorizedException";
 export * from "./TooManyRequestsException"
+export * from "./ForbiddenException";

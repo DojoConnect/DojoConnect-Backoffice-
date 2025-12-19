@@ -4,27 +4,29 @@ import * as dbService from "../db";
 import type { Transaction } from "../db";
 import * as stripeService from "./stripe.service";
 
-import { returnFirst } from "../utils/db.utils";
 import { NotFoundException } from "../core/errors";
+import {
+  INewUser,
+  IUpdateUser,
+  IUser,
+  UserRepository,
+} from "../repositories/user.repository";
 
-export type IUser = InferSelectModel<typeof users>;
 export type IUserCard = InferSelectModel<typeof userCards>;
-export type INewUser = InferInsertModel<typeof users>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
-
-export type IUpdateUser = Partial<Omit<INewUser, "id"|"createdAt">>;
 
 export const getOneUser = async (
   {
     whereClause,
     withPassword = false,
-  }: { whereClause: SQL; withPassword?: boolean },
+  }: {
+    whereClause: SQL;
+    withPassword?: boolean;
+  },
   txInstance?: Transaction
 ): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
-    let user = returnFirst(
-      await tx.select().from(users).where(whereClause).limit(1).execute()
-    );
+    let user = await UserRepository.getOne({ whereClause, withPassword, tx });
 
     if (!user) {
       return null;
@@ -71,10 +73,10 @@ export const getOneUserByEmail = async ({
 }): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
     try {
-      return await getOneUser(
-        { whereClause: eq(users.email, email), withPassword },
-        tx
-      );
+      return await getOneUser({
+        whereClause: eq(users.email, email),
+        withPassword,
+      }, tx);
     } catch (err: any) {
       console.error(`Error fetching user by Email: ${email}`, { err });
       throw err;
@@ -93,19 +95,17 @@ export const getOneUserByUserName = async ({
 }): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
     try {
-      return await getOneUser(
-        { whereClause: eq(users.username, username) },
-        tx
-      );
+      return await getOneUser({
+        whereClause: eq(users.username, username),
+      }, tx);
     } catch (err: any) {
-      console.error(`Error fetching user by Username: ${username}`, { err });
+      console.error(`Error fetching dojo by Username: ${username}`, { err });
       throw err;
     }
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
-
 
 export const fetchUserCards = async (
   userId: string,
@@ -207,10 +207,10 @@ export const setDefaultPaymentMethod = async (
 
 export const saveUser = async (user: INewUser, txInstance?: Transaction) => {
   const execute = async (tx: Transaction) => {
-    const [insertResult] = await tx.insert(users).values(user).$returningId();
+    const newUserId = await UserRepository.create(user, tx);
 
     return (await getOneUserByID({
-      userId: insertResult.id,
+      userId: newUserId,
       txInstance: tx,
     }))!;
   };
@@ -228,7 +228,7 @@ export const updateUser = async ({
   txInstance?: Transaction;
 }) => {
   const execute = async (tx: Transaction) => {
-    await tx.update(users).set(update).where(eq(users.id, userId));
+    await UserRepository.update({ userId, update, tx });
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
