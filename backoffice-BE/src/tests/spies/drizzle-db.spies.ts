@@ -5,12 +5,14 @@ type SharedFunctions = {
   mockWhere: jest.Mock;
   mockLimit: jest.Mock;
   mockExecute?: jest.Mock;
+  mockOrderBy?: jest.Mock
 };
 
 const buildMockSelectChain = ({
   mockWhere,
   mockExecute,
   mockLimit,
+  mockOrderBy
 }: SharedFunctions) => {
   const mockFrom = jest.fn();
   const mockSelect = jest.fn();
@@ -20,6 +22,7 @@ const buildMockSelectChain = ({
     where: mockWhere,
     limit: mockLimit,
     execute: mockExecute,
+    mockOrderBy
   };
 
   // Ensure the chain continues
@@ -90,9 +93,17 @@ export function createDrizzleDbSpies() {
   const mockExecute = jest.fn();
   const mockWhere = jest.fn();
   const mockLimit = jest.fn();
+  const mockOrderBy = jest.fn();
 
   // Build Mock Where chain
   mockWhere.mockReturnValue({
+    orderBy: mockOrderBy,
+    execute: mockExecute,
+    limit: mockLimit,
+  });
+
+  // Build Mock order by chain
+  mockOrderBy.mockReturnValue({
     execute: mockExecute,
     limit: mockLimit,
   });
@@ -108,6 +119,7 @@ export function createDrizzleDbSpies() {
     mockExecute,
     mockLimit,
     mockWhere,
+    mockOrderBy
   });
 
   // Build Mock Insert chain
@@ -157,6 +169,7 @@ export function createDrizzleDbSpies() {
     mockLimit,
     mockInsert,
     mockValues,
+    mockOrderBy,
     mockReturningId,
     mockUpdate,
     mockSet,

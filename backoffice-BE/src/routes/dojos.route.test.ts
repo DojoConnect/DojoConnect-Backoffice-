@@ -33,7 +33,10 @@ describe("Dojo Routes", () => {
       // Assert: Check the response
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
-        data: mockDojo,
+        data: {
+      ...mockDojo,
+      trialEndsAt: mockDojo.trialEndsAt?.toISOString(),
+  },
       });
       expect(mockExecute).toHaveBeenCalled();
     });

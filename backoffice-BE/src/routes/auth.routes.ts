@@ -3,27 +3,26 @@ import { Router } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 import {
-  isUsernameAvailable,
+  handleIsUsernameAvailable,
   loginUser,
   logoutUser,
   refreshUserToken,
-  registerUser,
+  handleRegisterDojoAdmin,
   handleFirebaseLogin,
   handleInitForgetPassword,
   handleVerifyOtp,
   handleResetPassword,
+  handleIsDojoTagAvailable,
 } from "../controllers/auth.controller";
 import {
   validateReqBody,
-  validateReqQuery,
 } from "../middlewares/validate.middleware";
 import {
   FirebaseSignInSchema,
   ForgotPasswordSchema,
-  IsUsernameAvailableSchema,
   LoginSchema,
   RefreshTokenSchema,
-  RegisterUserSchema,
+  RegisterDojoAdminSchema,
   ResetPasswordSchema,
   VerifyOtpSchema,
 } from "../validations/auth.schemas";
@@ -38,11 +37,11 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-const usernameAvailabilityRateLimiter = rateLimit({
+const checkAvailabilityRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 10, // 10 requests per minute
   message: {
-    message: "Too many username checks. Please try again in a minute.",
+    message: "Too many availability checks. Please try again in a minute.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -89,12 +88,17 @@ const otpVerifyIpLimiter = rateLimit({
 
 const router = Router();
 
-router.post("/login", authLimiter, validateReqBody(LoginSchema), loginUser);
 router.post(
-  "/register",
+  "/login",
+  // authLimiter,
+  validateReqBody(LoginSchema),
+  loginUser
+);
+router.post(
+  "/register/dojo-admin",
   authLimiter,
-  validateReqBody(RegisterUserSchema),
-  registerUser
+  validateReqBody(RegisterDojoAdminSchema),
+  handleRegisterDojoAdmin
 );
 router.post("/refresh", validateReqBody(RefreshTokenSchema), refreshUserToken);
 router.post("/logout", validateReqBody(RefreshTokenSchema), logoutUser);
@@ -106,10 +110,15 @@ router.post(
 );
 
 router.get(
-  "/username/availability",
-  usernameAvailabilityRateLimiter,
-  validateReqQuery(IsUsernameAvailableSchema),
-  isUsernameAvailable
+  "/availability/usernames/:username",
+  checkAvailabilityRateLimiter,
+  handleIsUsernameAvailable
+);
+
+router.get(
+  "/availability/dojo-tags/:tag",
+  checkAvailabilityRateLimiter,
+  handleIsDojoTagAvailable
 );
 
 router.post(
@@ -120,8 +129,18 @@ router.post(
   handleInitForgetPassword
 );
 
-router.post("/verify-otp", otpVerifyLimiter, otpVerifyIpLimiter, validateReqBody(VerifyOtpSchema), handleVerifyOtp);
+router.post(
+  "/verify-otp",
+  otpVerifyLimiter,
+  otpVerifyIpLimiter,
+  validateReqBody(VerifyOtpSchema),
+  handleVerifyOtp
+);
 
-router.post("/reset-password", validateReqBody(ResetPasswordSchema), handleResetPassword)
+router.post(
+  "/reset-password",
+  validateReqBody(ResetPasswordSchema),
+  handleResetPassword
+);
 
 export default router;

@@ -1,40 +1,34 @@
-import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import * as dbService from "../db";
-import { dojos } from "../db/schema";
-import { returnFirst } from "../utils/db.utils";
 import type { Transaction } from "../db";
-
-export type IDojo = InferSelectModel<typeof dojos>;
-export type INewDojo = InferInsertModel<typeof dojos>;
+import { dojos } from "../db/schema";
+import {
+  DojoRepository,
+  IDojo,
+  INewDojo,
+  IUpdateDojo,
+} from "../repositories/dojo.repository";
 
 export const getOneDojo = async (
   whereClause: any,
   txInstance?: Transaction
 ): Promise<IDojo | null> => {
   const execute = async (tx: Transaction) => {
-    const dojo = returnFirst(
-      await tx.select().from(dojos).where(whereClause).limit(1).execute()
-    );
-
-    if (!dojo) {
-      return null;
-    }
-
-    return dojo;
+    return await DojoRepository.getOne(whereClause, tx);
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
 
-export const getOneDojoBySlug = async (
-  slug: string,
+export const getOneDojoByTag = async (
+  tag: string,
   txInstance?: Transaction
 ): Promise<IDojo | null> => {
   const execute = async (tx: Transaction) => {
     try {
-      return await getOneDojo(eq(dojos.tag, slug), tx);
+      return await DojoRepository.getOneByTag(tag, tx);
     } catch (err: any) {
-      console.error(`Error fetching dojo by slug: ${slug}`, { err });
+      console.error(`Error fetching dojo by slug: ${tag}`, { err });
       throw new Error(err);
     }
   };
@@ -48,7 +42,7 @@ export const getOneDojoByID = async (
 ): Promise<IDojo | null> => {
   const execute = async (tx: Transaction) => {
     try {
-      return await getOneDojo(eq(dojos.id, dojoId), tx);
+      return await DojoRepository.getOneByID(dojoId, tx);
     } catch (err: any) {
       console.error(`Error fetching dojo by ID: ${dojoId}`, { err });
       throw new Error(err);
@@ -58,17 +52,49 @@ export const getOneDojoByID = async (
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
 
-export const saveDojo = async (
+export const getOneDojoByUserId = async ({
+  userId,
+  txInstance,
+}: {
+  userId: string;
+  txInstance?: Transaction;
+}): Promise<IDojo | null> => {
+  const execute = async (tx: Transaction) => {
+    try {
+      return await getOneDojo(eq(dojos.userId, userId), tx);
+    } catch (err: any) {
+      console.error(`Error fetching dojo by UserId: ${userId}`, { err });
+      throw err;
+    }
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const createDojo = async (
   newDojoDTO: INewDojo,
   txInstance?: dbService.Transaction
-) => {
+): Promise<IDojo> => {
   const execute = async (tx: Transaction) => {
-    const [insertResult] = await tx
-      .insert(dojos)
-      .values(newDojoDTO)
-      .$returningId();
+    const newDojoID = await DojoRepository.create(newDojoDTO, tx);
 
-    return insertResult.id;
+    return (await getOneDojoByID(newDojoID, tx))!;
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const updateDojo = async ({
+  dojoId,
+  update,
+  txInstance,
+}: {
+  dojoId: string;
+  update: IUpdateDojo;
+  txInstance?: Transaction;
+}) => {
+  const execute = async (tx: Transaction) => {
+    await DojoRepository.update({ dojoId, update, tx });
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);

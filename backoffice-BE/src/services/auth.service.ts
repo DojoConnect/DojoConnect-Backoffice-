@@ -1,18 +1,7 @@
 // src/services/auth.service.ts
 import * as dbService from "../db";
-import {
-  refreshTokens,
-  passwordResetOTPs,
-} from "../db/schema";
-import {
-  and,
-  eq,
-  gt,
-  InferInsertModel,
-  InferSelectModel,
-  isNull,
-  SQL,
-} from "drizzle-orm";
+import { passwordResetOTPs } from "../db/schema";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import {
   generateAccessToken,
   generateOTP,
@@ -23,16 +12,15 @@ import {
   verifyPassword,
   verifyPasswordResetToken,
 } from "../utils/auth.utils";
-import type { IUser } from "./users.service";
 import * as dojosService from "./dojos.service";
 import * as mailerService from "./mailer.service";
-import * as stripeService from "./stripe.service";
 import * as userService from "./users.service";
 import * as firebaseService from "./firebase.service";
 import { addDays, addMinutes, isAfter } from "date-fns";
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
   InternalServerErrorException,
   NotFoundException,
   TooManyRequestsException,
@@ -43,95 +31,24 @@ import {
   ForgotPasswordDTO,
   LoginDTO,
   RefreshTokenDTO,
-  RegisterUserDTO,
+  RegisterDojoAdminDTO,
   ResetPasswordDTO,
   VerifyOtpDTO,
 } from "../validations/auth.schemas";
 import type { Transaction } from "../db";
-import { Role } from "../constants/enums";
-import { returnFirst } from "../utils/db.utils";
-import { UserDTO } from "../dtos/user.dtos";
-import { AuthResponseDTO } from "../dtos/auth.dto";
+import { DojoStatus, Role } from "../constants/enums";
+import {
+  AuthResponseDTO,
+  RegisterDojoAdminResponseDTO,
+} from "../dtos/auth.dto";
 import { formatDateForMySQL } from "../utils/date.utils";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository";
 import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository";
 import AppConstants from "../constants/AppConstants";
-
-export type INewRefreshToken = InferInsertModel<typeof refreshTokens>;
-export type IRefreshToken = InferSelectModel<typeof refreshTokens>;
-
-export const saveRefreshToken = async (
-  token: INewRefreshToken,
-  txInstance?: Transaction
-) => {
-  const execute = async (tx: Transaction) => {
-    await tx.insert(refreshTokens).values(token);
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
-export const getOneRefreshToken = async (
-  token: string,
-  txInstance?: Transaction
-): Promise<IRefreshToken | null> => {
-  const execute = async (tx: Transaction) => {
-    const storedToken = returnFirst(
-      await tx
-        .select()
-        .from(refreshTokens)
-        .where(eq(refreshTokens.hashedToken, token))
-        .limit(1)
-        .execute()
-    );
-
-    return storedToken || null;
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
-/**
- * Token Rotation: Revoke the old token (or delete it)
-     We mark it as revoked or delete it to prevent reuse.
-
-     We choose to delete now to remove the need for cleaning up later
- */
-export const deleteRefreshTokenById = async (
-  tokenId: string,
-  txInstance?: Transaction
-) => {
-  const execute = async (tx: Transaction) => {
-    await deleteRefreshToken({txInstance: tx, whereClause: eq(refreshTokens.id, tokenId) });
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
-export const deleteRefreshTokenByUserId = async (
-  userId: string,
-  txInstance?: Transaction
-) => {
-  const execute = async (tx: Transaction) => {
-    await deleteRefreshToken({
-      txInstance: tx,
-      whereClause: eq(refreshTokens.userId, userId),
-    });
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
-
-export const deleteRefreshToken = async (
-  {whereClause, txInstance}:{whereClause: SQL,
-  txInstance?: Transaction}
-) => {
-  const execute = async (tx: Transaction) => {
-    await tx.delete(refreshTokens).where(whereClause);
-  };
-
-  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-};
+import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
+import { UserDTO } from "../dtos/user.dtos";
+import { IUser } from "../repositories/user.repository";
+import { SubscriptionService } from "./subscription.service";
 
 export const generateAuthTokens = async ({
   user,
@@ -159,7 +76,7 @@ export const generateAuthTokens = async ({
     // 3. Store refresh token with expiry (e.g., 30 days)
     const expiresAt = addDays(new Date(), 30);
 
-    await saveRefreshToken(
+    await RefreshTokenRepository.create(
       {
         userId: user.id,
         hashedToken: hashedRefreshToken,
@@ -239,7 +156,7 @@ export const revokeRefreshToken = async ({
     const hashedToken = hashToken(dto.refreshToken);
 
     // 1. Find the token in DB
-    const storedToken = await getOneRefreshToken(hashedToken, tx);
+    const storedToken = await RefreshTokenRepository.getOne(hashedToken, tx);
 
     if (
       !storedToken ||
@@ -251,7 +168,7 @@ export const revokeRefreshToken = async ({
 
     // 2. Token Rotation: Revoke the old token (or delete it)
     // We mark it as revoked or delete it to prevent reuse.
-    await deleteRefreshTokenById(storedToken.id, tx);
+    await RefreshTokenRepository.deleteById(storedToken.id, tx);
 
     return storedToken;
   };
@@ -296,31 +213,32 @@ export const refreshAccessToken = async ({
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
 };
 
-export const registerUser = async (
+export const registerDojoAdmin = async (
   {
-    userDTO,
+    dto,
     userIp,
     userAgent,
   }: {
-    userDTO: RegisterUserDTO;
+    dto: RegisterDojoAdminDTO;
     userIp?: string;
     userAgent?: string;
   },
   txInstance?: dbService.Transaction
-): Promise<AuthResponseDTO> => {
+): Promise<RegisterDojoAdminResponseDTO> => {
   const execute = async (tx: dbService.Transaction) => {
     try {
       // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
-      const [existingUserWithEmail, existingUserWithUsername] =
+      const [existingUserWithEmail, existingUserWithUsername, existingDojoWithTag] =
         await Promise.all([
           userService.getOneUserByEmail({
-            email: userDTO.email,
+            email: dto.email,
             txInstance: tx,
           }),
           userService.getOneUserByUserName({
-            username: userDTO.username,
+            username: dto.username,
             txInstance: tx,
           }),
+          dojosService.getOneDojoByTag(dto.dojoTag, tx)
         ]);
 
       if (existingUserWithEmail) {
@@ -331,78 +249,62 @@ export const registerUser = async (
         throw new ConflictException("Username already taken");
       }
 
+      if (existingDojoWithTag) {
+        throw new ConflictException("Dojo tag already exists")
+      }
+
       // Generate Referral Code and Hash Password
       const referral_code = userService.generateReferralCode();
-      const hashedPassword = await hashPassword(userDTO.password);
-
-      let stripeCustomerId: string | null = null;
-      let stripeSubscriptionId: string | null = null;
-      let subscriptionStatus: string | null = null;
-      let trialEndsAt: Date | null = null;
-
-      if (userDTO.role === Role.DojoAdmin) {
-        try {
-          // Stripe Customer & Subscription
-          const stripeCustomer = await stripeService.createCustomers(
-            userDTO.fullName,
-            userDTO.email,
-            userDTO.paymentMethod
-          );
-
-          const stripeSubscription = await stripeService.createSubscription(
-            stripeCustomer,
-            userDTO.plan
-          );
-
-          stripeCustomerId = stripeCustomer.id;
-          stripeSubscriptionId = stripeSubscription.id;
-          subscriptionStatus = stripeSubscription.status;
-
-          // Convert Stripe timestamp (seconds) to ISO string
-          trialEndsAt = stripeSubscription.trial_end
-            ? new Date(stripeSubscription.trial_end * 1000)
-            : null;
-        } catch (err: any) {
-          console.error("Stripe API error:", err.message);
-          throw new InternalServerErrorException(
-            `Stripe API error: ${err.message || ""}`
-          );
-        }
-      }
+      const hashedPassword = await hashPassword(dto.password);
 
       const newUser = await userService.saveUser(
         {
-          name: userDTO.fullName,
-          username: userDTO.username,
-          email: userDTO.email,
+          name: dto.fullName,
+          email: dto.email,
           passwordHash: hashedPassword,
-          role: userDTO.role,
-          activeSub: userDTO.plan,
+          username: dto.username,
+          role: Role.DojoAdmin,
           referralCode: referral_code,
-          referredBy: userDTO.referredBy,
-          stripeCustomerId,
-          stripeSubscriptionId,
-          subscriptionStatus,
-          trialEndsAt: trialEndsAt ? formatDateForMySQL(trialEndsAt) : null,
+          referredBy: dto.referredBy,
         },
         tx
       );
 
-      if (userDTO.role === Role.DojoAdmin) {
-        await userService.setDefaultPaymentMethod(
-          newUser,
-          userDTO.paymentMethod,
-          tx
-        );
+      let trialEndsAt: Date | null = addDays(new Date(), 14);
 
-        await dojosService.saveDojo(
-          {
-            userId: newUser.id,
-            name: userDTO.dojoName,
-            tag: userDTO.dojoTag,
-            tagline: userDTO.dojoTagline,
-          },
-          tx
+      const newDojo = await dojosService.createDojo(
+        {
+          userId: newUser.id,
+          name: dto.dojoName,
+          tag: dto.dojoTag,
+          tagline: dto.dojoTagline,
+          activeSub: dto.plan,
+          trialEndsAt,
+          status: DojoStatus.Registered,
+        },
+        tx
+      );
+
+      let stripeClientSecret: string | null = null;
+
+      try {
+        // Setup Dojo Admin Billing
+        const { clientSecret } =
+          await SubscriptionService.setupDojoAdminBilling({
+            dojo: newDojo,
+            user: newUser,
+            txInstance: tx,
+          });
+
+        stripeClientSecret = clientSecret;
+      } catch (err: any) {
+        if (err instanceof HttpException) {
+          throw err;
+        }
+
+        console.error("Stripe API error:", err.message);
+        throw new InternalServerErrorException(
+          `Stripe API error: ${err.message || ""}`
         );
       }
 
@@ -415,9 +317,9 @@ export const registerUser = async (
 
       try {
         await mailerService.sendWelcomeEmail(
-          userDTO.email,
-          userDTO.fullName,
-          userDTO.role
+          dto.email,
+          dto.fullName,
+          Role.DojoAdmin
         );
       } catch (err) {
         console.log(
@@ -426,7 +328,8 @@ export const registerUser = async (
         );
       }
 
-      return new AuthResponseDTO({
+      return new RegisterDojoAdminResponseDTO({
+        stripeClientSecret: stripeClientSecret!,
         accessToken,
         refreshToken,
         user: new UserDTO(newUser),
@@ -468,6 +371,26 @@ export const isUsernameAvailable = async ({
     });
 
     if (user) {
+      return false;
+    }
+
+    return true;
+  };
+
+  return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+};
+
+export const isDojoTagAvailable = async ({
+  tag,
+  txInstance,
+}: {
+  tag: string;
+  txInstance?: Transaction;
+}) => {
+  const execute = async (tx: Transaction) => {
+    const dojo = await dojosService.getOneDojoByTag(tag, tx);
+
+    if (dojo) {
       return false;
     }
 
@@ -706,7 +629,7 @@ export const resetPassword = async ({
     });
 
     // Security: Kill all sessions (Log out all devices)
-    await deleteRefreshTokenByUserId(decoded.userId, tx)
+    await RefreshTokenRepository.deleteByUserId(decoded.userId, tx);
   };
 
   return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);

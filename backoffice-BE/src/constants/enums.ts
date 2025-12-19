@@ -30,11 +30,58 @@ export enum Role {
 }
 
 export enum StripePlans {
-  Trial = "trial",
-  Starter = "starter",
-  Pro = "pro",
+  Monthly = "monthly",
+  Yearly = "yearly",
 }
 
 export enum SupportedOAuthProviders {
   Google = "google",
 }
+
+export enum DojoStatus {
+  Registered = "registered",
+  OnboardingIncomplete = "onboarding_incomplete",
+  Trailing = "trialing",
+  Active = "active",
+  PastDue = "past_due",
+  Blocked = "blocked",
+}
+
+export enum BillingStatus {
+  NoCustomer = "no_customer",
+  CustomerCreated = "customer_created",
+  SetupIntentCreated = "setup_intent_created",
+  PaymentMethodAttached = "payment_method_attached",
+  SubscriptionCreated = "subscription_created",
+  Trialing = "trialing",
+  Active = "active",
+  PastDue = "past_due",
+  Unpaid = "unpaid",
+  Cancelled = "cancelled",
+}
+
+export enum StripeSetupIntentStatus {
+  Canceled = "canceled",
+  Processing = "processing",
+  RequiresAction = "requires_action",
+  RequiresConfirmation = "requires_confirmation",
+  RequiresPaymentMethod = "requires_payment_method",
+  Succeeded = "succeeded",
+}
+
+export enum StripeSubscriptionStatus {
+  Incomplete = "incomplete",
+  IncompleteExpired = "incomplete_expired",
+  Trialing = "trialing",
+  Active = "active",
+  PastDue = "past_due",
+  Canceled = "canceled",
+  Unpaid = "unpaid",
+  Paused = "paused",
+}
+
+export const ACTIVE_BILLING_STATUSES = [
+  BillingStatus.Trialing,
+  BillingStatus.Active,
+  BillingStatus.PastDue,
+] as const;

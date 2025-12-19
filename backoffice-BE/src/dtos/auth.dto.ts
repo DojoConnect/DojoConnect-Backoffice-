@@ -28,3 +28,25 @@ export class AuthResponseDTO implements AuthResponseDTOParams {
     };
   }
 }
+
+export interface RegisterDojoAdminResponseDTOParams
+  extends AuthResponseDTOParams {
+  stripeClientSecret: string;
+}
+
+export class RegisterDojoAdminResponseDTO extends AuthResponseDTO {
+  stripeClientSecret: string;
+
+  constructor(params: RegisterDojoAdminResponseDTOParams) {
+    super(params);
+    this.stripeClientSecret = params.stripeClientSecret;
+  }
+
+  toJSON() {
+    const base = super.toJSON();
+    return {
+      ...base,
+      stripeClientSecret: this.stripeClientSecret,
+    };
+  }
+}
