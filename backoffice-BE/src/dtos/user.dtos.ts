@@ -1,4 +1,4 @@
-import { Role, StripePlans } from "../constants/enums";
+import { Role } from "../constants/enums.js";
 
 export interface UserDTOParams {
   id: string;

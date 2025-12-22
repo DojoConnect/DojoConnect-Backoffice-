@@ -1,9 +1,9 @@
 import * as firebaseAdmin from "firebase-admin";
 import * as firebaseMessaging from "firebase-admin/messaging";
-import AppConfig from "../config/AppConfig";
-import { HttpException, UnauthorizedException } from "../core/errors";
-import { isEnumValue } from "../utils/type-guards.utils";
-import { SupportedOAuthProviders } from "../constants/enums";
+import AppConfig from "../config/AppConfig.js";
+import { HttpException, UnauthorizedException } from "../core/errors/index.js";
+import { isEnumValue } from "../utils/type-guards.utils.js";
+import { SupportedOAuthProviders } from "../constants/enums.js";
 
 export interface IFirebaseUser {
   uid: string;
@@ -47,7 +47,9 @@ export const getFirebaseAuth = () => {
   return getFirebaseApp().auth();
 };
 
-export const verifyFirebaseToken = async (idToken: string): Promise<IFirebaseUser> => {
+export const verifyFirebaseToken = async (
+  idToken: string
+): Promise<IFirebaseUser> => {
   try {
     const decodedToken = await getFirebaseAuth().verifyIdToken(idToken);
 

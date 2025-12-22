@@ -11,12 +11,12 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 
-import AppConfig from "./config/AppConfig";
-import * as dbService from "./services/db.service";
-import * as mailerService from "./services/mailer.service";
-import { notFound } from "./middlewares/notFound.middleware";
-import { errorHandler } from "./middlewares/errorHandler.middleware";
-import routes from "./routes/index";
+import AppConfig from "./config/AppConfig.js";
+import * as dbService from "./services/db.service.js";
+import * as mailerService from "./services/mailer.service.js";
+import { notFound } from "./middlewares/notFound.middleware.js";
+import { errorHandler } from "./middlewares/errorHandler.middleware.js";
+import routes from "./routes/index.js";
 
 const corsOptions = {
   origin: "https://www.dojoconnect.app",

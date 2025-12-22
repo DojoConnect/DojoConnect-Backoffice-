@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
-import * as mailerService from "./mailer.service";
-import AppConfig from "../config/AppConfig";
-import { Role } from "../constants/enums";
+import * as mailerService from "./mailer.service.js";
+import AppConfig from "../config/AppConfig.js";
+import { Role } from "../constants/enums.js";
 
 describe("Mailer Service", () => {
   const sendMailMock = jest.fn();

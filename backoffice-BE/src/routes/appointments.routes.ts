@@ -3,9 +3,9 @@ import {
   fetchAllAppointments,
   getAppointmentRequestById,
   createAppointment,
-} from "../controllers/appointments.controller";
-import { validateReqBody } from "../middlewares/validate.middleware";
-import { CreateAppointmentSchema } from "../validations/appointments.schemas";
+} from "../controllers/appointments.controller.js";
+import { validateReqBody } from "../middlewares/validate.middleware.js";
+import { CreateAppointmentSchema } from "../validations/appointments.schemas.js";
 
 const router = Router();
 

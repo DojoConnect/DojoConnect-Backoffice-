@@ -1,6 +1,6 @@
-import AppConfig from "../config/AppConfig";
+import AppConfig from "../config/AppConfig.js";
 import nodemailer from "nodemailer";
-import { Role } from "../constants/enums";
+import { Role } from "../constants/enums.js";
 
 type SendPasswordResetMailParams = {
   dest: string;
@@ -94,9 +94,7 @@ export const sendPhysicalAppointmentScheduled = async (
   });
 
   const mailOptions = {
-    from: `"Dojo Connect" <${
-      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
+    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
     to,
     subject: "Your Appointment Has Been Scheduled",
     html: `
@@ -147,9 +145,7 @@ export const sendOnlineAppointmentScheduled = async (
   });
 
   const mailOptions = {
-    from: `"Dojo Connect" <${
-      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
+    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
     to,
     subject: "Your Online Appointment Has Been Scheduled",
     html: `
@@ -198,9 +194,7 @@ export const sendAppointmentCancellation = async (
   });
 
   const mailOptions = {
-    from: `"Dojo Connect" <${
-      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
+    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
     to,
     subject: "Appointment Canceled",
     html: `
@@ -244,9 +238,7 @@ export const sendOnlineAppointmentReschedule = async (
   });
 
   const mailOptions = {
-    from: `"Dojo Connect" <${
-      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
+    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
     to,
     subject: "Appointment Update – Rescheduled",
     html: `
@@ -338,9 +330,7 @@ export const sendTrialClassBookingConfirmation = async (
   });
 
   const mailOptions = {
-    from: `"Dojo Connect" <${
-      AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-    }>`,
+    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
     to,
     subject: "Your Trial Class Booking Has Been Confirmed",
     html: `
@@ -421,13 +411,11 @@ export const sendWelcomeEmail = async (
   }
 };
 
-
 export const sendPasswordResetMail = async ({
   dest,
   name,
   otp,
 }: SendPasswordResetMailParams): Promise<void> => {
-
   try {
     const mailOptions = {
       from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,

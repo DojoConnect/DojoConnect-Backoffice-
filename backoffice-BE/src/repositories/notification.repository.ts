@@ -1,7 +1,7 @@
 import { InferInsertModel } from "drizzle-orm";
-import * as dbService from "../db";
+import * as dbService from "../db/index.js";
 
-import { notifications } from "../db/schema";
+import { notifications } from "../db/schema.js";
 
 type INewNotification = InferInsertModel<typeof notifications>;
 

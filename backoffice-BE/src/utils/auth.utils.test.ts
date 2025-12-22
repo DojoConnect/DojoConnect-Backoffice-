@@ -1,16 +1,15 @@
 import jwt from "jsonwebtoken";
 import argon2 from "@node-rs/argon2";
 import crypto from "crypto";
-import * as authUtils from "./auth.utils";
-import AppConfig from "../config/AppConfig";
-import { BadRequestException } from "../core/errors";
-
+import * as authUtils from "./auth.utils.js";
+import AppConfig from "../config/AppConfig.js";
+import { BadRequestException } from "../core/errors/index.js";
 
 describe("Auth Utils", () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    jest.replaceProperty(AppConfig, "JWT_ACCESS_SECRET", "test-secret-key")
+    jest.replaceProperty(AppConfig, "JWT_ACCESS_SECRET", "test-secret-key");
   });
 
   describe("hashPassword", () => {
@@ -93,7 +92,7 @@ describe("Auth Utils", () => {
 
   describe("generateOTP", () => {
     it("should generate a 6-digit OTP string", () => {
-      const spy = jest.spyOn(crypto, "randomInt")
+      const spy = jest.spyOn(crypto, "randomInt");
 
       const result = authUtils.generateOTP();
 

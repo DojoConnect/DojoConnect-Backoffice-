@@ -1,17 +1,17 @@
 import { eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
-import { users } from "../db/schema";
-import { Transaction } from "../db";
-import { returnFirst } from "../utils/db.utils";
+import { users } from "../db/schema.js";
+import { Transaction } from "../db/index.js";
+import { returnFirst } from "../utils/db.utils.js";
 
 export type IUser = InferSelectModel<typeof users>;
 export type INewUser = InferInsertModel<typeof users>;
-export type IUpdateUser = Partial<Omit<INewUser, "id"|"createdAt">>;
+export type IUpdateUser = Partial<Omit<INewUser, "id" | "createdAt">>;
 
 export class UserRepository {
   static getOne = async ({
     whereClause,
     withPassword = false,
-    tx
+    tx,
   }: {
     whereClause: SQL;
     withPassword?: boolean;
@@ -58,9 +58,11 @@ export class UserRepository {
     tx: Transaction;
   }): Promise<IUser | null> => {
     try {
-      return await this.getOne(
-        { whereClause: eq(users.email, email), withPassword, tx }
-      );
+      return await this.getOne({
+        whereClause: eq(users.email, email),
+        withPassword,
+        tx,
+      });
     } catch (err: any) {
       console.error(`Error fetching user by Email: ${email}`, { err });
       throw err;

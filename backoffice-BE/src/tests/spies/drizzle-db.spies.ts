@@ -1,18 +1,18 @@
-import e from "express";
-import * as dbService from "../../db";
+import { jest, describe, it, expect, afterEach } from "@jest/globals";
+import * as dbService from "../../db/index.js";
 
 type SharedFunctions = {
   mockWhere: jest.Mock;
   mockLimit: jest.Mock;
   mockExecute?: jest.Mock;
-  mockOrderBy?: jest.Mock
+  mockOrderBy?: jest.Mock;
 };
 
 const buildMockSelectChain = ({
   mockWhere,
   mockExecute,
   mockLimit,
-  mockOrderBy
+  mockOrderBy,
 }: SharedFunctions) => {
   const mockFrom = jest.fn();
   const mockSelect = jest.fn();
@@ -22,7 +22,7 @@ const buildMockSelectChain = ({
     where: mockWhere,
     limit: mockLimit,
     execute: mockExecute,
-    mockOrderBy
+    mockOrderBy,
   };
 
   // Ensure the chain continues
@@ -119,7 +119,7 @@ export function createDrizzleDbSpies() {
     mockExecute,
     mockLimit,
     mockWhere,
-    mockOrderBy
+    mockOrderBy,
   });
 
   // Build Mock Insert chain
@@ -145,7 +145,7 @@ export function createDrizzleDbSpies() {
 
   // Instead of returning mockDB directly, we execute the callback (fn)
   // passing the mockDB as the "transaction" instance.
-  mockTransaction.mockImplementation(async (txCallback) => {
+  mockTransaction.mockImplementation(async (txCallback: any) => {
     return await txCallback(mockDB);
   });
 

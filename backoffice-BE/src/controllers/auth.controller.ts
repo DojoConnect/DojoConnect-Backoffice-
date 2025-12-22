@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 
-import * as authService from "../services/auth.service";
-import { formatApiResponse } from "../utils/api.utils";
-import { BadRequestException } from "../core/errors";
+import * as authService from "../services/auth.service.js";
+import { formatApiResponse } from "../utils/api.utils.js";
+import { BadRequestException } from "../core/errors/index.js";
 
 export const handleRegisterDojoAdmin = async (req: Request, res: Response) => {
   const userIp = req.ip;
@@ -68,16 +68,12 @@ export const handleIsUsernameAvailable = async (
   res.json(formatApiResponse({ data: { available } }));
 };
 
-export const handleIsDojoTagAvailable = async (
-  req: Request,
-  res: Response
-) => {
+export const handleIsDojoTagAvailable = async (req: Request, res: Response) => {
   const tag = req.params.tag as string;
   const available = await authService.isDojoTagAvailable({ tag });
 
   res.json(formatApiResponse({ data: { available } }));
 };
-
 
 export const handleFirebaseLogin = async (req: Request, res: Response) => {
   const userIp = req.ip;

@@ -1,58 +1,62 @@
-import * as authService from "./auth.service";
-import * as dbService from "../db";
-import * as userService from "./users.service";
-import * as stripeService from "./stripe.service";
-import * as dojosService from "./dojos.service";
-import * as mailerService from "./mailer.service";
-import * as authUtils from "../utils/auth.utils";
-import * as firebaseService from "./firebase.service";
+import { jest, describe, it, expect, afterEach } from "@jest/globals";
+import * as authService from "./auth.service.js";
+import * as dbService from "../db/index.js";
+import * as userService from "./users.service.js";
+import * as stripeService from "./stripe.service.js";
+import * as dojosService from "./dojos.service.js";
+import * as mailerService from "./mailer.service.js";
+import * as authUtils from "../utils/auth.utils.js";
+import * as firebaseService from "./firebase.service.js";
 import {
   createDrizzleDbSpies,
   DbServiceSpies,
-} from "../tests/spies/drizzle-db.spies";
-import { buildUserMock } from "../tests/factories/user.factory";
+} from "../tests/spies/drizzle-db.spies.js";
+import { buildUserMock } from "../tests/factories/user.factory.js";
 import {
   buildStripeCustMock,
   buildStripeSubMock,
-} from "../tests/factories/stripe.factory";
+} from "../tests/factories/stripe.factory.js";
 import {
   BadRequestException,
   ConflictException,
   NotFoundException,
   UnauthorizedException,
   TooManyRequestsException,
-} from "../core/errors";
-import { Role, StripePlans, SupportedOAuthProviders } from "../constants/enums";
+} from "../core/errors/index.js";
+import {
+  Role,
+  StripePlans,
+  SupportedOAuthProviders,
+} from "../constants/enums.js";
 import { addDays, subDays } from "date-fns";
-import { refreshTokens } from "../db/schema";
+import { refreshTokens } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import {
   buildLoginDTOMock,
-  buildNewRefreshTokenMock,
   buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
   buildRefreshTokenMock,
   buildRegisterUserDTOMock as buildRegisterDojoAdminDTOMock,
-} from "../tests/factories/auth.factory";
-import { buildDojoMock } from "../tests/factories/dojos.factory";
-import { UserDTO } from "../dtos/user.dtos";
-import { buildFirebaseUserMock } from "../tests/factories/firebase.factory";
-import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository";
-import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository";
-import AppConstants from "../constants/AppConstants";
-import { AuthResponseDTO } from "../dtos/auth.dto";
-import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
-import { SubscriptionService } from "./subscription.service";
+} from "../tests/factories/auth.factory.js";
+import { buildDojoMock } from "../tests/factories/dojos.factory.js";
+import { UserDTO } from "../dtos/user.dtos.js";
+import { buildFirebaseUserMock } from "../tests/factories/firebase.factory.js";
+import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
+import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
+import AppConstants from "../constants/AppConstants.js";
+import { AuthResponseDTO } from "../dtos/auth.dtos.js";
+import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
+import { SubscriptionService } from "./subscription.service.js";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
-  let logSpy: jest.SpyInstance;
+  let logSpy: ReturnType<typeof jest.spyOn>;
 
-  let getOneUserByEmailSpy: jest.SpyInstance;
-  let getOneUserByUsernameSpy: jest.SpyInstance;
-  let getOneDojoByTagSpy: jest.SpyInstance;
-  let saveUserSpy: jest.SpyInstance;
-  let getOneUserByIDSpy: jest.SpyInstance;
+  let getOneUserByEmailSpy: ReturnType<typeof jest.spyOn>;
+  let getOneUserByUsernameSpy: ReturnType<typeof jest.spyOn>;
+  let getOneDojoByTagSpy: ReturnType<typeof jest.spyOn>;
+  let saveUserSpy: ReturnType<typeof jest.spyOn>;
+  let getOneUserByIDSpy: ReturnType<typeof jest.spyOn>;
 
   beforeEach(() => {
     dbSpies = createDrizzleDbSpies();
@@ -60,7 +64,7 @@ describe("Auth Service", () => {
     getOneUserByEmailSpy = jest.spyOn(userService, "getOneUserByEmail");
     getOneUserByIDSpy = jest.spyOn(userService, "getOneUserByID");
     getOneUserByUsernameSpy = jest.spyOn(userService, "getOneUserByUserName");
-    getOneDojoByTagSpy = jest.spyOn(dojosService, "getOneDojoByTag")
+    getOneDojoByTagSpy = jest.spyOn(dojosService, "getOneDojoByTag");
     saveUserSpy = jest.spyOn(userService, "saveUser");
 
     logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
@@ -74,9 +78,9 @@ describe("Auth Service", () => {
   describe("generateAuthTokens", () => {
     const mockUser = buildUserMock({ role: Role.DojoAdmin });
 
-    let generateAccessTokenSpy: jest.SpyInstance;
-    let generateRefreshTokenSpy: jest.SpyInstance;
-    let hashTokenSpy: jest.SpyInstance;
+    let generateAccessTokenSpy: ReturnType<typeof jest.spyOn>;
+    let generateRefreshTokenSpy: ReturnType<typeof jest.spyOn>;
+    let hashTokenSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       generateAccessTokenSpy = jest
@@ -125,9 +129,9 @@ describe("Auth Service", () => {
       passwordHash: "hashed_password",
     });
 
-    let verifyPasswordSpy: jest.SpyInstance;
-    let updateUserSpy: jest.SpyInstance;
-    let generateAuthTokensSpy: jest.SpyInstance;
+    let verifyPasswordSpy: ReturnType<typeof jest.spyOn>;
+    let updateUserSpy: ReturnType<typeof jest.spyOn>;
+    let generateAuthTokensSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       verifyPasswordSpy = jest.spyOn(authUtils, "verifyPassword");
@@ -215,8 +219,8 @@ describe("Auth Service", () => {
     const hashedToken = "hashed_token";
     const dto = buildRefreshTokenDtoMock({ refreshToken: "raw_refresh_token" });
 
-    let hashTokenSpy: jest.SpyInstance;
-    let getOneRefreshTokenSpy: jest.SpyInstance;
+    let hashTokenSpy: ReturnType<typeof jest.spyOn>;
+    let getOneRefreshTokenSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       jest.clearAllMocks();
@@ -290,8 +294,8 @@ describe("Auth Service", () => {
 
     const dto = buildRefreshTokenDtoMock({ refreshToken: "old_refresh" });
 
-    let revokeRefreshTokenSpy: jest.SpyInstance;
-    let generateAuthTokensSpy: jest.SpyInstance;
+    let revokeRefreshTokenSpy: ReturnType<typeof jest.spyOn>;
+    let generateAuthTokensSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       jest.clearAllMocks();
@@ -354,7 +358,7 @@ describe("Auth Service", () => {
       name: "My Dojo",
       tag: "DOJO",
       tagline: "The best",
-      userId: mockSavedUser.id
+      userId: mockSavedUser.id,
     });
 
     const userDTO = buildRegisterDojoAdminDTOMock({
@@ -368,22 +372,22 @@ describe("Auth Service", () => {
       dojoTagline: mockDojo.tagline,
     });
 
-
     const mockStripeCustomer = buildStripeCustMock();
     const mockStripeSubscription = buildStripeSubMock();
 
-    let hashPasswordSpy: jest.SpyInstance;
-    let createStripeCustomerSpy: jest.SpyInstance;
-    let createStripeSubscriptionSpy: jest.SpyInstance;
-    let createDojoSpy: jest.SpyInstance;
-    let setupBillingSpy: jest.SpyInstance
-    let sendWelcomeEmailSpy: jest.SpyInstance;
+    let hashPasswordSpy: ReturnType<typeof jest.spyOn>;
+    let createStripeCustomerSpy: ReturnType<typeof jest.spyOn>;
+    let createStripeSubscriptionSpy: ReturnType<typeof jest.spyOn>;
+    let createDojoSpy: ReturnType<typeof jest.spyOn>;
+    let setupBillingSpy: ReturnType<typeof jest.spyOn>;
+    let sendWelcomeEmailSpy: ReturnType<typeof jest.spyOn>;
+    let generateAuthTokensSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       // Default success path mocks
       getOneUserByEmailSpy.mockResolvedValue(null);
       getOneUserByUsernameSpy.mockResolvedValue(null);
-      getOneDojoByTagSpy.mockResolvedValue(null)
+      getOneDojoByTagSpy.mockResolvedValue(null);
 
       hashPasswordSpy = jest
         .spyOn(authUtils, "hashPassword")
@@ -396,9 +400,11 @@ describe("Auth Service", () => {
         .spyOn(stripeService, "createSubscription")
         .mockResolvedValue(mockStripeSubscription as any);
 
-      setupBillingSpy= jest.spyOn(SubscriptionService, "setupDojoAdminBilling").mockResolvedValue({
-        clientSecret: "test_secret"
-      })
+      setupBillingSpy = jest
+        .spyOn(SubscriptionService, "setupDojoAdminBilling")
+        .mockResolvedValue({
+          clientSecret: "test_secret",
+        });
       saveUserSpy.mockResolvedValue(mockSavedUser);
       createDojoSpy = jest
         .spyOn(dojosService, "createDojo")
@@ -407,7 +413,7 @@ describe("Auth Service", () => {
         .spyOn(mailerService, "sendWelcomeEmail")
         .mockResolvedValue();
 
-      jest.spyOn(authService, "generateAuthTokens").mockResolvedValue({
+      generateAuthTokensSpy = jest.spyOn(authService, "generateAuthTokens").mockResolvedValue({
         accessToken: "access",
         refreshToken: "refresh",
       });
@@ -426,16 +432,16 @@ describe("Auth Service", () => {
         txInstance: dbSpies.mockTx,
       });
       expect(getOneDojoByTagSpy).toHaveBeenCalledWith(
-         userDTO.dojoTag,
-         dbSpies.mockTx,
+        userDTO.dojoTag,
+        dbSpies.mockTx
       );
 
       // 2. Stripe calls
       expect(setupBillingSpy).toHaveBeenCalledWith({
         dojo: mockDojo,
         user: mockSavedUser,
-        txInstance:dbSpies.mockTx
-      })
+        txInstance: dbSpies.mockTx,
+      });
 
       // 3. Save user
       expect(saveUserSpy).toHaveBeenCalledWith(
@@ -456,7 +462,7 @@ describe("Auth Service", () => {
       );
 
       // 5. Generate tokens
-      expect(authService.generateAuthTokens).toHaveBeenCalledWith({
+      expect(generateAuthTokensSpy).toHaveBeenCalledWith({
         user: mockSavedUser,
         userAgent: undefined,
         userIp: undefined,
@@ -521,7 +527,7 @@ describe("Auth Service", () => {
 
   describe("logoutUser", () => {
     const dto = buildRefreshTokenDtoMock({ refreshToken: "refresh_token" });
-    let revokeRefreshTokenSpy: jest.SpyInstance;
+    let revokeRefreshTokenSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       revokeRefreshTokenSpy = jest
@@ -597,7 +603,7 @@ describe("Auth Service", () => {
       expect(result).toBe(false);
       expect(getOneDojoByTagSpy).toHaveBeenCalledWith(
         "taken_tag",
-        expect.anything(),
+        expect.anything()
       );
     });
 
@@ -633,12 +639,12 @@ describe("Auth Service", () => {
       email: "user@example.com",
     });
 
-    let runInTxSpy: jest.SpyInstance;
-    let verifyTokenSpy: jest.SpyInstance;
-    let findByProviderSpy: jest.SpyInstance;
-    let createOAuthAcctSpy: jest.SpyInstance;
-    let updateSpy: jest.SpyInstance;
-    let generateTokenSpy: jest.SpyInstance;
+    let runInTxSpy: ReturnType<typeof jest.spyOn>;
+    let verifyTokenSpy: ReturnType<typeof jest.spyOn>;
+    let findByProviderSpy: ReturnType<typeof jest.spyOn>;
+    let createOAuthAcctSpy: ReturnType<typeof jest.spyOn>;
+    let updateSpy: ReturnType<typeof jest.spyOn>;
+    let generateTokenSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       jest.clearAllMocks();
@@ -764,11 +770,11 @@ describe("Auth Service", () => {
     const dto = { email: "test@example.com" };
     const user = buildUserMock({ email: dto.email });
 
-    let updateOTPSpy: jest.SpyInstance;
-    let createOTPSpy: jest.SpyInstance;
-    let generateOTPSpy: jest.SpyInstance;
-    let hashTokenSpy: jest.SpyInstance;
-    let sendPasswordResetMailSpy: jest.SpyInstance;
+    let updateOTPSpy: ReturnType<typeof jest.spyOn>;
+    let createOTPSpy: ReturnType<typeof jest.spyOn>;
+    let generateOTPSpy: ReturnType<typeof jest.spyOn>;
+    let hashTokenSpy: ReturnType<typeof jest.spyOn>;
+    let sendPasswordResetMailSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       updateOTPSpy = jest
@@ -834,9 +840,9 @@ describe("Auth Service", () => {
     const dto = { resetToken: "valid_token", newPassword: "new_password" };
     const decodedToken = { userId: "user-1", scope: "password_reset" };
 
-    let verifyTokenSpy: jest.SpyInstance;
-    let hashPasswordSpy: jest.SpyInstance;
-    let updateUserSpy: jest.SpyInstance;
+    let verifyTokenSpy: ReturnType<typeof jest.spyOn>;
+    let hashPasswordSpy: ReturnType<typeof jest.spyOn>;
+    let updateUserSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       verifyTokenSpy = jest
@@ -891,11 +897,11 @@ describe("Auth Service", () => {
       used: false,
     };
 
-    let findOneOTPSpy: jest.SpyInstance;
-    let incrementAttemptsSpy: jest.SpyInstance;
-    let updateOneOTPSpy: jest.SpyInstance;
-    let generateResetTokenSpy: jest.SpyInstance;
-    let hashTokenSpy: jest.SpyInstance;
+    let findOneOTPSpy: ReturnType<typeof jest.spyOn>;
+    let incrementAttemptsSpy: ReturnType<typeof jest.spyOn>;
+    let updateOneOTPSpy: ReturnType<typeof jest.spyOn>;
+    let generateResetTokenSpy: ReturnType<typeof jest.spyOn>;
+    let hashTokenSpy: ReturnType<typeof jest.spyOn>;
 
     beforeEach(() => {
       jest.useFakeTimers();

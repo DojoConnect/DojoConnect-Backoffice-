@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from "./HttpException.js";
 
 export class InternalServerErrorException extends HttpException {
   constructor(message = "Internal Server Error") {

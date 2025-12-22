@@ -1,6 +1,6 @@
 // Use zod for schema validation
 import { z } from "zod";
-import { Role, StripePlans } from "../constants/enums";
+import { Role, StripePlans } from "../constants/enums.js";
 
 export const LoginSchema = z.object({
   email: z.string().trim().email(),

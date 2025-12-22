@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
-import * as dbService from "../db";
-import type { Transaction } from "../db";
-import { dojos } from "../db/schema";
+import * as dbService from "../db/index.js";
+import type { Transaction } from "../db/index.js";
+import { dojos } from "../db/schema.js";
 import {
   DojoRepository,
   IDojo,
   INewDojo,
   IUpdateDojo,
-} from "../repositories/dojo.repository";
+} from "../repositories/dojo.repository.js";
 
 export const getOneDojo = async (
   whereClause: any,

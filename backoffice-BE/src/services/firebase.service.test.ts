@@ -1,11 +1,11 @@
-import { SupportedOAuthProviders } from "../constants/enums";
-import { UnauthorizedException } from "../core/errors";
-import { buildDecodedIdTokenMock } from "../tests/factories/firebase.factory";
-import * as firebaseService from "./firebase.service";
+import { SupportedOAuthProviders } from "../constants/enums.js";
+import { UnauthorizedException } from "../core/errors/index.js";
+import { buildDecodedIdTokenMock } from "../tests/factories/firebase.factory.js";
+import * as firebaseService from "./firebase.service.js";
 
 describe("Firebase Service", () => {
   describe("verifyFirebaseToken", () => {
-    let verifyIdTokenSpy: jest.SpyInstance;
+    let verifyIdTokenSpy: SpyInstance;
 
     const mockVerifyIdToken = jest.fn();
 

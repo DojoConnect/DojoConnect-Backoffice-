@@ -1,12 +1,12 @@
 import Stripe from "stripe";
-import * as stripeService from "./stripe.service";
-import AppConfig from "../config/AppConfig";
-import { StripePlans } from "../constants/enums";
+import * as stripeService from "./stripe.service.js";
+import AppConfig from "../config/AppConfig.js";
+import { StripePlans } from "../constants/enums.js";
 import {
   buildStripePaymentMethodCardMock,
   buildStripeCustMock,
   buildStripePaymentMethodMock,
-} from "../tests/factories/stripe.factory";
+} from "../tests/factories/stripe.factory.js";
 
 // Mock the entire stripe module
 const mockCustomersCreate = jest.fn();
@@ -30,14 +30,14 @@ jest.mock("stripe", () => {
 });
 
 // Mock AppConfig to ensure test keys are used
-jest.mock("../config/AppConfig", () => ({
+jest.mock("../config/AppConfig.js", () => ({
   STRIPE_SECRET_KEY: "test_stripe_secret_key",
 }));
 
 const MockedStripe = Stripe as jest.MockedClass<typeof Stripe>;
 
 describe("Stripe Service", () => {
-  let getStripeInstanceSpy: jest.SpyInstance;
+  let getStripeInstanceSpy: SpyInstance;
 
   beforeEach(() => {
     // Clear mock history before each test
@@ -72,16 +72,14 @@ describe("Stripe Service", () => {
       const mockCustomer = buildStripeCustMock({ id: "cus_123", email });
       mockCustomersCreate.mockResolvedValue(mockCustomer);
 
-      const result = await stripeService.createCustomer(
-        name,
-        email,
-        {userId: "1"}
-      );
+      const result = await stripeService.createCustomer(name, email, {
+        userId: "1",
+      });
 
       expect(mockCustomersCreate).toHaveBeenCalledWith({
         name,
         email,
-        metadata: expect.objectContaining({userId: "1"})
+        metadata: expect.objectContaining({ userId: "1" }),
       });
       expect(result).toEqual(mockCustomer);
     });
@@ -91,7 +89,7 @@ describe("Stripe Service", () => {
     it("should call stripe.subscriptions.create with correct parameters for a STARTER plan", async () => {
       const mockCust = buildStripeCustMock({ id: "cus_123" });
       const plan = StripePlans.Monthly;
-      const priceId = stripeService.StripePriceIDsMap[plan]
+      const priceId = stripeService.StripePriceIDsMap[plan];
       const mockSubscription = { id: "sub_123", status: "active" };
       const idempotencyKey = "idempotent-key";
       const paymentMethodId = "test-payment-method-id";
@@ -103,7 +101,7 @@ describe("Stripe Service", () => {
         plan,
         paymentMethodId,
         idempotencyKey,
-        grantTrial: true
+        grantTrial: true,
       });
 
       expect(mockSubscriptionsCreate).toHaveBeenCalledWith(
@@ -120,7 +118,6 @@ describe("Stripe Service", () => {
         }
       );
 
-      
       expect(result).toEqual(mockSubscription);
     });
   });

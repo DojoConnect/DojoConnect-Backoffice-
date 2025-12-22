@@ -1,11 +1,10 @@
-import { createDrizzleDbSpies } from "../tests/spies/drizzle-db.spies";
-import * as dojosService from "./dojos.service";
-import { buildDojoMock } from "../tests/factories/dojos.factory";
-import { DojoRepository } from "../repositories/dojo.repository";
+import { createDrizzleDbSpies } from "../tests/spies/drizzle-db.spies.js";
+import * as dojosService from "./dojos.service.js";
+import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 
 describe("Dojo Service", () => {
   let mockExecute: jest.Mock;
-  let logErrorSpy: jest.SpyInstance;
+  let logErrorSpy: SpyInstance;
 
   beforeEach(() => {
     const dbServiceSpy = createDrizzleDbSpies();

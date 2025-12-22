@@ -1,7 +1,7 @@
 import { eq, desc, InferSelectModel, InferInsertModel } from "drizzle-orm";
-import { Transaction } from "../db";
-import { dojoSubscriptions } from "../db/schema";
-import { returnFirst } from "../utils/db.utils";
+import { Transaction } from "../db/index.js";
+import { dojoSubscriptions } from "../db/schema.js";
+import { returnFirst } from "../utils/db.utils.js";
 
 export type IDojoSub = InferSelectModel<typeof dojoSubscriptions>;
 export type INewDojoSub = InferInsertModel<typeof dojoSubscriptions>;

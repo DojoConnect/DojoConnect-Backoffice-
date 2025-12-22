@@ -1,16 +1,16 @@
 import { eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
-import { userCards, users } from "../db/schema";
-import * as dbService from "../db";
-import type { Transaction } from "../db";
-import * as stripeService from "./stripe.service";
+import { userCards, users } from "../db/schema.js";
+import * as dbService from "../db/index.js";
+import type { Transaction } from "../db/index.js";
+import * as stripeService from "./stripe.service.js";
 
-import { NotFoundException } from "../core/errors";
+import { NotFoundException } from "../core/errors/index.js";
 import {
   INewUser,
   IUpdateUser,
   IUser,
   UserRepository,
-} from "../repositories/user.repository";
+} from "../repositories/user.repository.js";
 
 export type IUserCard = InferSelectModel<typeof userCards>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
@@ -73,10 +73,13 @@ export const getOneUserByEmail = async ({
 }): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
     try {
-      return await getOneUser({
-        whereClause: eq(users.email, email),
-        withPassword,
-      }, tx);
+      return await getOneUser(
+        {
+          whereClause: eq(users.email, email),
+          withPassword,
+        },
+        tx
+      );
     } catch (err: any) {
       console.error(`Error fetching user by Email: ${email}`, { err });
       throw err;
@@ -95,9 +98,12 @@ export const getOneUserByUserName = async ({
 }): Promise<IUser | null> => {
   const execute = async (tx: Transaction) => {
     try {
-      return await getOneUser({
-        whereClause: eq(users.username, username),
-      }, tx);
+      return await getOneUser(
+        {
+          whereClause: eq(users.username, username),
+        },
+        tx
+      );
     } catch (err: any) {
       console.error(`Error fetching dojo by Username: ${username}`, { err });
       throw err;

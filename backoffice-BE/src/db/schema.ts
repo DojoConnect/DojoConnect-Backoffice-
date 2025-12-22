@@ -27,7 +27,7 @@ import {
   BillingStatus,
   ACTIVE_BILLING_STATUSES,
   StripeSubscriptionStatus,
-} from "../constants/enums";
+} from "../constants/enums.js";
 
 const activeBillingStatusesSql = sql.join(
   ACTIVE_BILLING_STATUSES.map((status) => sql.raw(`'${status}'`)),

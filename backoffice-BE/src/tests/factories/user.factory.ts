@@ -1,10 +1,7 @@
-import { Role } from "../../constants/enums";
-import { UserDTO, UserDTOParams } from "../../dtos/user.dtos";
-import { INewUser, IUser } from "../../repositories/user.repository";
-import {
-  INewUserCard,
-  IUserCard,
-} from "../../services/users.service";
+import { Role } from "../../constants/enums.js";
+import { UserDTO, UserDTOParams } from "../../dtos/user.dtos.js";
+import { INewUser, IUser } from "../../repositories/user.repository.js";
+import { INewUserCard, IUserCard } from "../../services/users.service.js";
 
 export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   return {

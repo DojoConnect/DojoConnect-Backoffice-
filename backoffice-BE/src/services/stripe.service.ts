@@ -1,6 +1,6 @@
 import Stripe from "stripe";
-import AppConfig from "../config/AppConfig";
-import { StripePlans } from "../constants/enums";
+import AppConfig from "../config/AppConfig.js";
+import { StripePlans } from "../constants/enums.js";
 
 export const StripePriceIDsMap = {
   [StripePlans.Monthly]: "price_1Sg2AkRbZzajfaIIlgDhjLfh",
@@ -46,14 +46,14 @@ export const createSubscription = async ({
   custId,
   plan,
   paymentMethodId,
-  grantTrial= false,
-  idempotencyKey
+  grantTrial = false,
+  idempotencyKey,
 }: {
   custId: string;
   plan: StripePlans;
   paymentMethodId: string;
   grantTrial: boolean;
-  idempotencyKey
+  idempotencyKey;
 }) => {
   const priceId = StripePriceIDsMap[plan];
   return await getStripeInstance().subscriptions.create(
@@ -75,7 +75,6 @@ export const retrievePaymentMethod = async (paymentMethod: string) => {
   return await getStripeInstance().paymentMethods.retrieve(paymentMethod);
 };
 
-
 export const retrieveSetupIntent = async (setupIntentId: string) => {
   return await getStripeInstance().setupIntents.retrieve(setupIntentId);
-}
+};

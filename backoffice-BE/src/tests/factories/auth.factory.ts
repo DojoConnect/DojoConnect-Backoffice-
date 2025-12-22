@@ -2,19 +2,22 @@ import {
   Role,
   StripePlans,
   SupportedOAuthProviders,
-} from "../../constants/enums";
-import { AuthResponseDTO, AuthResponseDTOParams } from "../../dtos/auth.dto";
-import { IOAuthAcct } from "../../repositories/oauth-providers.repository";
+} from "../../constants/enums.js";
+import {
+  AuthResponseDTO,
+  AuthResponseDTOParams,
+} from "../../dtos/auth.dtos.js";
+import { IOAuthAcct } from "../../repositories/oauth-providers.repository.js";
 import {
   INewRefreshToken,
   IRefreshToken,
-} from "../../repositories/refresh-token.repository";
+} from "../../repositories/refresh-token.repository.js";
 import {
   LoginDTO,
   RefreshTokenDTO,
   RegisterDojoAdminDTO,
-} from "../../validations/auth.schemas";
-import { buildUserDtoMock } from "./user.factory";
+} from "../../validations/auth.schemas.js";
+import { buildUserDtoMock } from "./user.factory.js";
 
 export const buildRegisterUserDTOMock = (
   overrides?: Partial<RegisterDojoAdminDTO>

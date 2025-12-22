@@ -13,10 +13,8 @@ import {
   handleVerifyOtp,
   handleResetPassword,
   handleIsDojoTagAvailable,
-} from "../controllers/auth.controller";
-import {
-  validateReqBody,
-} from "../middlewares/validate.middleware";
+} from "../controllers/auth.controller.js";
+import { validateReqBody } from "../middlewares/validate.middleware.js";
 import {
   FirebaseSignInSchema,
   ForgotPasswordSchema,
@@ -25,7 +23,7 @@ import {
   RegisterDojoAdminSchema,
   ResetPasswordSchema,
   VerifyOtpSchema,
-} from "../validations/auth.schemas";
+} from "../validations/auth.schemas.js";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes

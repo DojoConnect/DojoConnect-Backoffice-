@@ -7,10 +7,10 @@ import {
   sql,
   gt,
 } from "drizzle-orm";
-import type { Transaction } from "../db";
-import { passwordResetOTPs } from "../db/schema";
-import { returnFirst } from "../utils/db.utils";
-import AppConstants from "../constants/AppConstants";
+import type { Transaction } from "../db/index.js";
+import { passwordResetOTPs } from "../db/schema.js";
+import { returnFirst } from "../utils/db.utils.js";
+import AppConstants from "../constants/AppConstants.js";
 
 export type IPasswordResetOTP = InferSelectModel<typeof passwordResetOTPs>;
 export type INewPasswordResetOTP = InferInsertModel<typeof passwordResetOTPs>;

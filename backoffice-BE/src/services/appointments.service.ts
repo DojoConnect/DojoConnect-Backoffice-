@@ -1,8 +1,8 @@
-import { CreateAppointmentDto } from "../dtos/appointments.dtos";
-import * as dbService from "./db.service";
-import * as mailerService from "./mailer.service";
-import * as dojosService from "./dojos.service";
-import { NotFoundException } from "../core/errors/NotFoundException";
+import { CreateAppointmentDto } from "../dtos/appointments.dtos.js";
+import * as dbService from "./db.service.js";
+import * as mailerService from "./mailer.service.js";
+import * as dojosService from "./dojos.service.js";
+import { NotFoundException } from "../core/errors/index.js";
 
 export interface IAppointment {
   id?: number;

@@ -1,23 +1,22 @@
-import { eq, InferSelectModel } from "drizzle-orm";
-import { userCards, users } from "../db/schema";
-import * as dbService from "../db";
-import * as stripeService from "./stripe.service";
-import * as dojosService from "./dojos.service";
-import * as usersService from "./users.service";
-import { returnFirst } from "../utils/db.utils";
-import { ConflictException } from "../core/errors/ConflictException";
-import { hashPassword } from "../utils/auth.utils";
-import { DojoRepository, IDojo } from "../repositories/dojo.repository";
-import { Transaction } from "../db";
+import * as dbService from "../db/index.js";
+import * as stripeService from "./stripe.service.js";
+import * as dojosService from "./dojos.service.js";
+import * as usersService from "./users.service.js";
+import { ConflictException } from "../core/errors/index.js";
+import { DojoRepository, IDojo } from "../repositories/dojo.repository.js";
+import { Transaction } from "../db/index.js";
 import {
   BillingStatus,
   DojoStatus,
   StripeSetupIntentStatus,
   StripeSubscriptionStatus,
-} from "../constants/enums";
-import { IUser } from "../repositories/user.repository";
-import { SubscriptionRepository } from "../repositories/subscription.repository";
-import { BadRequestException, NotFoundException } from "../core/errors";
+} from "../constants/enums.js";
+import { IUser } from "../repositories/user.repository.js";
+import { SubscriptionRepository } from "../repositories/subscription.repository.js";
+import {
+  BadRequestException,
+  NotFoundException,
+} from "../core/errors/index.js";
 import Stripe from "stripe";
 
 export function assertDojoOwnership(dojo: IDojo, user: IUser): asserts dojo {

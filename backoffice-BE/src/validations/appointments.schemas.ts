@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AppointmentStatus, AppointmentType } from "../constants/enums";
+import { AppointmentStatus, AppointmentType } from "../constants/enums.js";
 
 export const CreateAppointmentSchema = z.object({
   dojo_id: z.string().trim().nonempty(),

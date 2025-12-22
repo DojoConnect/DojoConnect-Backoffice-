@@ -1,5 +1,5 @@
 import mysql, { Connection } from "mysql2/promise";
-import AppConfig from "../config/AppConfig";
+import AppConfig from "../config/AppConfig.js";
 
 /* ------------------ DB ------------------ */
 let backOfficeDBConnection: Connection | null = null;

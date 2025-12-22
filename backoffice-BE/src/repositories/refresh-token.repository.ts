@@ -1,7 +1,7 @@
 import { eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
-import { refreshTokens } from "../db/schema";
-import { Transaction } from "../db";
-import { returnFirst } from "../utils/db.utils";
+import { refreshTokens } from "../db/schema.js";
+import { Transaction } from "../db/index.js";
+import { returnFirst } from "../utils/db.utils.js";
 
 export type INewRefreshToken = InferInsertModel<typeof refreshTokens>;
 export type IRefreshToken = InferSelectModel<typeof refreshTokens>;
@@ -37,22 +37,20 @@ export class RefreshTokenRepository {
     await this.delete({ tx, whereClause: eq(refreshTokens.id, tokenId) });
   }
 
-   static async deleteByUserId  (
-    userId: string,
-    tx: Transaction
-  ) {
-      await this.delete({
-        tx,
-        whereClause: eq(refreshTokens.userId, userId),
-      });
-    
-  };
+  static async deleteByUserId(userId: string, tx: Transaction) {
+    await this.delete({
+      tx,
+      whereClause: eq(refreshTokens.userId, userId),
+    });
+  }
 
-  static async delete (
-    {whereClause, tx}:{whereClause: SQL,
-    tx: Transaction}
-  ) {
-      await tx.delete(refreshTokens).where(whereClause);
-  };
-  
+  static async delete({
+    whereClause,
+    tx,
+  }: {
+    whereClause: SQL;
+    tx: Transaction;
+  }) {
+    await tx.delete(refreshTokens).where(whereClause);
+  }
 }

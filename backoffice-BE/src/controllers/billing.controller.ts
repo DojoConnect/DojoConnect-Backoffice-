@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { SubscriptionService } from "../services/subscription.service";
-import { formatApiResponse } from "../utils/api.utils";
+import { SubscriptionService } from "../services/subscription.service.js";
+import { formatApiResponse } from "../utils/api.utils.js";
 
 export class BillingController {
   static async handleConfirmDojoAdminBilling(req: Request, res: Response) {

@@ -1,18 +1,18 @@
-import * as usersService from "./users.service";
-import * as stripeService from "./stripe.service";
+import * as usersService from "./users.service.js";
+import * as stripeService from "./stripe.service.js";
 import {
   createDrizzleDbSpies,
   DbServiceSpies,
-} from "../tests/spies/drizzle-db.spies";
-import { userCards, users } from "../db/schema";
+} from "../tests/spies/drizzle-db.spies.js";
+import { userCards, users } from "../db/schema.js";
 import {
   buildNewUserMock,
   buildUserCardMock,
   buildUserMock,
-} from "../tests/factories/user.factory";
+} from "../tests/factories/user.factory.js";
 import { eq } from "drizzle-orm";
-import { NotFoundException } from "../core/errors";
-import { buildStripePaymentMethodCardMock } from "../tests/factories/stripe.factory";
+import { NotFoundException } from "../core/errors/index.js";
+import { buildStripePaymentMethodCardMock } from "../tests/factories/stripe.factory.js";
 
 describe("Users Service", () => {
   const whereClause = eq(users.id, "1");
@@ -22,7 +22,7 @@ describe("Users Service", () => {
   let mockFrom: jest.Mock;
   let mockLimit: jest.Mock;
   let dbSpies: DbServiceSpies;
-  let logErrorSpy: jest.SpyInstance;
+  let logErrorSpy: SpyInstance;
 
   beforeEach(() => {
     dbSpies = createDrizzleDbSpies();
@@ -114,7 +114,7 @@ describe("Users Service", () => {
   });
 
   describe("getOneUserByID", () => {
-    let getOneUserSpy: jest.SpyInstance;
+    let getOneUserSpy: SpyInstance;
 
     beforeEach(() => {
       getOneUserSpy = jest.spyOn(usersService, "getOneUser");
@@ -169,7 +169,7 @@ describe("Users Service", () => {
   });
 
   describe("getOneUserByEmail", () => {
-    let getOneUserSpy: jest.SpyInstance;
+    let getOneUserSpy: SpyInstance;
 
     beforeEach(() => {
       getOneUserSpy = jest.spyOn(usersService, "getOneUser");
@@ -274,9 +274,8 @@ describe("Users Service", () => {
     });
   });
 
-
   describe("getOneUserByUsername", () => {
-    let getOneUserSpy: jest.SpyInstance;
+    let getOneUserSpy: SpyInstance;
 
     beforeEach(() => {
       getOneUserSpy = jest.spyOn(usersService, "getOneUser");
@@ -295,8 +294,8 @@ describe("Users Service", () => {
       const result = await usersService.getOneUserByUserName({ username });
 
       expect(getOneUserSpy).toHaveBeenCalledWith(
-        {whereClause: eq(users.username, username)},
-        expect.anything(),
+        { whereClause: eq(users.username, username) },
+        expect.anything()
       );
       expect(result).toEqual(mockDojo);
     });
@@ -334,7 +333,7 @@ describe("Users Service", () => {
     beforeEach(() => {
       jest.clearAllMocks();
     });
-    
+
     it("should return user cards for a given user ID", async () => {
       const userId = "user-1";
       const mockCards = [
@@ -448,7 +447,7 @@ describe("Users Service", () => {
   });
 
   describe("saveUser", () => {
-    let getOneUserByIDSpy: jest.SpyInstance;
+    let getOneUserByIDSpy: SpyInstance;
 
     beforeEach(() => {
       getOneUserByIDSpy = jest.spyOn(usersService, "getOneUserByID");
@@ -552,9 +551,9 @@ describe("Users Service", () => {
   });
 
   describe("setDefaultPaymentMethod", () => {
-    let retrievePaymentMethodSpy: jest.SpyInstance;
-    let fetchUserCardsByPaymentMethodSpy: jest.SpyInstance;
-    let saveUserCardSpy: jest.SpyInstance;
+    let retrievePaymentMethodSpy: SpyInstance;
+    let fetchUserCardsByPaymentMethodSpy: SpyInstance;
+    let saveUserCardSpy: SpyInstance;
     const mockUser = buildUserMock();
     const paymentMethodId = "pm_12345";
     const mockStripeCard = buildStripePaymentMethodCardMock({

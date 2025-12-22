@@ -1,7 +1,7 @@
-import { NotificationType } from "../constants/enums";
-import { InternalServerErrorException } from "../core/errors/InternalServerErrorException";
-import { NotificationRepository } from "../repositories/notification.repository";
-import * as firebaseService from "./firebase.service";
+import { NotificationType } from "../constants/enums.js";
+import { InternalServerErrorException } from "../core/errors/index.js";
+import { NotificationRepository } from "../repositories/notification.repository.js";
+import * as firebaseService from "./firebase.service.js";
 
 export type BaseNotificationData = {};
 

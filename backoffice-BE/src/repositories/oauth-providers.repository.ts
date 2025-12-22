@@ -1,8 +1,8 @@
 import { eq, and, InferSelectModel, InferInsertModel } from "drizzle-orm";
-import type { Transaction } from "../db";
-import { userOAuthAccounts } from "../db/schema";
-import { returnFirst } from "../utils/db.utils";
-import { SupportedOAuthProviders } from "../constants/enums";
+import type { Transaction } from "../db/index.js";
+import { userOAuthAccounts } from "../db/schema.js";
+import { returnFirst } from "../utils/db.utils.js";
+import { SupportedOAuthProviders } from "../constants/enums.js";
 
 export type IOAuthAcct = InferSelectModel<typeof userOAuthAccounts>;
 export type INewOAuthAcct = InferInsertModel<typeof userOAuthAccounts>;

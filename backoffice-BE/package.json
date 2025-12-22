@@ -3,12 +3,13 @@
   "version": "1.0.0",
   "description": "Trial class schedule API (Node.js + MySQL, cPanel friendly)",
   "main": "src/server.ts",
+  "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node ./dist/server.js",
     "build": "rm -rf dist && tsc -b",
-    "test": "jest",
-    "test:onlyFailures": "jest --onlyFailures"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:onlyFailures": "NODE_OPTIONS=--experimental-vm-modules jest --onlyFailures"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",

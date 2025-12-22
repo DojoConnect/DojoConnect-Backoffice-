@@ -1,8 +1,8 @@
-import * as dbService from "./services/db.service";
-import app from "./app";
-import AppConfig, { appConfigSchema } from "./config/AppConfig";
-import { NodeEnv } from "./constants/enums";
-import { runMigrations } from "./db/run-migrations";
+import * as dbService from "./services/db.service.js";
+import app from "./app.js";
+import AppConfig, { appConfigSchema } from "./config/AppConfig.js";
+import { NodeEnv } from "./constants/enums.js";
+import { runMigrations } from "./db/run-migrations.js";
 
 /* ------------------ START ------------------ */
 (async () => {

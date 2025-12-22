@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import * as dojosService from "../services/dojos.service";
-import { BadRequestException } from "../core/errors/BadRequestException";
-import { formatApiResponse } from "../utils/api.utils";
-import { NotFoundException } from "../core/errors/NotFoundException";
+import * as dojosService from "../services/dojos.service.js";
+import { BadRequestException } from "../core/errors/index.js";
+import { formatApiResponse } from "../utils/api.utils.js";
+import { NotFoundException } from "../core/errors/index.js";
 
 export async function fetchDojoBySlug(req: Request, res: Response) {
   const slug = req.params.slug;

@@ -1,5 +1,5 @@
 import { migrate } from "drizzle-orm/mysql2/migrator";
-import { getDB } from ".";
+import { getDB } from "./index.js";
 
 export const runMigrations = async () => {
   try {

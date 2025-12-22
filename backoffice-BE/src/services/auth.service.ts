@@ -1,6 +1,6 @@
 // src/services/auth.service.ts
-import * as dbService from "../db";
-import { passwordResetOTPs } from "../db/schema";
+import * as dbService from "../db/index.js";
+import { passwordResetOTPs } from "../db/schema.js";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import {
   generateAccessToken,
@@ -11,11 +11,11 @@ import {
   hashToken,
   verifyPassword,
   verifyPasswordResetToken,
-} from "../utils/auth.utils";
-import * as dojosService from "./dojos.service";
-import * as mailerService from "./mailer.service";
-import * as userService from "./users.service";
-import * as firebaseService from "./firebase.service";
+} from "../utils/auth.utils.js";
+import * as dojosService from "./dojos.service.js";
+import * as mailerService from "./mailer.service.js";
+import * as userService from "./users.service.js";
+import * as firebaseService from "./firebase.service.js";
 import { addDays, addMinutes, isAfter } from "date-fns";
 import {
   BadRequestException,
@@ -25,7 +25,7 @@ import {
   NotFoundException,
   TooManyRequestsException,
   UnauthorizedException,
-} from "../core/errors";
+} from "../core/errors/index.js";
 import {
   FirebaseSignInDTO,
   ForgotPasswordDTO,
@@ -34,21 +34,21 @@ import {
   RegisterDojoAdminDTO,
   ResetPasswordDTO,
   VerifyOtpDTO,
-} from "../validations/auth.schemas";
-import type { Transaction } from "../db";
-import { DojoStatus, Role } from "../constants/enums";
+} from "../validations/auth.schemas.js";
+import type { Transaction } from "../db/index.js";
+import { DojoStatus, Role } from "../constants/enums.js";
 import {
   AuthResponseDTO,
   RegisterDojoAdminResponseDTO,
-} from "../dtos/auth.dto";
-import { formatDateForMySQL } from "../utils/date.utils";
-import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository";
-import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository";
-import AppConstants from "../constants/AppConstants";
-import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
-import { UserDTO } from "../dtos/user.dtos";
-import { IUser } from "../repositories/user.repository";
-import { SubscriptionService } from "./subscription.service";
+} from "../dtos/auth.dtos.js";
+import { formatDateForMySQL } from "../utils/date.utils.js";
+import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
+import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
+import AppConstants from "../constants/AppConstants.js";
+import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
+import { UserDTO } from "../dtos/user.dtos.js";
+import { IUser } from "../repositories/user.repository.js";
+import { SubscriptionService } from "./subscription.service.js";
 
 export const generateAuthTokens = async ({
   user,
@@ -228,18 +228,21 @@ export const registerDojoAdmin = async (
   const execute = async (tx: dbService.Transaction) => {
     try {
       // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
-      const [existingUserWithEmail, existingUserWithUsername, existingDojoWithTag] =
-        await Promise.all([
-          userService.getOneUserByEmail({
-            email: dto.email,
-            txInstance: tx,
-          }),
-          userService.getOneUserByUserName({
-            username: dto.username,
-            txInstance: tx,
-          }),
-          dojosService.getOneDojoByTag(dto.dojoTag, tx)
-        ]);
+      const [
+        existingUserWithEmail,
+        existingUserWithUsername,
+        existingDojoWithTag,
+      ] = await Promise.all([
+        userService.getOneUserByEmail({
+          email: dto.email,
+          txInstance: tx,
+        }),
+        userService.getOneUserByUserName({
+          username: dto.username,
+          txInstance: tx,
+        }),
+        dojosService.getOneDojoByTag(dto.dojoTag, tx),
+      ]);
 
       if (existingUserWithEmail) {
         throw new ConflictException("Email already registered");
@@ -250,7 +253,7 @@ export const registerDojoAdmin = async (
       }
 
       if (existingDojoWithTag) {
-        throw new ConflictException("Dojo tag already exists")
+        throw new ConflictException("Dojo tag already exists");
       }
 
       // Generate Referral Code and Hash Password
