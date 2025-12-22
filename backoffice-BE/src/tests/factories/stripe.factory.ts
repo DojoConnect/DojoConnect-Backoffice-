@@ -45,3 +45,13 @@ export const buildStripeSubMock = (
     ...overrides,
   } as Stripe.Subscription;
 };
+
+export const buildStripeSetupIntentMock = (
+  overrides?: Partial<Stripe.SetupIntent>
+): Stripe.SetupIntent => {
+  return {
+    id: "seti_123",
+    client_secret: "seti_client_secret_123",
+    ...overrides,
+  } as Stripe.SetupIntent;
+}

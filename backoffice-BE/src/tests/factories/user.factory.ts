@@ -1,3 +1,4 @@
+import { faker } from "@faker-js/faker";
 import { Role } from "../../constants/enums.js";
 import { UserDTO, UserDTOParams } from "../../dtos/user.dtos.js";
 import { INewUser, IUser } from "../../repositories/user.repository.js";
@@ -5,7 +6,7 @@ import { INewUserCard, IUserCard } from "../../services/users.service.js";
 
 export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   return {
-    id: "usr_01",
+    id: faker.string.uuid(),
     username: "john_d",
     name: "John Doe",
     email: "john@example.com",
