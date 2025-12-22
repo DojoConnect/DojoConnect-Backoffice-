@@ -4,6 +4,7 @@ export interface UserDTOParams {
   id: string;
   name: string;
   email: string;
+  username: string;
   referredBy: string | null;
   avatar: string | null;
   role: Role;
@@ -20,6 +21,7 @@ export class UserDTO implements UserDTOParams {
   id: string;
   name: string;
   email: string;
+  username: string;
   referredBy: string | null;
   avatar: string | null;
   role: Role;
@@ -35,6 +37,7 @@ export class UserDTO implements UserDTOParams {
     this.id = params.id;
     this.name = params.name;
     this.email = params.email;
+    this.username = params.username;
     this.referredBy = params.referredBy;
     this.avatar = params.avatar;
     this.role = params.role;
@@ -52,6 +55,7 @@ export class UserDTO implements UserDTOParams {
       id: this.id,
       name: this.name,
       email: this.email,
+      username: this.username,
       referredBy: this.referredBy,
       avatar: this.avatar,
       role: this.role,
