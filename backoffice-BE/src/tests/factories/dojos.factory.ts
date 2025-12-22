@@ -1,5 +1,5 @@
-import { DojoStatus, StripePlans } from "../../constants/enums";
-import { IDojo } from "../../repositories/dojo.repository";
+import { DojoStatus, StripePlans } from "../../constants/enums.js";
+import { IDojo } from "../../repositories/dojo.repository.js";
 
 export const buildDojoMock = (overrides?: Partial<IDojo>): IDojo => {
   return {

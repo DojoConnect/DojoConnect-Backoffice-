@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { Role } from "../constants/enums";
-import { HttpException, UnauthorizedException } from "../core/errors";
-import { ForbiddenException } from "../core/errors/ForbiddenException";
+import { Role } from "../constants/enums.js";
+import { HttpException, UnauthorizedException } from "../core/errors/index.js";
+import { ForbiddenException } from "../core/errors/index.js";
 
 export const requireRole =
   (...allowedRoles: readonly Role[]) =>

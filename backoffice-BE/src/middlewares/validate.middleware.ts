@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AnyZodObject, ZodError } from "zod";
-import { BadRequestException } from "../core/errors/BadRequestException";
+import { BadRequestException } from "../core/errors/index.js";
 
 /**
  * Creates a middleware function that validates the request body against a Zod schema.

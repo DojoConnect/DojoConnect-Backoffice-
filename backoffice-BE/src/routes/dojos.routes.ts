@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fetchDojoBySlug } from "../controllers/dojos.controller";
+import { fetchDojoBySlug } from "../controllers/dojos.controller.js";
 
 const router = Router();
 

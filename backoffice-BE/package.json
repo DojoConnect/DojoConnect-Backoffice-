@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "description": "Trial class schedule API (Node.js + MySQL, cPanel friendly)",
   "main": "src/server.ts",
+  "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "start": "node ./dist/server.js",
     "build": "rm -rf dist && tsc -b",
-    "test": "jest",
-    "test:onlyFailures": "jest --onlyFailures"
+    "test": "vitest"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -34,15 +34,14 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.1.0",
     "@types/express": "^5.0.5",
-    "@types/jest": "^30.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
     "drizzle-kit": "^0.31.8",
-    "jest": "^30.2.0",
     "supertest": "^7.1.4",
-    "ts-jest": "^29.2.5",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
   }
 }

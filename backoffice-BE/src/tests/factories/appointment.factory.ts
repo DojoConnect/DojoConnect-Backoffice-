@@ -1,5 +1,5 @@
-import { AppointmentStatus, AppointmentType } from "../../constants/enums";
-import { IAppointment } from "../../services/appointments.service";
+import { AppointmentStatus, AppointmentType } from "../../constants/enums.js";
+import { IAppointment } from "../../services/appointments.service.js";
 
 /**
  * Creates a mock appointment object for testing purposes.

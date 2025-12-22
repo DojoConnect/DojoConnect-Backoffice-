@@ -1,6 +1,6 @@
 import { z } from "zod";
 import dotenv from "dotenv";
-import { NodeEnv } from "../constants/enums";
+import { NodeEnv } from "../constants/enums.js";
 
 dotenv.config();
 

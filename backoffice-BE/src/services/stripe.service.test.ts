@@ -1,50 +1,28 @@
-import Stripe from "stripe";
-import * as stripeService from "./stripe.service";
-import AppConfig from "../config/AppConfig";
-import { StripePlans } from "../constants/enums";
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import type { MockInstance } from "vitest";
+import {StripePriceIDsMap, StripeService} from "./stripe.service.js";
+import AppConfig from "../config/AppConfig.js";
+import { StripePlans } from "../constants/enums.js";
 import {
   buildStripePaymentMethodCardMock,
   buildStripeCustMock,
   buildStripePaymentMethodMock,
-} from "../tests/factories/stripe.factory";
+} from "../tests/factories/stripe.factory.js";
 
 // Mock the entire stripe module
-const mockCustomersCreate = jest.fn();
-const mockSubscriptionsCreate = jest.fn();
-const mockPaymentMethodsRetrieve = jest.fn();
-
-jest.mock("stripe", () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      customers: {
-        create: mockCustomersCreate,
-      },
-      subscriptions: {
-        create: mockSubscriptionsCreate,
-      },
-      paymentMethods: {
-        retrieve: mockPaymentMethodsRetrieve,
-      },
-    };
-  });
-});
-
-// Mock AppConfig to ensure test keys are used
-jest.mock("../config/AppConfig", () => ({
-  STRIPE_SECRET_KEY: "test_stripe_secret_key",
-}));
-
-const MockedStripe = Stripe as jest.MockedClass<typeof Stripe>;
+const mockCustomersCreate = vi.fn();
+const mockSubscriptionsCreate = vi.fn();
+const mockPaymentMethodsRetrieve = vi.fn();
 
 describe("Stripe Service", () => {
-  let getStripeInstanceSpy: jest.SpyInstance;
+  let getStripeInstanceSpy: MockInstance;
 
   beforeEach(() => {
     // Clear mock history before each test
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    getStripeInstanceSpy = jest
-      .spyOn(stripeService, "getStripeInstance")
+    getStripeInstanceSpy = vi
+      .spyOn(StripeService, "getStripeInstance")
       .mockReturnValue({
         customers: {
           create: mockCustomersCreate,
@@ -57,11 +35,7 @@ describe("Stripe Service", () => {
         },
       } as any);
 
-    jest.replaceProperty(
-      AppConfig,
-      "STRIPE_SECRET_KEY",
-      "test_stripe_secret_key"
-    );
+      AppConfig.STRIPE_SECRET_KEY = "test_stripe_secret_key";
   });
 
   describe("createCustomers", () => {
@@ -72,16 +46,14 @@ describe("Stripe Service", () => {
       const mockCustomer = buildStripeCustMock({ id: "cus_123", email });
       mockCustomersCreate.mockResolvedValue(mockCustomer);
 
-      const result = await stripeService.createCustomer(
-        name,
-        email,
-        {userId: "1"}
-      );
+      const result = await StripeService.createCustomer(name, email, {
+        userId: "1",
+      });
 
       expect(mockCustomersCreate).toHaveBeenCalledWith({
         name,
         email,
-        metadata: expect.objectContaining({userId: "1"})
+        metadata: expect.objectContaining({ userId: "1" }),
       });
       expect(result).toEqual(mockCustomer);
     });
@@ -91,19 +63,19 @@ describe("Stripe Service", () => {
     it("should call stripe.subscriptions.create with correct parameters for a STARTER plan", async () => {
       const mockCust = buildStripeCustMock({ id: "cus_123" });
       const plan = StripePlans.Monthly;
-      const priceId = stripeService.StripePriceIDsMap[plan]
+      const priceId = StripePriceIDsMap[plan];
       const mockSubscription = { id: "sub_123", status: "active" };
       const idempotencyKey = "idempotent-key";
       const paymentMethodId = "test-payment-method-id";
 
       mockSubscriptionsCreate.mockResolvedValue(mockSubscription);
 
-      const result = await stripeService.createSubscription({
+      const result = await StripeService.createSubscription({
         custId: mockCust.id,
         plan,
         paymentMethodId,
         idempotencyKey,
-        grantTrial: true
+        grantTrial: true,
       });
 
       expect(mockSubscriptionsCreate).toHaveBeenCalledWith(
@@ -120,7 +92,6 @@ describe("Stripe Service", () => {
         }
       );
 
-      
       expect(result).toEqual(mockSubscription);
     });
   });
@@ -138,7 +109,7 @@ describe("Stripe Service", () => {
 
       mockPaymentMethodsRetrieve.mockResolvedValue(mockPaymentMethod);
 
-      const result = await stripeService.retrievePaymentMethod(paymentMethodId);
+      const result = await StripeService.retrievePaymentMethod(paymentMethodId);
 
       expect(mockPaymentMethodsRetrieve).toHaveBeenCalledWith(paymentMethodId);
       expect(result).toEqual(mockPaymentMethod);

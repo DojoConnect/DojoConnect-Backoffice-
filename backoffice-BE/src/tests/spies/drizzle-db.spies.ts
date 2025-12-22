@@ -1,28 +1,30 @@
-import e from "express";
-import * as dbService from "../../db";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import type { Mock, MockInstance } from "vitest";
+
+import * as dbService from "../../db/index.js";
 
 type SharedFunctions = {
-  mockWhere: jest.Mock;
-  mockLimit: jest.Mock;
-  mockExecute?: jest.Mock;
-  mockOrderBy?: jest.Mock
+  mockWhere: Mock;
+  mockLimit: Mock;
+  mockExecute?: Mock;
+  mockOrderBy?: Mock;
 };
 
 const buildMockSelectChain = ({
   mockWhere,
   mockExecute,
   mockLimit,
-  mockOrderBy
+  mockOrderBy,
 }: SharedFunctions) => {
-  const mockFrom = jest.fn();
-  const mockSelect = jest.fn();
+  const mockFrom = vi.fn();
+  const mockSelect = vi.fn();
 
   const mockSelectChain = {
     from: mockFrom,
     where: mockWhere,
     limit: mockLimit,
     execute: mockExecute,
-    mockOrderBy
+    mockOrderBy,
   };
 
   // Ensure the chain continues
@@ -37,9 +39,9 @@ const buildMockSelectChain = ({
 };
 
 const buildMockInsertChain = () => {
-  const mockValues = jest.fn();
-  const mockReturningId = jest.fn();
-  const mockInsert = jest.fn();
+  const mockValues = vi.fn();
+  const mockReturningId = vi.fn();
+  const mockInsert = vi.fn();
 
   const mockInsertChain = {
     values: mockValues,
@@ -57,8 +59,8 @@ const buildMockInsertChain = () => {
 };
 
 const buildMockUpdateChain = ({ mockLimit, mockWhere }: SharedFunctions) => {
-  const mockSet = jest.fn();
-  const mockUpdate = jest.fn();
+  const mockSet = vi.fn();
+  const mockUpdate = vi.fn();
 
   const mockUpdateChain = {
     set: mockSet,
@@ -76,7 +78,7 @@ const buildMockUpdateChain = ({ mockLimit, mockWhere }: SharedFunctions) => {
 };
 
 const buildMockDeleteChain = ({ mockLimit, mockWhere }: SharedFunctions) => {
-  const mockDelete = jest.fn();
+  const mockDelete = vi.fn();
 
   const mockDeleteChain = {
     where: mockWhere,
@@ -90,10 +92,10 @@ const buildMockDeleteChain = ({ mockLimit, mockWhere }: SharedFunctions) => {
 };
 
 export function createDrizzleDbSpies() {
-  const mockExecute = jest.fn();
-  const mockWhere = jest.fn();
-  const mockLimit = jest.fn();
-  const mockOrderBy = jest.fn();
+  const mockExecute = vi.fn();
+  const mockWhere = vi.fn();
+  const mockLimit = vi.fn();
+  const mockOrderBy = vi.fn();
 
   // Build Mock Where chain
   mockWhere.mockReturnValue({
@@ -119,7 +121,7 @@ export function createDrizzleDbSpies() {
     mockExecute,
     mockLimit,
     mockWhere,
-    mockOrderBy
+    mockOrderBy,
   });
 
   // Build Mock Insert chain
@@ -133,7 +135,7 @@ export function createDrizzleDbSpies() {
   });
 
   // Mock Transaction
-  const mockTransaction = jest.fn();
+  const mockTransaction = vi.fn();
 
   const mockDB = {
     select: mockSelect.mockReturnValue(mockSelectChain),
@@ -145,15 +147,15 @@ export function createDrizzleDbSpies() {
 
   // Instead of returning mockDB directly, we execute the callback (fn)
   // passing the mockDB as the "transaction" instance.
-  mockTransaction.mockImplementation(async (txCallback) => {
+  mockTransaction.mockImplementation(async (txCallback: any) => {
     return await txCallback(mockDB);
   });
 
-  const getDbSpy = jest
+  const getDbSpy = vi
     .spyOn(dbService, "getDB")
     .mockReturnValue(mockDB as any);
 
-  const runInTransactionSpy = jest
+  const runInTransactionSpy = vi
     .spyOn(dbService, "runInTransaction")
     .mockImplementation(async (txCallback) => {
       return await txCallback(mockDB as any);

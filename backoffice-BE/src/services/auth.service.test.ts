@@ -1,97 +1,103 @@
-import * as authService from "./auth.service";
-import * as dbService from "../db";
-import * as userService from "./users.service";
-import * as stripeService from "./stripe.service";
-import * as dojosService from "./dojos.service";
-import * as mailerService from "./mailer.service";
-import * as authUtils from "../utils/auth.utils";
-import * as firebaseService from "./firebase.service";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import type { MockInstance } from "vitest";
+
+import {AuthService} from "./auth.service.js";
+import * as dbService from "../db/index.js";
+import {UsersService} from "./users.service.js";
+import {StripeService} from "./stripe.service.js";
+import  {DojosService} from "./dojos.service.js";
+import  {MailerService} from "./mailer.service.js";
+import * as authUtils from "../utils/auth.utils.js";
+import  {FirebaseService} from "./firebase.service.js";
 import {
   createDrizzleDbSpies,
   DbServiceSpies,
-} from "../tests/spies/drizzle-db.spies";
-import { buildUserMock } from "../tests/factories/user.factory";
+} from "../tests/spies/drizzle-db.spies.js";
+import { buildUserMock } from "../tests/factories/user.factory.js";
 import {
   buildStripeCustMock,
   buildStripeSubMock,
-} from "../tests/factories/stripe.factory";
+} from "../tests/factories/stripe.factory.js";
 import {
   BadRequestException,
   ConflictException,
   NotFoundException,
   UnauthorizedException,
   TooManyRequestsException,
-} from "../core/errors";
-import { Role, StripePlans, SupportedOAuthProviders } from "../constants/enums";
+} from "../core/errors/index.js";
+import {
+  Role,
+  StripePlans,
+  SupportedOAuthProviders,
+} from "../constants/enums.js";
 import { addDays, subDays } from "date-fns";
-import { refreshTokens } from "../db/schema";
+import { refreshTokens } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import {
   buildLoginDTOMock,
-  buildNewRefreshTokenMock,
   buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
   buildRefreshTokenMock,
   buildRegisterUserDTOMock as buildRegisterDojoAdminDTOMock,
-} from "../tests/factories/auth.factory";
-import { buildDojoMock } from "../tests/factories/dojos.factory";
-import { UserDTO } from "../dtos/user.dtos";
-import { buildFirebaseUserMock } from "../tests/factories/firebase.factory";
-import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository";
-import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository";
-import AppConstants from "../constants/AppConstants";
-import { AuthResponseDTO } from "../dtos/auth.dto";
-import { RefreshTokenRepository } from "../repositories/refresh-token.repository";
-import { SubscriptionService } from "./subscription.service";
+} from "../tests/factories/auth.factory.js";
+import { buildDojoMock } from "../tests/factories/dojos.factory.js";
+import { UserDTO } from "../dtos/user.dtos.js";
+import { buildFirebaseUserMock } from "../tests/factories/firebase.factory.js";
+import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
+import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
+import AppConstants from "../constants/AppConstants.js";
+import { AuthResponseDTO } from "../dtos/auth.dtos.js";
+import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
+import { SubscriptionService } from "./subscription.service.js";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
-  let logSpy: jest.SpyInstance;
+  let logSpy: MockInstance;
 
-  let getOneUserByEmailSpy: jest.SpyInstance;
-  let getOneUserByUsernameSpy: jest.SpyInstance;
-  let getOneDojoByTagSpy: jest.SpyInstance;
-  let saveUserSpy: jest.SpyInstance;
-  let getOneUserByIDSpy: jest.SpyInstance;
+  let getOneUserByEmailSpy: MockInstance;
+  let getOneUserByUsernameSpy: MockInstance;
+  let getOneDojoByTagSpy: MockInstance;
+  let saveUserSpy: MockInstance;
+  let getOneUserByIDSpy: MockInstance;
 
   beforeEach(() => {
     dbSpies = createDrizzleDbSpies();
 
-    getOneUserByEmailSpy = jest.spyOn(userService, "getOneUserByEmail");
-    getOneUserByIDSpy = jest.spyOn(userService, "getOneUserByID");
-    getOneUserByUsernameSpy = jest.spyOn(userService, "getOneUserByUserName");
-    getOneDojoByTagSpy = jest.spyOn(dojosService, "getOneDojoByTag")
-    saveUserSpy = jest.spyOn(userService, "saveUser");
+    getOneUserByEmailSpy = vi.spyOn(UsersService, "getOneUserByEmail");
+    getOneUserByIDSpy = vi.spyOn(UsersService, "getOneUserByID");
+    getOneUserByUsernameSpy = vi.spyOn(UsersService, "getOneUserByUserName");
+    getOneDojoByTagSpy = vi.spyOn(DojosService, "getOneDojoByTag");
+    saveUserSpy = vi.spyOn(UsersService, "saveUser");
 
-    logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
-    jest.spyOn(console, "error").mockImplementation(() => {});
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("generateAuthTokens", () => {
     const mockUser = buildUserMock({ role: Role.DojoAdmin });
 
-    let generateAccessTokenSpy: jest.SpyInstance;
-    let generateRefreshTokenSpy: jest.SpyInstance;
-    let hashTokenSpy: jest.SpyInstance;
+    let generateAccessTokenSpy: MockInstance;
+    let generateRefreshTokenSpy: MockInstance;
+    let hashTokenSpy: MockInstance;
 
     beforeEach(() => {
-      generateAccessTokenSpy = jest
+      generateAccessTokenSpy = vi
         .spyOn(authUtils, "generateAccessToken")
         .mockReturnValue("access_token");
-      generateRefreshTokenSpy = jest
+      generateRefreshTokenSpy = vi
         .spyOn(authUtils, "generateRefreshToken")
         .mockReturnValue("refresh_token");
-      hashTokenSpy = jest
+      hashTokenSpy = vi
         .spyOn(authUtils, "hashToken")
         .mockReturnValue("hashed_refresh_token");
     });
 
     it("should generate and save tokens, returning the raw tokens", async () => {
-      const result = await authService.generateAuthTokens({ user: mockUser });
+      const result = await AuthService.generateAuthTokens({ user: mockUser });
 
       expect(generateAccessTokenSpy).toHaveBeenCalledWith({
         userId: mockUser.id,
@@ -125,15 +131,15 @@ describe("Auth Service", () => {
       passwordHash: "hashed_password",
     });
 
-    let verifyPasswordSpy: jest.SpyInstance;
-    let updateUserSpy: jest.SpyInstance;
-    let generateAuthTokensSpy: jest.SpyInstance;
+    let verifyPasswordSpy: MockInstance;
+    let updateUserSpy: MockInstance;
+    let generateAuthTokensSpy: MockInstance;
 
     beforeEach(() => {
-      verifyPasswordSpy = jest.spyOn(authUtils, "verifyPassword");
-      updateUserSpy = jest.spyOn(userService, "updateUser").mockResolvedValue();
-      generateAuthTokensSpy = jest
-        .spyOn(authService, "generateAuthTokens")
+      verifyPasswordSpy = vi.spyOn(authUtils, "verifyPassword");
+      updateUserSpy = vi.spyOn(UsersService, "updateUser").mockResolvedValue();
+      generateAuthTokensSpy = vi
+        .spyOn(AuthService, "generateAuthTokens")
         .mockResolvedValue({
           accessToken: "access",
           refreshToken: "refresh",
@@ -144,7 +150,7 @@ describe("Auth Service", () => {
       getOneUserByEmailSpy.mockResolvedValue(mockUser);
       verifyPasswordSpy.mockResolvedValue(true);
 
-      const result = await authService.loginUser({ dto: loginDTO });
+      const result = await AuthService.loginUser({ dto: loginDTO });
 
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
         email: loginDTO.email,
@@ -170,13 +176,13 @@ describe("Auth Service", () => {
 
     it("should not update user if fcmToken is not provided", async () => {
       const noFcmTokenDTO = { ...loginDTO, fcmToken: undefined };
-      await authService.loginUser({ dto: noFcmTokenDTO });
+      await AuthService.loginUser({ dto: noFcmTokenDTO });
       expect(updateUserSpy).not.toHaveBeenCalled();
     });
 
     it("should throw UnauthorizedException if user is not found", async () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
-      await expect(authService.loginUser({ dto: loginDTO })).rejects.toThrow(
+      await expect(AuthService.loginUser({ dto: loginDTO })).rejects.toThrow(
         UnauthorizedException
       );
     });
@@ -184,7 +190,7 @@ describe("Auth Service", () => {
     it("should throw UnauthorizedException if password is invalid", async () => {
       getOneUserByEmailSpy.mockResolvedValue(mockUser);
       verifyPasswordSpy.mockResolvedValue(false);
-      await expect(authService.loginUser({ dto: loginDTO })).rejects.toThrow(
+      await expect(AuthService.loginUser({ dto: loginDTO })).rejects.toThrow(
         UnauthorizedException
       );
     });
@@ -197,7 +203,7 @@ describe("Auth Service", () => {
         })
       );
 
-      await expect(authService.loginUser({ dto: loginDTO })).rejects.toThrow(
+      await expect(AuthService.loginUser({ dto: loginDTO })).rejects.toThrow(
         UnauthorizedException
       );
     });
@@ -215,23 +221,23 @@ describe("Auth Service", () => {
     const hashedToken = "hashed_token";
     const dto = buildRefreshTokenDtoMock({ refreshToken: "raw_refresh_token" });
 
-    let hashTokenSpy: jest.SpyInstance;
-    let getOneRefreshTokenSpy: jest.SpyInstance;
+    let hashTokenSpy: MockInstance;
+    let getOneRefreshTokenSpy: MockInstance;
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
-      hashTokenSpy = jest
+      hashTokenSpy = vi
         .spyOn(authUtils, "hashToken")
         .mockReturnValue(hashedToken);
 
-      getOneRefreshTokenSpy = jest
+      getOneRefreshTokenSpy = vi
         .spyOn(RefreshTokenRepository, "getOne")
         .mockResolvedValue(storedToken);
     });
 
     it("should successfully revoke a valid token", async () => {
-      const result = await authService.revokeRefreshToken({ dto });
+      const result = await AuthService.revokeRefreshToken({ dto });
 
       expect(hashTokenSpy).toHaveBeenCalledWith(dto.refreshToken);
       expect(getOneRefreshTokenSpy).toHaveBeenCalledWith(
@@ -247,7 +253,7 @@ describe("Auth Service", () => {
 
     it("should throw UnauthorizedException if token is not found", async () => {
       getOneRefreshTokenSpy.mockResolvedValue(null);
-      await expect(authService.revokeRefreshToken({ dto })).rejects.toThrow(
+      await expect(AuthService.revokeRefreshToken({ dto })).rejects.toThrow(
         UnauthorizedException
       );
     });
@@ -257,7 +263,7 @@ describe("Auth Service", () => {
         ...storedToken,
         revoked: true,
       });
-      await expect(authService.revokeRefreshToken({ dto })).rejects.toThrow(
+      await expect(AuthService.revokeRefreshToken({ dto })).rejects.toThrow(
         UnauthorizedException
       );
     });
@@ -267,13 +273,13 @@ describe("Auth Service", () => {
         ...storedToken,
         expiresAt: subDays(new Date(), 1),
       });
-      await expect(authService.revokeRefreshToken({ dto })).rejects.toThrow(
+      await expect(AuthService.revokeRefreshToken({ dto })).rejects.toThrow(
         UnauthorizedException
       );
     });
 
     it("should use provided transaction instance", async () => {
-      await authService.revokeRefreshToken({ dto, txInstance: dbSpies.mockTx });
+      await AuthService.revokeRefreshToken({ dto, txInstance: dbSpies.mockTx });
       expect(dbService.runInTransaction).not.toHaveBeenCalled();
     });
   });
@@ -290,20 +296,20 @@ describe("Auth Service", () => {
 
     const dto = buildRefreshTokenDtoMock({ refreshToken: "old_refresh" });
 
-    let revokeRefreshTokenSpy: jest.SpyInstance;
-    let generateAuthTokensSpy: jest.SpyInstance;
+    let revokeRefreshTokenSpy: MockInstance;
+    let generateAuthTokensSpy: MockInstance;
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
       getOneUserByIDSpy.mockResolvedValue(mockUser);
 
-      revokeRefreshTokenSpy = jest
-        .spyOn(authService, "revokeRefreshToken")
+      revokeRefreshTokenSpy = vi
+        .spyOn(AuthService, "revokeRefreshToken")
         .mockResolvedValue(storedToken);
 
-      generateAuthTokensSpy = jest
-        .spyOn(authService, "generateAuthTokens")
+      generateAuthTokensSpy = vi
+        .spyOn(AuthService, "generateAuthTokens")
         .mockResolvedValue({
           accessToken: "new_access",
           refreshToken: "new_refresh",
@@ -311,10 +317,10 @@ describe("Auth Service", () => {
     });
 
     it("should successfully refresh tokens", async () => {
-      const result = await authService.refreshAccessToken({
+      const result = await AuthService.refreshAccessToken({
         dto,
         userIp: "127.0.0.1",
-        userAgent: "jest",
+        userAgent: "vi",
       });
 
       expect(revokeRefreshTokenSpy).toHaveBeenCalledWith({
@@ -334,14 +340,14 @@ describe("Auth Service", () => {
 
     it("should propagate errors from revokeRefreshToken)", async () => {
       revokeRefreshTokenSpy.mockRejectedValueOnce(new UnauthorizedException());
-      await expect(authService.refreshAccessToken({ dto })).rejects.toThrow(
+      await expect(AuthService.refreshAccessToken({ dto })).rejects.toThrow(
         UnauthorizedException
       );
     });
 
     it("should throw NotFoundException if user associated with token is not found", async () => {
       getOneUserByIDSpy.mockResolvedValue(null);
-      await expect(authService.refreshAccessToken({ dto })).rejects.toThrow(
+      await expect(AuthService.refreshAccessToken({ dto })).rejects.toThrow(
         NotFoundException
       );
     });
@@ -354,7 +360,7 @@ describe("Auth Service", () => {
       name: "My Dojo",
       tag: "DOJO",
       tagline: "The best",
-      userId: mockSavedUser.id
+      userId: mockSavedUser.id,
     });
 
     const userDTO = buildRegisterDojoAdminDTOMock({
@@ -368,53 +374,57 @@ describe("Auth Service", () => {
       dojoTagline: mockDojo.tagline,
     });
 
-
     const mockStripeCustomer = buildStripeCustMock();
     const mockStripeSubscription = buildStripeSubMock();
 
-    let hashPasswordSpy: jest.SpyInstance;
-    let createStripeCustomerSpy: jest.SpyInstance;
-    let createStripeSubscriptionSpy: jest.SpyInstance;
-    let createDojoSpy: jest.SpyInstance;
-    let setupBillingSpy: jest.SpyInstance
-    let sendWelcomeEmailSpy: jest.SpyInstance;
+    let hashPasswordSpy: MockInstance;
+    let createStripeCustomerSpy: MockInstance;
+    let createStripeSubscriptionSpy: MockInstance;
+    let createDojoSpy: MockInstance;
+    let setupBillingSpy: MockInstance;
+    let sendWelcomeEmailSpy: MockInstance;
+    let generateAuthTokensSpy: MockInstance;
 
     beforeEach(() => {
       // Default success path mocks
       getOneUserByEmailSpy.mockResolvedValue(null);
       getOneUserByUsernameSpy.mockResolvedValue(null);
-      getOneDojoByTagSpy.mockResolvedValue(null)
+      getOneDojoByTagSpy.mockResolvedValue(null);
 
-      hashPasswordSpy = jest
+      hashPasswordSpy = vi
         .spyOn(authUtils, "hashPassword")
         .mockResolvedValue("hashed_password");
-      createStripeCustomerSpy = jest
-        .spyOn(stripeService, "createCustomer")
+      createStripeCustomerSpy = vi
+        .spyOn(StripeService, "createCustomer")
         .mockResolvedValue(mockStripeCustomer as any);
 
-      createStripeSubscriptionSpy = jest
-        .spyOn(stripeService, "createSubscription")
+      createStripeSubscriptionSpy = vi
+        .spyOn(StripeService, "createSubscription")
         .mockResolvedValue(mockStripeSubscription as any);
 
-      setupBillingSpy= jest.spyOn(SubscriptionService, "setupDojoAdminBilling").mockResolvedValue({
-        clientSecret: "test_secret"
-      })
+      setupBillingSpy = vi
+        .spyOn(SubscriptionService, "setupDojoAdminBilling")
+        .mockResolvedValue({
+          clientSecret: "test_secret",
+        });
       saveUserSpy.mockResolvedValue(mockSavedUser);
-      createDojoSpy = jest
-        .spyOn(dojosService, "createDojo")
+      createDojoSpy = vi
+        .spyOn(DojosService, "createDojo")
         .mockResolvedValue(mockDojo);
-      sendWelcomeEmailSpy = jest
-        .spyOn(mailerService, "sendWelcomeEmail")
+      sendWelcomeEmailSpy = vi
+        .spyOn(MailerService, "sendWelcomeEmail")
         .mockResolvedValue();
 
-      jest.spyOn(authService, "generateAuthTokens").mockResolvedValue({
-        accessToken: "access",
-        refreshToken: "refresh",
-      });
+      generateAuthTokensSpy = vi
+        .spyOn(AuthService, "generateAuthTokens")
+        .mockResolvedValue({
+          accessToken: "access",
+          refreshToken: "refresh",
+        });
     });
 
     it("should successfully register a DojoAdmin user", async () => {
-      const result = await authService.registerDojoAdmin({ dto: userDTO });
+      const result = await AuthService.registerDojoAdmin({ dto: userDTO });
 
       // 1. Check for existing users
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
@@ -426,16 +436,16 @@ describe("Auth Service", () => {
         txInstance: dbSpies.mockTx,
       });
       expect(getOneDojoByTagSpy).toHaveBeenCalledWith(
-         userDTO.dojoTag,
-         dbSpies.mockTx,
+        userDTO.dojoTag,
+        dbSpies.mockTx
       );
 
       // 2. Stripe calls
       expect(setupBillingSpy).toHaveBeenCalledWith({
         dojo: mockDojo,
         user: mockSavedUser,
-        txInstance:dbSpies.mockTx
-      })
+        txInstance: dbSpies.mockTx,
+      });
 
       // 3. Save user
       expect(saveUserSpy).toHaveBeenCalledWith(
@@ -456,7 +466,7 @@ describe("Auth Service", () => {
       );
 
       // 5. Generate tokens
-      expect(authService.generateAuthTokens).toHaveBeenCalledWith({
+      expect(generateAuthTokensSpy).toHaveBeenCalledWith({
         user: mockSavedUser,
         userAgent: undefined,
         userIp: undefined,
@@ -478,21 +488,21 @@ describe("Auth Service", () => {
     it("should throw ConflictException if email is already registered", async () => {
       getOneUserByEmailSpy.mockResolvedValue(buildUserMock());
       await expect(
-        authService.registerDojoAdmin({ dto: userDTO })
+        AuthService.registerDojoAdmin({ dto: userDTO })
       ).rejects.toThrow(ConflictException);
     });
 
     it("should throw ConflictException if username is already taken", async () => {
       getOneUserByUsernameSpy.mockResolvedValue(buildUserMock());
       await expect(
-        authService.registerDojoAdmin({ dto: userDTO })
+        AuthService.registerDojoAdmin({ dto: userDTO })
       ).rejects.toThrow(ConflictException);
     });
 
     it("should throw ConflictException if dojo tag is already taken", async () => {
       getOneDojoByTagSpy.mockResolvedValue(buildDojoMock());
       await expect(
-        authService.registerDojoAdmin({ dto: userDTO })
+        AuthService.registerDojoAdmin({ dto: userDTO })
       ).rejects.toThrow(ConflictException);
     });
 
@@ -501,7 +511,7 @@ describe("Auth Service", () => {
       sendWelcomeEmailSpy.mockRejectedValue(mailError);
 
       await expect(
-        authService.registerDojoAdmin({ dto: userDTO })
+        AuthService.registerDojoAdmin({ dto: userDTO })
       ).resolves.toBeDefined();
 
       expect(logSpy).toHaveBeenCalledWith(
@@ -511,7 +521,7 @@ describe("Auth Service", () => {
     });
 
     it("should use a provided transaction instance", async () => {
-      await authService.registerDojoAdmin({ dto: userDTO }, dbSpies.mockTx);
+      await AuthService.registerDojoAdmin({ dto: userDTO }, dbSpies.mockTx);
       expect(dbService.runInTransaction).not.toHaveBeenCalled();
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith(
         expect.objectContaining({ txInstance: dbSpies.mockTx })
@@ -521,16 +531,16 @@ describe("Auth Service", () => {
 
   describe("logoutUser", () => {
     const dto = buildRefreshTokenDtoMock({ refreshToken: "refresh_token" });
-    let revokeRefreshTokenSpy: jest.SpyInstance;
+    let revokeRefreshTokenSpy: MockInstance;
 
     beforeEach(() => {
-      revokeRefreshTokenSpy = jest
-        .spyOn(authService, "revokeRefreshToken")
+      revokeRefreshTokenSpy = vi
+        .spyOn(AuthService, "revokeRefreshToken")
         .mockResolvedValue({} as any);
     });
 
     it("should successfully logout user by revoking token", async () => {
-      await authService.logoutUser({ dto });
+      await AuthService.logoutUser({ dto });
       expect(revokeRefreshTokenSpy).toHaveBeenCalledWith({
         dto,
         txInstance: expect.anything(),
@@ -539,7 +549,7 @@ describe("Auth Service", () => {
 
     it("should propagate errors from revokeRefreshToken", async () => {
       revokeRefreshTokenSpy.mockRejectedValue(new UnauthorizedException());
-      await expect(authService.logoutUser({ dto })).rejects.toThrow(
+      await expect(AuthService.logoutUser({ dto })).rejects.toThrow(
         UnauthorizedException
       );
     });
@@ -549,7 +559,7 @@ describe("Auth Service", () => {
     it("should return false if username is taken", async () => {
       getOneUserByUsernameSpy.mockResolvedValue(buildUserMock());
 
-      const result = await authService.isUsernameAvailable({
+      const result = await AuthService.isUsernameAvailable({
         username: "taken_user",
       });
 
@@ -563,7 +573,7 @@ describe("Auth Service", () => {
     it("should return true if username is available", async () => {
       getOneUserByUsernameSpy.mockResolvedValue(null);
 
-      const result = await authService.isUsernameAvailable({
+      const result = await AuthService.isUsernameAvailable({
         username: "new_user",
       });
 
@@ -573,7 +583,7 @@ describe("Auth Service", () => {
     it("should use provided transaction instance", async () => {
       getOneUserByUsernameSpy.mockResolvedValue(null);
 
-      await authService.isUsernameAvailable({
+      await AuthService.isUsernameAvailable({
         username: "test",
         txInstance: dbSpies.mockTx,
       });
@@ -590,21 +600,21 @@ describe("Auth Service", () => {
     it("should return false if username is taken", async () => {
       getOneDojoByTagSpy.mockResolvedValue(buildDojoMock());
 
-      const result = await authService.isDojoTagAvailable({
+      const result = await AuthService.isDojoTagAvailable({
         tag: "taken_tag",
       });
 
       expect(result).toBe(false);
       expect(getOneDojoByTagSpy).toHaveBeenCalledWith(
         "taken_tag",
-        expect.anything(),
+        expect.anything()
       );
     });
 
     it("should return true if username is available", async () => {
       getOneDojoByTagSpy.mockResolvedValue(null);
 
-      const result = await authService.isDojoTagAvailable({
+      const result = await AuthService.isDojoTagAvailable({
         tag: "new_tag",
       });
 
@@ -633,38 +643,38 @@ describe("Auth Service", () => {
       email: "user@example.com",
     });
 
-    let runInTxSpy: jest.SpyInstance;
-    let verifyTokenSpy: jest.SpyInstance;
-    let findByProviderSpy: jest.SpyInstance;
-    let createOAuthAcctSpy: jest.SpyInstance;
-    let updateSpy: jest.SpyInstance;
-    let generateTokenSpy: jest.SpyInstance;
+    let runInTxSpy: MockInstance;
+    let verifyTokenSpy: MockInstance;
+    let findByProviderSpy: MockInstance;
+    let createOAuthAcctSpy: MockInstance;
+    let updateSpy: MockInstance;
+    let generateTokenSpy: MockInstance;
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
 
-      runInTxSpy = jest
+      runInTxSpy = vi
         .spyOn(dbService, "runInTransaction")
         .mockImplementation(async (cb) => cb(tx));
 
-      verifyTokenSpy = jest
-        .spyOn(firebaseService, "verifyFirebaseToken")
+      verifyTokenSpy = vi
+        .spyOn(FirebaseService, "verifyFirebaseToken")
         .mockResolvedValue(firebaseUser);
 
-      findByProviderSpy = jest
+      findByProviderSpy = vi
         .spyOn(UserOAuthAccountsRepository, "findByProviderAndProviderUserId")
         .mockResolvedValue(null);
 
-      createOAuthAcctSpy = jest
+      createOAuthAcctSpy = vi
         .spyOn(UserOAuthAccountsRepository, "createOAuthAcct")
         .mockResolvedValue(undefined);
 
-      updateSpy = jest
+      updateSpy = vi
         .spyOn(UserOAuthAccountsRepository, "updateOAuthAcct")
         .mockResolvedValue(undefined);
 
-      generateTokenSpy = jest
-        .spyOn(authService, "generateAuthTokens")
+      generateTokenSpy = vi
+        .spyOn(AuthService, "generateAuthTokens")
         .mockResolvedValue({
           accessToken: "access",
           refreshToken: "refresh",
@@ -675,7 +685,7 @@ describe("Auth Service", () => {
 
     describe("transaction handling", () => {
       it("should run inside dbService.runInTransaction when txInstance is not provided", async () => {
-        const result = await authService.firebaseSignIn({ dto });
+        const result = await AuthService.firebaseSignIn({ dto });
 
         expect(runInTxSpy).toHaveBeenCalled();
         expect(result).toBeInstanceOf(AuthResponseDTO);
@@ -689,11 +699,11 @@ describe("Auth Service", () => {
       });
 
       await expect(
-        authService.firebaseSignIn({ dto, txInstance: tx })
+        AuthService.firebaseSignIn({ dto, txInstance: tx })
       ).rejects.toThrow(UnauthorizedException);
 
       await expect(
-        authService.firebaseSignIn({ dto, txInstance: tx })
+        AuthService.firebaseSignIn({ dto, txInstance: tx })
       ).rejects.toThrow("Social Auth Email not verified");
     });
 
@@ -701,14 +711,14 @@ describe("Auth Service", () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
 
       await expect(
-        authService.firebaseSignIn({ dto, txInstance: tx })
+        AuthService.firebaseSignIn({ dto, txInstance: tx })
       ).rejects.toThrow(NotFoundException);
     });
 
     it("should create OAuth account if none exists", async () => {
       findByProviderSpy.mockResolvedValue(null);
 
-      const result = await authService.firebaseSignIn({
+      const result = await AuthService.firebaseSignIn({
         dto,
         txInstance: tx,
       });
@@ -731,7 +741,7 @@ describe("Auth Service", () => {
         buildOAuthAcctMock({ id: "oauth-id" })
       );
 
-      const result = await authService.firebaseSignIn({
+      const result = await AuthService.firebaseSignIn({
         dto,
         txInstance: tx,
       });
@@ -743,10 +753,10 @@ describe("Auth Service", () => {
     it("should pass userIp and userAgent to generateAuthTokens", async () => {
       findByProviderSpy.mockResolvedValue(null);
 
-      await authService.firebaseSignIn({
+      await AuthService.firebaseSignIn({
         dto,
         userIp: "127.0.0.1",
-        userAgent: "jest",
+        userAgent: "vi",
         txInstance: tx,
       });
 
@@ -754,7 +764,7 @@ describe("Auth Service", () => {
         expect.objectContaining({
           user,
           userIp: "127.0.0.1",
-          userAgent: "jest",
+          userAgent: "vi",
         })
       );
     });
@@ -764,34 +774,34 @@ describe("Auth Service", () => {
     const dto = { email: "test@example.com" };
     const user = buildUserMock({ email: dto.email });
 
-    let updateOTPSpy: jest.SpyInstance;
-    let createOTPSpy: jest.SpyInstance;
-    let generateOTPSpy: jest.SpyInstance;
-    let hashTokenSpy: jest.SpyInstance;
-    let sendPasswordResetMailSpy: jest.SpyInstance;
+    let updateOTPSpy: MockInstance;
+    let createOTPSpy: MockInstance;
+    let generateOTPSpy: MockInstance;
+    let hashTokenSpy: MockInstance;
+    let sendPasswordResetMailSpy: MockInstance;
 
     beforeEach(() => {
-      updateOTPSpy = jest
+      updateOTPSpy = vi
         .spyOn(PasswordResetOTPRepository, "updateOTP")
         .mockResolvedValue(undefined);
-      createOTPSpy = jest
+      createOTPSpy = vi
         .spyOn(PasswordResetOTPRepository, "createOTP")
         .mockResolvedValue(undefined);
-      generateOTPSpy = jest
+      generateOTPSpy = vi
         .spyOn(authUtils, "generateOTP")
         .mockReturnValue("123456");
-      hashTokenSpy = jest
+      hashTokenSpy = vi
         .spyOn(authUtils, "hashToken")
         .mockReturnValue("hashed_otp");
-      sendPasswordResetMailSpy = jest
-        .spyOn(mailerService, "sendPasswordResetMail")
+      sendPasswordResetMailSpy = vi
+        .spyOn(MailerService, "sendPasswordResetMail")
         .mockResolvedValue(undefined);
     });
 
     it("should initiate password reset for existing user", async () => {
       getOneUserByEmailSpy.mockResolvedValue(user);
 
-      await authService.initForgetPassword({ dto });
+      await AuthService.initForgetPassword({ dto });
 
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
         email: dto.email,
@@ -822,7 +832,7 @@ describe("Auth Service", () => {
     it("should silently fail if user is not found", async () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
 
-      await authService.initForgetPassword({ dto });
+      await AuthService.initForgetPassword({ dto });
 
       expect(getOneUserByEmailSpy).toHaveBeenCalled();
       expect(updateOTPSpy).not.toHaveBeenCalled();
@@ -834,24 +844,24 @@ describe("Auth Service", () => {
     const dto = { resetToken: "valid_token", newPassword: "new_password" };
     const decodedToken = { userId: "user-1", scope: "password_reset" };
 
-    let verifyTokenSpy: jest.SpyInstance;
-    let hashPasswordSpy: jest.SpyInstance;
-    let updateUserSpy: jest.SpyInstance;
+    let verifyTokenSpy: MockInstance;
+    let hashPasswordSpy: MockInstance;
+    let updateUserSpy: MockInstance;
 
     beforeEach(() => {
-      verifyTokenSpy = jest
+      verifyTokenSpy = vi
         .spyOn(authUtils, "verifyPasswordResetToken")
         .mockReturnValue(decodedToken);
-      hashPasswordSpy = jest
+      hashPasswordSpy = vi
         .spyOn(authUtils, "hashPassword")
         .mockResolvedValue("new_hashed_password");
-      updateUserSpy = jest
-        .spyOn(userService, "updateUser")
+      updateUserSpy = vi
+        .spyOn(UsersService, "updateUser")
         .mockResolvedValue(undefined);
     });
 
     it("should reset password and revoke refresh tokens", async () => {
-      await authService.resetPassword({ dto });
+      await AuthService.resetPassword({ dto });
 
       expect(verifyTokenSpy).toHaveBeenCalledWith(dto.resetToken);
       expect(hashPasswordSpy).toHaveBeenCalledWith(dto.newPassword);
@@ -872,7 +882,7 @@ describe("Auth Service", () => {
         throw new BadRequestException("Invalid token");
       });
 
-      await expect(authService.resetPassword({ dto })).rejects.toThrow(
+      await expect(AuthService.resetPassword({ dto })).rejects.toThrow(
         BadRequestException
       );
       expect(updateUserSpy).not.toHaveBeenCalled();
@@ -891,38 +901,38 @@ describe("Auth Service", () => {
       used: false,
     };
 
-    let findOneOTPSpy: jest.SpyInstance;
-    let incrementAttemptsSpy: jest.SpyInstance;
-    let updateOneOTPSpy: jest.SpyInstance;
-    let generateResetTokenSpy: jest.SpyInstance;
-    let hashTokenSpy: jest.SpyInstance;
+    let findOneOTPSpy: MockInstance;
+    let incrementAttemptsSpy: MockInstance;
+    let updateOneOTPSpy: MockInstance;
+    let generateResetTokenSpy: MockInstance;
+    let hashTokenSpy: MockInstance;
 
     beforeEach(() => {
-      jest.useFakeTimers();
-      findOneOTPSpy = jest.spyOn(PasswordResetOTPRepository, "findOne");
-      incrementAttemptsSpy = jest
+      vi.useFakeTimers();
+      findOneOTPSpy = vi.spyOn(PasswordResetOTPRepository, "findOne");
+      incrementAttemptsSpy = vi
         .spyOn(PasswordResetOTPRepository, "incrementActiveOTPsAttempts")
         .mockResolvedValue(undefined);
-      updateOneOTPSpy = jest
+      updateOneOTPSpy = vi
         .spyOn(PasswordResetOTPRepository, "updateOneOTP")
         .mockResolvedValue(undefined);
-      generateResetTokenSpy = jest
+      generateResetTokenSpy = vi
         .spyOn(authUtils, "generatePasswordResetToken")
         .mockReturnValue("reset_token");
-      hashTokenSpy = jest
+      hashTokenSpy = vi
         .spyOn(authUtils, "hashToken")
         .mockReturnValue("hashed_otp");
     });
 
     afterEach(() => {
-      jest.useRealTimers();
+      vi.useRealTimers();
     });
 
     it("should verify OTP successfully and return reset token", async () => {
       getOneUserByEmailSpy.mockResolvedValue(user);
       findOneOTPSpy.mockResolvedValue(otpRecord);
 
-      const result = await authService.verifyOtp({ dto });
+      const result = await AuthService.verifyOtp({ dto });
 
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
         email: dto.email,
@@ -941,7 +951,7 @@ describe("Auth Service", () => {
 
     it("should throw BadRequestException if user not found", async () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
-      await expect(authService.verifyOtp({ dto })).rejects.toThrow(
+      await expect(AuthService.verifyOtp({ dto })).rejects.toThrow(
         BadRequestException
       );
     }, 10000);
@@ -950,7 +960,7 @@ describe("Auth Service", () => {
       getOneUserByEmailSpy.mockResolvedValue(user);
       findOneOTPSpy.mockResolvedValue(null);
 
-      await expect(authService.verifyOtp({ dto })).rejects.toThrow(
+      await expect(AuthService.verifyOtp({ dto })).rejects.toThrow(
         BadRequestException
       );
 
@@ -968,7 +978,7 @@ describe("Auth Service", () => {
       };
       findOneOTPSpy.mockResolvedValue(exhaustedOtp);
 
-      await expect(authService.verifyOtp({ dto })).rejects.toThrow(
+      await expect(AuthService.verifyOtp({ dto })).rejects.toThrow(
         TooManyRequestsException
       );
 

@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from "./HttpException.js";
 
 export class TooManyRequestsException extends HttpException {
   constructor(message = "Too Many Requests") {

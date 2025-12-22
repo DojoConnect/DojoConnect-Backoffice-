@@ -1,8 +1,10 @@
 import { DecodedIdToken } from "firebase-admin/auth";
-import { SupportedOAuthProviders } from "../../constants/enums";
-import { IFirebaseUser } from "../../services/firebase.service";
+import { SupportedOAuthProviders } from "../../constants/enums.js";
+import { IFirebaseUser } from "../../services/firebase.service.js";
 
-export const buildDecodedIdTokenMock = (overrides?: Partial<DecodedIdToken>) => {
+export const buildDecodedIdTokenMock = (
+  overrides?: Partial<DecodedIdToken>
+) => {
   return {
     uid: "firebase-uid",
     email: "user@example.com",
@@ -14,14 +16,16 @@ export const buildDecodedIdTokenMock = (overrides?: Partial<DecodedIdToken>) => 
   };
 };
 
-export const buildFirebaseUserMock = (overrides? : Partial<IFirebaseUser>): IFirebaseUser => {
-    return {
-      uid: "firebase-uid",
-      email: "user@example.com",
-      emailVerified: true,
-      name: "John Doe",
-      picture: "avatar.png",
-      provider: SupportedOAuthProviders.Google,
-      ...overrides
-    };
-}
+export const buildFirebaseUserMock = (
+  overrides?: Partial<IFirebaseUser>
+): IFirebaseUser => {
+  return {
+    uid: "firebase-uid",
+    email: "user@example.com",
+    emailVerified: true,
+    name: "John Doe",
+    picture: "avatar.png",
+    provider: SupportedOAuthProviders.Google,
+    ...overrides,
+  };
+};

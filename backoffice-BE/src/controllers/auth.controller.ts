@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
 
-import * as authService from "../services/auth.service";
-import { formatApiResponse } from "../utils/api.utils";
-import { BadRequestException } from "../core/errors";
+import  {AuthService} from "../services/auth.service.js";
+import { formatApiResponse } from "../utils/api.utils.js";
+import { BadRequestException } from "../core/errors/index.js";
 
 export const handleRegisterDojoAdmin = async (req: Request, res: Response) => {
   const userIp = req.ip;
   const userAgent = req.headers["user-agent"];
 
-  const result = await authService.registerDojoAdmin({
+  const result = await AuthService.registerDojoAdmin({
     dto: req.body,
     userIp,
     userAgent,
@@ -26,7 +26,7 @@ export const loginUser = async (req: Request, res: Response) => {
   const userIp = req.ip;
   const userAgent = req.headers["user-agent"];
 
-  const result = await authService.loginUser({
+  const result = await AuthService.loginUser({
     dto: req.body,
     userIp,
     userAgent,
@@ -39,7 +39,7 @@ export const refreshUserToken = async (req: Request, res: Response) => {
   const userIp = req.ip;
   const userAgent = req.headers["user-agent"];
 
-  const result = await authService.refreshAccessToken({
+  const result = await AuthService.refreshAccessToken({
     dto: req.body,
     userIp,
     userAgent,
@@ -51,7 +51,7 @@ export const refreshUserToken = async (req: Request, res: Response) => {
 };
 
 export const logoutUser = async (req: Request, res: Response) => {
-  await authService.logoutUser({
+  await AuthService.logoutUser({
     dto: req.body,
   });
 
@@ -63,27 +63,23 @@ export const handleIsUsernameAvailable = async (
   res: Response
 ) => {
   const username = req.params.username as string;
-  const available = await authService.isUsernameAvailable({ username });
+  const available = await AuthService.isUsernameAvailable({ username });
 
   res.json(formatApiResponse({ data: { available } }));
 };
 
-export const handleIsDojoTagAvailable = async (
-  req: Request,
-  res: Response
-) => {
+export const handleIsDojoTagAvailable = async (req: Request, res: Response) => {
   const tag = req.params.tag as string;
-  const available = await authService.isDojoTagAvailable({ tag });
+  const available = await AuthService.isDojoTagAvailable({ tag });
 
   res.json(formatApiResponse({ data: { available } }));
 };
-
 
 export const handleFirebaseLogin = async (req: Request, res: Response) => {
   const userIp = req.ip;
   const userAgent = req.headers["user-agent"];
 
-  const result = await authService.firebaseSignIn({
+  const result = await AuthService.firebaseSignIn({
     dto: req.body,
     userIp,
     userAgent,
@@ -94,7 +90,7 @@ export const handleFirebaseLogin = async (req: Request, res: Response) => {
 
 export const handleInitForgetPassword = async (req: Request, res: Response) => {
   try {
-    await authService.initForgetPassword({ dto: req.body });
+    await AuthService.initForgetPassword({ dto: req.body });
   } catch (err) {
     console.log("Error while trying to Init forget password: ", err);
   } finally {
@@ -109,7 +105,7 @@ export const handleInitForgetPassword = async (req: Request, res: Response) => {
 
 export const handleVerifyOtp = async (req: Request, res: Response) => {
   try {
-    const result = await authService.verifyOtp({ dto: req.body });
+    const result = await AuthService.verifyOtp({ dto: req.body });
     res.json(formatApiResponse({ data: result }));
   } catch (error) {
     throw new BadRequestException("Invalid OTP or expired");
@@ -118,7 +114,7 @@ export const handleVerifyOtp = async (req: Request, res: Response) => {
 
 export const handleResetPassword = async (req: Request, res: Response) => {
   try {
-    await authService.resetPassword({ dto: req.body });
+    await AuthService.resetPassword({ dto: req.body });
     res.json(
       formatApiResponse({
         data: undefined,

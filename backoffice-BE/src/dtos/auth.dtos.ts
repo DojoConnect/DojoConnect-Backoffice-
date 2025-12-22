@@ -1,4 +1,4 @@
-import { UserDTO, UserDTOParams } from "./user.dtos";
+import { UserDTO, UserDTOParams } from "./user.dtos.js";
 
 export interface AuthTokens {
   accessToken: string;

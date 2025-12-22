@@ -1,4 +1,4 @@
-import { HttpException } from "./HttpException";
+import { HttpException } from "./HttpException.js";
 
 export class ForbiddenException extends HttpException {
   constructor(message = "Forbidden: Access is denied.") {

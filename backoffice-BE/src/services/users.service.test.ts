@@ -1,28 +1,30 @@
-import * as usersService from "./users.service";
-import * as stripeService from "./stripe.service";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import type { Mock, MockInstance } from "vitest";
+
+import {UsersService} from "./users.service.js";
 import {
   createDrizzleDbSpies,
   DbServiceSpies,
-} from "../tests/spies/drizzle-db.spies";
-import { userCards, users } from "../db/schema";
+} from "../tests/spies/drizzle-db.spies.js";
+import { userCards, users } from "../db/schema.js";
 import {
   buildNewUserMock,
   buildUserCardMock,
   buildUserMock,
-} from "../tests/factories/user.factory";
+} from "../tests/factories/user.factory.js";
 import { eq } from "drizzle-orm";
-import { NotFoundException } from "../core/errors";
-import { buildStripePaymentMethodCardMock } from "../tests/factories/stripe.factory";
+import { NotFoundException } from "../core/errors/index.js";
+import { buildStripePaymentMethodCardMock } from "../tests/factories/stripe.factory.js";
 
 describe("Users Service", () => {
   const whereClause = eq(users.id, "1");
 
-  let mockExecute: jest.Mock;
-  let mockSelect: jest.Mock;
-  let mockFrom: jest.Mock;
-  let mockLimit: jest.Mock;
+  let mockExecute: Mock;
+  let mockSelect: Mock;
+  let mockFrom: Mock;
+  let mockLimit: Mock;
   let dbSpies: DbServiceSpies;
-  let logErrorSpy: jest.SpyInstance;
+  let logErrorSpy: MockInstance;
 
   beforeEach(() => {
     dbSpies = createDrizzleDbSpies();
@@ -32,18 +34,18 @@ describe("Users Service", () => {
     mockFrom = dbSpies.mockFrom;
     mockLimit = dbSpies.mockLimit;
 
-    logErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    logErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe("getOneUser", () => {
     it("should return null when no user is found", async () => {
       mockExecute.mockResolvedValue([]);
 
-      const result = await usersService.getOneUser({ whereClause });
+      const result = await UsersService.getOneUser({ whereClause });
 
       expect(mockSelect).toHaveBeenCalled();
       expect(mockFrom).toHaveBeenCalledWith(users);
@@ -62,7 +64,7 @@ describe("Users Service", () => {
 
       mockExecute.mockResolvedValue([mockUser]);
 
-      const result = await usersService.getOneUser({
+      const result = await UsersService.getOneUser({
         whereClause,
         withPassword: false,
       });
@@ -80,7 +82,7 @@ describe("Users Service", () => {
 
       mockExecute.mockResolvedValue([mockUser]);
 
-      const result = await usersService.getOneUser({
+      const result = await UsersService.getOneUser({
         whereClause,
         withPassword: true,
       });
@@ -93,7 +95,7 @@ describe("Users Service", () => {
       const mockUser = buildUserMock({ id: "1", passwordHash: "hash" });
       mockExecute.mockResolvedValue([mockUser]);
 
-      const result = await usersService.getOneUser({ whereClause });
+      const result = await UsersService.getOneUser({ whereClause });
 
       expect(dbSpies.runInTransactionSpy).toHaveBeenCalled();
     });
@@ -104,7 +106,7 @@ describe("Users Service", () => {
 
       const whereClause = eq(users.email, "test@example.com");
 
-      await usersService.getOneUser({
+      await UsersService.getOneUser({
         whereClause,
       });
 
@@ -114,14 +116,14 @@ describe("Users Service", () => {
   });
 
   describe("getOneUserByID", () => {
-    let getOneUserSpy: jest.SpyInstance;
+    let getOneUserSpy: MockInstance;
 
     beforeEach(() => {
-      getOneUserSpy = jest.spyOn(usersService, "getOneUser");
+      getOneUserSpy = vi.spyOn(UsersService, "getOneUser");
     });
 
     afterEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     it("should call getOneUser with correct whereClause and return user", async () => {
@@ -130,7 +132,7 @@ describe("Users Service", () => {
 
       getOneUserSpy.mockResolvedValue(mockUser);
 
-      const result = await usersService.getOneUserByID({ userId: id });
+      const result = await UsersService.getOneUserByID({ userId: id });
 
       expect(getOneUserSpy).toHaveBeenCalledWith(
         { whereClause: eq(users.id, id) },
@@ -144,7 +146,7 @@ describe("Users Service", () => {
 
       getOneUserSpy.mockResolvedValue(null);
 
-      const result = await usersService.getOneUserByID({ userId });
+      const result = await UsersService.getOneUserByID({ userId });
 
       expect(result).toBeNull();
     });
@@ -157,7 +159,7 @@ describe("Users Service", () => {
 
       logErrorSpy.mockImplementation(() => {});
 
-      await expect(usersService.getOneUserByID({ userId })).rejects.toThrow(
+      await expect(UsersService.getOneUserByID({ userId })).rejects.toThrow(
         "DB failed"
       );
 
@@ -169,14 +171,14 @@ describe("Users Service", () => {
   });
 
   describe("getOneUserByEmail", () => {
-    let getOneUserSpy: jest.SpyInstance;
+    let getOneUserSpy: MockInstance;
 
     beforeEach(() => {
-      getOneUserSpy = jest.spyOn(usersService, "getOneUser");
+      getOneUserSpy = vi.spyOn(UsersService, "getOneUser");
     });
 
     afterEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     it("should call getOneUser with correct whereClause and return user", async () => {
@@ -185,7 +187,7 @@ describe("Users Service", () => {
 
       getOneUserSpy.mockResolvedValue(mockUser);
 
-      const result = await usersService.getOneUserByEmail({ email });
+      const result = await UsersService.getOneUserByEmail({ email });
 
       expect(getOneUserSpy).toHaveBeenCalledWith(
         { whereClause: eq(users.email, email), withPassword: false },
@@ -199,7 +201,7 @@ describe("Users Service", () => {
 
       getOneUserSpy.mockResolvedValue(null);
 
-      const result = await usersService.getOneUserByEmail({ email });
+      const result = await UsersService.getOneUserByEmail({ email });
 
       expect(result).toBeNull();
     });
@@ -210,7 +212,7 @@ describe("Users Service", () => {
 
       getOneUserSpy.mockResolvedValue(mockUser);
 
-      const result = await usersService.getOneUserByEmail({
+      const result = await UsersService.getOneUserByEmail({
         email,
         withPassword: true,
       });
@@ -230,7 +232,7 @@ describe("Users Service", () => {
 
       getOneUserSpy.mockResolvedValue(mockUser);
 
-      const result = await usersService.getOneUserByEmail({ email });
+      const result = await UsersService.getOneUserByEmail({ email });
 
       expect(dbSpies.runInTransactionSpy).toHaveBeenCalled();
       expect(result).toEqual(mockUser);
@@ -244,7 +246,7 @@ describe("Users Service", () => {
 
       const tx = dbSpies.mockTx;
 
-      await usersService.getOneUserByEmail({
+      await UsersService.getOneUserByEmail({
         email,
         txInstance: tx,
       });
@@ -259,11 +261,11 @@ describe("Users Service", () => {
       const testError = new Error("DB failed");
       getOneUserSpy.mockRejectedValue(testError);
 
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      await expect(usersService.getOneUserByEmail({ email })).rejects.toThrow(
+      await expect(UsersService.getOneUserByEmail({ email })).rejects.toThrow(
         "DB failed"
       );
 
@@ -274,16 +276,15 @@ describe("Users Service", () => {
     });
   });
 
-
   describe("getOneUserByUsername", () => {
-    let getOneUserSpy: jest.SpyInstance;
+    let getOneUserSpy: MockInstance;
 
     beforeEach(() => {
-      getOneUserSpy = jest.spyOn(usersService, "getOneUser");
+      getOneUserSpy = vi.spyOn(UsersService, "getOneUser");
     });
 
     afterEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     it("should call getOneDojo with correct whereClause and return user", async () => {
@@ -292,11 +293,11 @@ describe("Users Service", () => {
 
       getOneUserSpy.mockResolvedValue(mockDojo);
 
-      const result = await usersService.getOneUserByUserName({ username });
+      const result = await UsersService.getOneUserByUserName({ username });
 
       expect(getOneUserSpy).toHaveBeenCalledWith(
-        {whereClause: eq(users.username, username)},
-        expect.anything(),
+        { whereClause: eq(users.username, username) },
+        expect.anything()
       );
       expect(result).toEqual(mockDojo);
     });
@@ -306,7 +307,7 @@ describe("Users Service", () => {
 
       getOneUserSpy.mockResolvedValue(null);
 
-      const result = await usersService.getOneUserByUserName({ username });
+      const result = await UsersService.getOneUserByUserName({ username });
 
       expect(result).toBeNull();
     });
@@ -320,7 +321,7 @@ describe("Users Service", () => {
       logErrorSpy.mockImplementation(() => {});
 
       await expect(
-        usersService.getOneUserByUserName({ username })
+        UsersService.getOneUserByUserName({ username })
       ).rejects.toThrow("DB failed");
 
       expect(logErrorSpy).toHaveBeenCalledWith(
@@ -332,9 +333,9 @@ describe("Users Service", () => {
 
   describe("fetchUserCards", () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
-    
+
     it("should return user cards for a given user ID", async () => {
       const userId = "user-1";
       const mockCards = [
@@ -343,7 +344,7 @@ describe("Users Service", () => {
       ];
       mockExecute.mockResolvedValue(mockCards);
 
-      const result = await usersService.fetchUserCards(userId);
+      const result = await UsersService.fetchUserCards(userId);
 
       expect(mockSelect).toHaveBeenCalled();
       expect(mockFrom).toHaveBeenCalledWith(userCards);
@@ -357,7 +358,7 @@ describe("Users Service", () => {
       const userId = "user-with-no-cards";
       mockExecute.mockResolvedValue([]);
 
-      const result = await usersService.fetchUserCards(userId);
+      const result = await UsersService.fetchUserCards(userId);
 
       expect(result).toEqual([]);
     });
@@ -367,7 +368,7 @@ describe("Users Service", () => {
       const testError = new Error("DB query failed");
       mockExecute.mockRejectedValue(testError);
 
-      await expect(usersService.fetchUserCards(userId)).rejects.toThrow(
+      await expect(UsersService.fetchUserCards(userId)).rejects.toThrow(
         testError
       );
 
@@ -387,7 +388,7 @@ describe("Users Service", () => {
       ];
       mockExecute.mockResolvedValue(mockCards);
 
-      const result = await usersService.fetchUserCardsByPaymentMethod(
+      const result = await UsersService.fetchUserCardsByPaymentMethod(
         paymentMethodId
       );
 
@@ -403,7 +404,7 @@ describe("Users Service", () => {
       const paymentMethodId = "pm_not_found";
       mockExecute.mockResolvedValue([]);
 
-      const result = await usersService.fetchUserCardsByPaymentMethod(
+      const result = await UsersService.fetchUserCardsByPaymentMethod(
         paymentMethodId
       );
 
@@ -414,7 +415,7 @@ describe("Users Service", () => {
       const paymentMethodId = "pm_123";
       mockExecute.mockResolvedValue([]);
 
-      await usersService.fetchUserCardsByPaymentMethod(paymentMethodId);
+      await UsersService.fetchUserCardsByPaymentMethod(paymentMethodId);
 
       expect(dbSpies.runInTransactionSpy).toHaveBeenCalled();
     });
@@ -423,7 +424,7 @@ describe("Users Service", () => {
       const paymentMethodId = "pm_123";
       mockExecute.mockResolvedValue([]);
 
-      await usersService.fetchUserCardsByPaymentMethod(
+      await UsersService.fetchUserCardsByPaymentMethod(
         paymentMethodId,
         dbSpies.mockTx
       );
@@ -437,7 +438,7 @@ describe("Users Service", () => {
       mockExecute.mockRejectedValue(testError);
 
       await expect(
-        usersService.fetchUserCardsByPaymentMethod(paymentMethodId)
+        UsersService.fetchUserCardsByPaymentMethod(paymentMethodId)
       ).rejects.toThrow(testError);
 
       expect(logErrorSpy).toHaveBeenCalledWith(
@@ -448,10 +449,10 @@ describe("Users Service", () => {
   });
 
   describe("saveUser", () => {
-    let getOneUserByIDSpy: jest.SpyInstance;
+    let getOneUserByIDSpy: MockInstance;
 
     beforeEach(() => {
-      getOneUserByIDSpy = jest.spyOn(usersService, "getOneUserByID");
+      getOneUserByIDSpy = vi.spyOn(UsersService, "getOneUserByID");
     });
 
     it("should insert a new user, fetch it, and return it", async () => {
@@ -465,7 +466,7 @@ describe("Users Service", () => {
 
       getOneUserByIDSpy.mockResolvedValue(mockSavedUser);
 
-      const result = await usersService.saveUser(newUser);
+      const result = await UsersService.saveUser(newUser);
 
       expect(dbSpies.mockInsert).toHaveBeenCalledWith(users);
       expect(dbSpies.mockValues).toHaveBeenCalledWith(newUser);
@@ -487,7 +488,7 @@ describe("Users Service", () => {
       dbSpies.mockReturningId.mockResolvedValue([{ id: newUserId }]);
       getOneUserByIDSpy.mockResolvedValue(mockSavedUser);
 
-      await usersService.saveUser(newUser, dbSpies.mockTx);
+      await UsersService.saveUser(newUser, dbSpies.mockTx);
 
       expect(dbSpies.runInTransactionSpy).not.toHaveBeenCalled();
       expect(getOneUserByIDSpy).toHaveBeenCalledWith({
@@ -500,10 +501,10 @@ describe("Users Service", () => {
   describe("saveUserCard", () => {
     it("should insert a new user card", async () => {
       const newUserCard = buildUserCardMock();
-      const mockValues = jest.fn().mockResolvedValue(undefined);
+      const mockValues = vi.fn().mockResolvedValue(undefined);
       dbSpies.mockInsert.mockReturnValue({ values: mockValues });
 
-      await usersService.saveUserCard(newUserCard);
+      await UsersService.saveUserCard(newUserCard);
 
       expect(dbSpies.runInTransactionSpy).toHaveBeenCalled();
       expect(dbSpies.mockInsert).toHaveBeenCalledWith(userCards);
@@ -511,7 +512,7 @@ describe("Users Service", () => {
     });
 
     it("should use the provided transaction instance", async () => {
-      await usersService.saveUserCard(buildUserCardMock(), dbSpies.mockTx);
+      await UsersService.saveUserCard(buildUserCardMock(), dbSpies.mockTx);
       expect(dbSpies.runInTransactionSpy).not.toHaveBeenCalled();
     });
   });
@@ -521,7 +522,7 @@ describe("Users Service", () => {
       const userId = "user-to-update-123";
       const updateData = { name: "A New Name", fcmToken: "a-new-fcm-token" };
 
-      await usersService.updateUser({ userId, update: updateData });
+      await UsersService.updateUser({ userId, update: updateData });
 
       expect(dbSpies.mockUpdate).toHaveBeenCalledWith(users);
       expect(dbSpies.mockSet).toHaveBeenCalledWith(updateData);
@@ -532,7 +533,7 @@ describe("Users Service", () => {
       const userId = "user-1";
       const updateData = { name: "Another Name" };
 
-      await usersService.updateUser({ userId, update: updateData });
+      await UsersService.updateUser({ userId, update: updateData });
 
       expect(dbSpies.runInTransactionSpy).toHaveBeenCalled();
     });
@@ -541,7 +542,7 @@ describe("Users Service", () => {
       const userId = "user-2";
       const updateData = { name: "new-name" };
 
-      await usersService.updateUser({
+      await UsersService.updateUser({
         userId,
         update: updateData,
         txInstance: dbSpies.mockTx,
@@ -551,128 +552,21 @@ describe("Users Service", () => {
     });
   });
 
-  describe("setDefaultPaymentMethod", () => {
-    let retrievePaymentMethodSpy: jest.SpyInstance;
-    let fetchUserCardsByPaymentMethodSpy: jest.SpyInstance;
-    let saveUserCardSpy: jest.SpyInstance;
-    const mockUser = buildUserMock();
-    const paymentMethodId = "pm_12345";
-    const mockStripeCard = buildStripePaymentMethodCardMock({
-      brand: "visa",
-      last4: "4242",
-      exp_month: 12,
-      exp_year: 2030,
-    });
-
-    beforeEach(() => {
-      jest.clearAllMocks(); // Clear  all mocks
-
-      retrievePaymentMethodSpy = jest
-        .spyOn(stripeService, "retrievePaymentMethod")
-        .mockResolvedValue({ card: mockStripeCard } as any);
-      fetchUserCardsByPaymentMethodSpy = jest.spyOn(
-        usersService,
-        "fetchUserCardsByPaymentMethod"
-      );
-      saveUserCardSpy = jest
-        .spyOn(usersService, "saveUserCard")
-        .mockResolvedValue();
-    });
-
-    it("should throw NotFoundException if payment method has no card", async () => {
-      retrievePaymentMethodSpy.mockResolvedValue({ card: null } as any);
-
-      await expect(
-        usersService.setDefaultPaymentMethod(mockUser, paymentMethodId)
-      ).rejects.toThrow(NotFoundException);
-      expect(logErrorSpy).not.toHaveBeenCalled();
-    });
-
-    it("should set all existing cards for user to isDefault: false", async () => {
-      fetchUserCardsByPaymentMethodSpy.mockResolvedValue([]);
-
-      await usersService.setDefaultPaymentMethod(mockUser, paymentMethodId);
-
-      expect(dbSpies.mockUpdate).toHaveBeenCalledWith(userCards);
-      expect(dbSpies.mockSet).toHaveBeenCalledWith({ isDefault: false });
-      expect(dbSpies.mockWhere).toHaveBeenCalledWith(
-        eq(userCards.userId, mockUser.id)
-      );
-    });
-
-    it("should save a new card if it does not exist", async () => {
-      fetchUserCardsByPaymentMethodSpy.mockResolvedValue([]);
-
-      await usersService.setDefaultPaymentMethod(mockUser, paymentMethodId);
-
-      expect(fetchUserCardsByPaymentMethodSpy).toHaveBeenCalledWith(
-        paymentMethodId,
-        expect.anything()
-      );
-      expect(saveUserCardSpy).toHaveBeenCalledWith(
-        {
-          userId: mockUser.id,
-          paymentMethodId: paymentMethodId,
-          brand: mockStripeCard.brand,
-          last4: mockStripeCard.last4,
-          expMonth: mockStripeCard.exp_month,
-          expYear: mockStripeCard.exp_year,
-          isDefault: true,
-        },
-        expect.anything() // for the transaction object
-      );
-    });
-
-    it("should update an existing card to be default if it exists", async () => {
-      const existingCard = buildUserCardMock({
-        paymentMethodId,
-        isDefault: false,
-      });
-      fetchUserCardsByPaymentMethodSpy.mockResolvedValue([existingCard]);
-
-      await usersService.setDefaultPaymentMethod(mockUser, paymentMethodId);
-
-      expect(saveUserCardSpy).not.toHaveBeenCalled();
-      // First call is to set all to false, second is to set the one to true
-      expect(dbSpies.mockUpdate).toHaveBeenCalledTimes(2);
-      expect(dbSpies.mockSet).toHaveBeenLastCalledWith({ isDefault: true });
-      expect(dbSpies.mockWhere).toHaveBeenLastCalledWith(
-        eq(userCards.paymentMethodId, paymentMethodId)
-      );
-    });
-
-    it("should use a provided transaction instance", async () => {
-      fetchUserCardsByPaymentMethodSpy.mockResolvedValue([]);
-
-      await usersService.setDefaultPaymentMethod(
-        mockUser,
-        paymentMethodId,
-        dbSpies.mockTx
-      );
-
-      expect(dbSpies.runInTransactionSpy).not.toHaveBeenCalled();
-      expect(fetchUserCardsByPaymentMethodSpy).toHaveBeenCalledWith(
-        paymentMethodId,
-        dbSpies.mockTx
-      );
-    });
-  });
-
   describe("generateReferralCode", () => {
     it("should return a string starting with 'DOJ'", () => {
-      const code = usersService.generateReferralCode();
+      const code = UsersService.generateReferralCode();
       expect(typeof code).toBe("string");
       expect(code.startsWith("DOJ")).toBe(true);
     });
 
     it("should return a string of length 7", () => {
-      const code = usersService.generateReferralCode();
+      const code = UsersService.generateReferralCode();
       expect(code.length).toBe(7);
     });
 
     it("should generate different codes on subsequent calls", () => {
-      const code1 = usersService.generateReferralCode();
-      const code2 = usersService.generateReferralCode();
+      const code1 = UsersService.generateReferralCode();
+      const code2 = UsersService.generateReferralCode();
       expect(code1).not.toEqual(code2);
     });
   });

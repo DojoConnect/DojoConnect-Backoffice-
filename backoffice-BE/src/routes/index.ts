@@ -1,9 +1,9 @@
 import { Router } from "express";
-import authRouter from "./auth.routes";
-import dojosRouter from "./dojos.route";
-import appointmentsRouter from "./appointments.route";
-import devRouter from "./dev.routes";
-import billingRouter from "./billing.routes";
+import authRouter from "./auth.routes.js";
+import dojosRouter from "./dojos.routes.js";
+import appointmentsRouter from "./appointments.routes.js";
+import devRouter from "./dev.routes.js";
+import billingRouter from "./billing.routes.js";
 
 const router = Router();
 
