@@ -10,45 +10,48 @@ type SendPasswordResetMailParams = {
 
 let transporterInstance: any = null;
 
-export const getTransporter = () => {
-  if (transporterInstance) {
+export class MailerService {
+  static getTransporter = () => {
+    if (transporterInstance) {
+      return transporterInstance;
+    }
+
+    transporterInstance = nodemailer.createTransport({
+      host: "smtp.zoho.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: AppConfig.ZOHO_EMAIL,
+        pass: AppConfig.ZOHO_PASSWORD,
+      },
+      connectionTimeout: 20000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
+      logger: true,
+      debug: true,
+      tls: { servername: "smtp.zoho.com" },
+    });
+
     return transporterInstance;
-  }
+  };
 
-  transporterInstance = nodemailer.createTransport({
-    host: "smtp.zoho.com",
-    port: 465,
-    secure: true,
-    auth: {
-      user: AppConfig.ZOHO_EMAIL,
-      pass: AppConfig.ZOHO_PASSWORD,
-    },
-    connectionTimeout: 20000,
-    greetingTimeout: 15000,
-    socketTimeout: 30000,
-    logger: true,
-    debug: true,
-    tls: { servername: "smtp.zoho.com" },
-  });
-
-  return transporterInstance;
-};
-
-// 1. Appointment Request Confirmation Email
-export const sendAppointmentRequestConfirmation = async (
-  to,
-  parentName,
-  appointmentType,
-  reason,
-  timeRange,
-  numberOfChildren,
-  dojoName
-) => {
-  const mailOptions = {
-    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
+  // 1. Appointment Request Confirmation Email
+  static sendAppointmentRequestConfirmation = async (
     to,
-    subject: "Your Appointment Request Has Been Received",
-    html: `
+    parentName,
+    appointmentType,
+    reason,
+    timeRange,
+    numberOfChildren,
+    dojoName
+  ) => {
+    const mailOptions = {
+      from: `"Dojo Connect" <${
+        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
+      }>`,
+      to,
+      subject: "Your Appointment Request Has Been Received",
+      html: `
       <h2>Hello ${parentName},</h2>
       <p>Thank you for requesting an appointment with <strong>${dojoName}</strong>. We've successfully received your request and our team will review the details.</p>
       
@@ -66,38 +69,40 @@ export const sendAppointmentRequestConfirmation = async (
       
       <p>Best regards,<br/>The ${dojoName} Team</p>
     `,
+    };
+
+    try {
+      await MailerService.getTransporter().sendMail(mailOptions);
+      console.log(`📧 Appointment request confirmation email sent to ${to}`);
+    } catch (err: any) {
+      console.error("❌ Error sending email:", err.message);
+    }
   };
 
-  try {
-    await getTransporter().sendMail(mailOptions);
-    console.log(`📧 Appointment request confirmation email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-};
-
-// 2. Appointment Scheduled Email - Physical Meeting
-export const sendPhysicalAppointmentScheduled = async (
-  to,
-  parentName,
-  scheduledDate,
-  startTime,
-  dojoName,
-  dojoAddress,
-  preferredContactMethod
-) => {
-  const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
+  // 2. Appointment Scheduled Email - Physical Meeting
+  static sendPhysicalAppointmentScheduled = async (
     to,
-    subject: "Your Appointment Has Been Scheduled",
-    html: `
+    parentName,
+    scheduledDate,
+    startTime,
+    dojoName,
+    dojoAddress,
+    preferredContactMethod
+  ) => {
+    const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const mailOptions = {
+      from: `"Dojo Connect" <${
+        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
+      }>`,
+      to,
+      subject: "Your Appointment Has Been Scheduled",
+      html: `
       <h2>Hello ${parentName},</h2>
       <p>Your appointment with <strong>${dojoName}</strong> has been scheduled successfully.</p>
       
@@ -117,38 +122,40 @@ export const sendPhysicalAppointmentScheduled = async (
       
       <p>Best regards,<br/>The ${dojoName} Team</p>
     `,
+    };
+
+    try {
+      await MailerService.getTransporter().sendMail(mailOptions);
+      console.log(`📧 Physical appointment scheduled email sent to ${to}`);
+    } catch (err: any) {
+      console.error("❌ Error sending email:", err.message);
+    }
   };
 
-  try {
-    await getTransporter().sendMail(mailOptions);
-    console.log(`📧 Physical appointment scheduled email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-};
-
-// 3. Appointment Scheduled Email - Online
-export const sendOnlineAppointmentScheduled = async (
-  to,
-  parentName,
-  scheduledDate,
-  startTime,
-  dojoName,
-  meetingLink,
-  preferredContactMethod
-) => {
-  const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
+  // 3. Appointment Scheduled Email - Online
+  static sendOnlineAppointmentScheduled = async (
     to,
-    subject: "Your Online Appointment Has Been Scheduled",
-    html: `
+    parentName,
+    scheduledDate,
+    startTime,
+    dojoName,
+    meetingLink,
+    preferredContactMethod
+  ) => {
+    const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const mailOptions = {
+      from: `"Dojo Connect" <${
+        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
+      }>`,
+      to,
+      subject: "Your Online Appointment Has Been Scheduled",
+      html: `
       <h2>Hello ${parentName},</h2>
       <p>Your online appointment with <strong>${dojoName}</strong> has been scheduled successfully.</p>
       
@@ -167,37 +174,39 @@ export const sendOnlineAppointmentScheduled = async (
       
       <p>Best regards,<br/>The ${dojoName} Team</p>
     `,
+    };
+
+    try {
+      await MailerService.getTransporter().sendMail(mailOptions);
+      console.log(`📧 Online appointment scheduled email sent to ${to}`);
+    } catch (err: any) {
+      console.error("❌ Error sending email:", err.message);
+    }
   };
 
-  try {
-    await getTransporter().sendMail(mailOptions);
-    console.log(`📧 Online appointment scheduled email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-};
-
-// 4. Appointment Cancellation Email
-export const sendAppointmentCancellation = async (
-  to,
-  parentName,
-  scheduledDate,
-  startTime,
-  dojoName,
-  dojoWebPageUrl
-) => {
-  const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
+  // 4. Appointment Cancellation Email
+  static sendAppointmentCancellation = async (
     to,
-    subject: "Appointment Canceled",
-    html: `
+    parentName,
+    scheduledDate,
+    startTime,
+    dojoName,
+    dojoWebPageUrl
+  ) => {
+    const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const mailOptions = {
+      from: `"Dojo Connect" <${
+        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
+      }>`,
+      to,
+      subject: "Appointment Canceled",
+      html: `
       <h2>Hello ${parentName},</h2>
       <p>We regret to inform you that your scheduled appointment with <strong>${dojoName}</strong> on <strong>${formattedDate}</strong> at <strong>${startTime}</strong> has been canceled.</p>
       
@@ -211,37 +220,39 @@ export const sendAppointmentCancellation = async (
       
       <p>Best regards,<br/>The ${dojoName} Team</p>
     `,
+    };
+
+    try {
+      await MailerService.getTransporter().sendMail(mailOptions);
+      console.log(`📧 Appointment cancellation email sent to ${to}`);
+    } catch (err: any) {
+      console.error("❌ Error sending email:", err.message);
+    }
   };
 
-  try {
-    await getTransporter().sendMail(mailOptions);
-    console.log(`📧 Appointment cancellation email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-};
-
-// 5. Appointment Reschedule Email - Online
-export const sendOnlineAppointmentReschedule = async (
-  to,
-  parentName,
-  newDate,
-  newTime,
-  dojoName,
-  newMeetingLink
-) => {
-  const formattedDate = new Date(newDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
+  // 5. Appointment Reschedule Email - Online
+  static sendOnlineAppointmentReschedule = async (
     to,
-    subject: "Appointment Update – Rescheduled",
-    html: `
+    parentName,
+    newDate,
+    newTime,
+    dojoName,
+    newMeetingLink
+  ) => {
+    const formattedDate = new Date(newDate).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const mailOptions = {
+      from: `"Dojo Connect" <${
+        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
+      }>`,
+      to,
+      subject: "Appointment Update – Rescheduled",
+      html: `
       <h2>Hello ${parentName},</h2>
       <p>Your online appointment with <strong>${dojoName}</strong> has been rescheduled. Please find the updated details below:</p>
       
@@ -256,37 +267,39 @@ export const sendOnlineAppointmentReschedule = async (
       
       <p>Best regards,<br/>The ${dojoName} Team</p>
     `,
+    };
+
+    try {
+      await MailerService.getTransporter().sendMail(mailOptions);
+      console.log(`📧 Online appointment reschedule email sent to ${to}`);
+    } catch (err: any) {
+      console.error("❌ Error sending email:", err.message);
+    }
   };
 
-  try {
-    await getTransporter().sendMail(mailOptions);
-    console.log(`📧 Online appointment reschedule email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-};
-
-// 6. Appointment Reschedule Email - Physical
-export const sendPhysicalAppointmentReschedule = async (
-  to,
-  parentName,
-  newDate,
-  newTime,
-  dojoName,
-  newAddress
-) => {
-  const formattedDate = new Date(newDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
+  // 6. Appointment Reschedule Email - Physical
+  static sendPhysicalAppointmentReschedule = async (
     to,
-    subject: "Appointment Update – Rescheduled",
-    html: `
+    parentName,
+    newDate,
+    newTime,
+    dojoName,
+    newAddress
+  ) => {
+    const formattedDate = new Date(newDate).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    const mailOptions = {
+      from: `"Dojo Connect" <${
+        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
+      }>`,
+      to,
+      subject: "Appointment Update – Rescheduled",
+      html: `
       <h2>Hello ${parentName},</h2>
       <p>Your in-person appointment with <strong>${dojoName}</strong> has been rescheduled. Please find the updated details below:</p>
       
@@ -301,39 +314,44 @@ export const sendPhysicalAppointmentReschedule = async (
       
       <p>Best regards
     `,
+    };
+
+    try {
+      await MailerService.getTransporter().sendMail(mailOptions);
+      console.log(`📧 Physical appointment reschedule email sent to ${to}`);
+    } catch (err: any) {
+      console.error("❌ Error sending email:", err.message);
+    }
   };
 
-  try {
-    await getTransporter().sendMail(mailOptions);
-    console.log(`📧 Physical appointment reschedule email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-};
-
-// 7. Trial Class Booking Confirmation Email
-export const sendTrialClassBookingConfirmation = async (
-  to,
-  parentName,
-  className,
-  instructorName,
-  appointmentDate,
-  numberOfChildren,
-  trialFee,
-  dojoName
-) => {
-  const formattedDate = new Date(appointmentDate).toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const mailOptions = {
-    from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
+  // 7. Trial Class Booking Confirmation Email
+  static sendTrialClassBookingConfirmation = async (
     to,
-    subject: "Your Trial Class Booking Has Been Confirmed",
-    html: `
+    parentName,
+    className,
+    instructorName,
+    appointmentDate,
+    numberOfChildren,
+    trialFee,
+    dojoName
+  ) => {
+    const formattedDate = new Date(appointmentDate).toLocaleDateString(
+      "en-US",
+      {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }
+    );
+
+    const mailOptions = {
+      from: `"Dojo Connect" <${
+        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
+      }>`,
+      to,
+      subject: "Your Trial Class Booking Has Been Confirmed",
+      html: `
       <h2>Hello ${parentName},</h2>
       <p>Thank you for booking a trial class with <strong>${dojoName}</strong>! We're excited to have you join us.</p>
       
@@ -365,63 +383,59 @@ export const sendTrialClassBookingConfirmation = async (
       
       <p>Best regards,<br/>The ${dojoName} Team</p>
     `,
+    };
+
+    try {
+      await MailerService.getTransporter().sendMail(mailOptions);
+      console.log(`📧 Trial class booking confirmation email sent to ${to}`);
+    } catch (err: any) {
+      console.error("❌ Error sending email:", err.message);
+    }
   };
 
-  try {
-    await getTransporter().sendMail(mailOptions);
-    console.log(`📧 Trial class booking confirmation email sent to ${to}`);
-  } catch (err: any) {
-    console.error("❌ Error sending email:", err.message);
-  }
-};
+  static sendWelcomeEmail = async (dest: string, name: string, role: Role) => {
+    try {
+      let subject, body;
 
-export const sendWelcomeEmail = async (
-  dest: string,
-  name: string,
-  role: Role
-) => {
-  try {
-    let subject, body;
-
-    if (role === Role.DojoAdmin) {
-      subject = "Welcome to Dojo Connect - Your Admin Dashboard is Ready";
-      body = `<p>Hi <strong>${name}</strong>,</p>
+      if (role === Role.DojoAdmin) {
+        subject = "Welcome to Dojo Connect - Your Admin Dashboard is Ready";
+        body = `<p>Hi <strong>${name}</strong>,</p>
                     <p>Welcome to Dojo Connect! Your admin access has been successfully activated.</p>
                     <p>As an admin, you now have full control to manage your dojo.</p>
                     <p>Warm regards,<br>The Dojo Connect Team</p>`;
-    } else {
-      subject = "Welcome to Dojo Connect";
-      body = `<p>Hi <strong>${name}</strong>,</p>
+      } else {
+        subject = "Welcome to Dojo Connect";
+        body = `<p>Hi <strong>${name}</strong>,</p>
                     <p>Your account has been successfully created as a <strong>${role}</strong>.</p>
                     <p>You can now login and explore your dashboard.</p>
                     <p>– The Dojo Connect Team</p>`;
+      }
+
+      const mailOptions = {
+        from: '"Dojo Connect" <support@dojoconnect.app>',
+        to: dest,
+        subject: subject,
+        html: body,
+        charset: "UTF-8",
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(`Welcome email failed to ${dest}: ${error.message}`);
     }
+  };
 
-    const mailOptions = {
-      from: '"Dojo Connect" <support@dojoconnect.app>',
-      to: dest,
-      subject: subject,
-      html: body,
-      charset: "UTF-8",
-    };
-
-    await getTransporter().sendMail(mailOptions);
-  } catch (error: any) {
-    console.error(`Welcome email failed to ${dest}: ${error.message}`);
-  }
-};
-
-export const sendPasswordResetMail = async ({
-  dest,
-  name,
-  otp,
-}: SendPasswordResetMailParams): Promise<void> => {
-  try {
-    const mailOptions = {
-      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
-      to: dest,
-      subject: "Your Dojo Connect Password Reset Code",
-      html: `
+  static sendPasswordResetMail = async ({
+    dest,
+    name,
+    otp,
+  }: SendPasswordResetMailParams): Promise<void> => {
+    try {
+      const mailOptions = {
+        from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+        to: dest,
+        subject: "Your Dojo Connect Password Reset Code",
+        html: `
       <p>Hi <strong>${name}</strong>,</p>
       <p>We received a request to reset your password.</p>
       <p>Your password reset code is:</p>
@@ -430,10 +444,11 @@ export const sendPasswordResetMail = async ({
       <p>If you didn’t request this, you can ignore this email.</p>
       <p>– Dojo Connect Team</p>
     `,
-    };
+      };
 
-    await getTransporter().sendMail(mailOptions);
-  } catch (error: any) {
-    console.error(`Password reset email failed to ${dest}: ${error.message}`);
-  }
-};
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(`Password reset email failed to ${dest}: ${error.message}`);
+    }
+  };
+}

@@ -1,7 +1,7 @@
 import { CreateAppointmentDto } from "../dtos/appointments.dtos.js";
 import * as dbService from "./db.service.js";
-import * as mailerService from "./mailer.service.js";
-import * as dojosService from "./dojos.service.js";
+import  {MailerService} from "./mailer.service.js";
+import  {DojosService} from "./dojos.service.js";
 import { NotFoundException } from "../core/errors/index.js";
 
 export interface IAppointment {
@@ -48,7 +48,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
 
     const connection = await dbService.getBackOfficeDB();
 
-    const dojo = await dojosService.getOneDojoByID(dojo_id);
+    const dojo = await DojosService.getOneDojoByID(dojo_id);
 
     if (!dojo) {
       throw new NotFoundException(`Dojo with ID ${dojo_id} not found`);
@@ -79,7 +79,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
     );
 
     // Send confirmation email to parent
-    await mailerService.sendAppointmentRequestConfirmation(
+    await MailerService.sendAppointmentRequestConfirmation(
       email_address,
       parent_name,
       appointment_type,

@@ -13,7 +13,7 @@ import path from "path";
 
 import AppConfig from "./config/AppConfig.js";
 import * as dbService from "./services/db.service.js";
-import * as mailerService from "./services/mailer.service.js";
+import {MailerService} from "./services/mailer.service.js";
 import { notFound } from "./middlewares/notFound.middleware.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import routes from "./routes/index.js";
@@ -1224,7 +1224,7 @@ app.post("/trial-class-bookings", async (req, res) => {
     const dojoName = dojoRows.length > 0 ? dojoRows[0].dojo_name : "Trial Dojo";
 
     // Send trial class booking confirmation email
-    await mailerService.sendTrialClassBookingConfirmation(
+    await MailerService.sendTrialClassBookingConfirmation(
       email,
       parent_name,
       class_name,
@@ -1424,7 +1424,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
     const displayTime = start_time; // Keep original format (e.g., "10:00 AM")
 
     if (address_text != null || address_text != "") {
-      await mailerService.sendPhysicalAppointmentScheduled(
+      await MailerService.sendPhysicalAppointmentScheduled(
         parent_email,
         parent_name || "Parent",
         scheduled_date,
@@ -1434,7 +1434,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
         preferredContactMethod
       );
     } else if (meeting_link) {
-      await mailerService.sendOnlineAppointmentScheduled(
+      await MailerService.sendOnlineAppointmentScheduled(
         parent_email,
         parent_name || "Parent",
         scheduled_date,
@@ -1578,7 +1578,7 @@ app.post("/admin/cancel-appointment", async (req, res) => {
     );
 
     // Send cancellation email
-    await mailerService.sendAppointmentCancellation(
+    await MailerService.sendAppointmentCancellation(
       parent_email,
       parent_name || "Parent",
       scheduled_date,
@@ -1677,7 +1677,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
     const displayTime = new_start_time; // Keep original format (e.g., "10:00 AM")
 
     if (appointmentType === "Physical" && new_address_text) {
-      await mailerService.sendPhysicalAppointmentReschedule(
+      await MailerService.sendPhysicalAppointmentReschedule(
         parent_email,
         parent_name || "Parent",
         new_scheduled_date,
@@ -1686,7 +1686,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
         new_address_text
       );
     } else if (new_meeting_link) {
-      await mailerService.sendOnlineAppointmentReschedule(
+      await MailerService.sendOnlineAppointmentReschedule(
         parent_email,
         parent_name || "Parent",
         new_scheduled_date,
@@ -2706,7 +2706,7 @@ app.post("/test-email", async (req, res) => {
       `,
     };
 
-    await mailerService.getTransporter().sendMail(mailOptions);
+    await MailerService.getTransporter().sendMail(mailOptions);
     console.log(`📧 Test email sent to ${email}`);
 
     res.json({

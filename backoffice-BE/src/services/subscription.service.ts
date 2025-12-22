@@ -1,6 +1,6 @@
 import * as dbService from "../db/index.js";
 import  {StripeService} from "./stripe.service.js";
-import * as dojosService from "./dojos.service.js";
+import { DojosService} from "./dojos.service.js";
 import {UsersService} from "./users.service.js";
 import { ConflictException } from "../core/errors/index.js";
 import { DojoRepository, IDojo } from "../repositories/dojo.repository.js";
@@ -122,7 +122,7 @@ export class SubscriptionService {
         tx
       );
 
-      await dojosService.updateDojo({
+      await DojosService.updateDojo({
         dojoId: dojo.id,
         update: {
           status: DojoStatus.OnboardingIncomplete,
@@ -148,7 +148,7 @@ export class SubscriptionService {
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
-      const dojo = await dojosService.getOneDojoByUserId({
+      const dojo = await DojosService.getOneDojoByUserId({
         userId: user.id,
         txInstance: tx,
       });

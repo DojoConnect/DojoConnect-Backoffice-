@@ -5,8 +5,8 @@ import {AuthService} from "./auth.service.js";
 import * as dbService from "../db/index.js";
 import {UsersService} from "./users.service.js";
 import {StripeService} from "./stripe.service.js";
-import * as dojosService from "./dojos.service.js";
-import * as mailerService from "./mailer.service.js";
+import  {DojosService} from "./dojos.service.js";
+import  {MailerService} from "./mailer.service.js";
 import * as authUtils from "../utils/auth.utils.js";
 import  {FirebaseService} from "./firebase.service.js";
 import {
@@ -66,7 +66,7 @@ describe("Auth Service", () => {
     getOneUserByEmailSpy = vi.spyOn(UsersService, "getOneUserByEmail");
     getOneUserByIDSpy = vi.spyOn(UsersService, "getOneUserByID");
     getOneUserByUsernameSpy = vi.spyOn(UsersService, "getOneUserByUserName");
-    getOneDojoByTagSpy = vi.spyOn(dojosService, "getOneDojoByTag");
+    getOneDojoByTagSpy = vi.spyOn(DojosService, "getOneDojoByTag");
     saveUserSpy = vi.spyOn(UsersService, "saveUser");
 
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -409,10 +409,10 @@ describe("Auth Service", () => {
         });
       saveUserSpy.mockResolvedValue(mockSavedUser);
       createDojoSpy = vi
-        .spyOn(dojosService, "createDojo")
+        .spyOn(DojosService, "createDojo")
         .mockResolvedValue(mockDojo);
       sendWelcomeEmailSpy = vi
-        .spyOn(mailerService, "sendWelcomeEmail")
+        .spyOn(MailerService, "sendWelcomeEmail")
         .mockResolvedValue();
 
       generateAuthTokensSpy = vi
@@ -794,7 +794,7 @@ describe("Auth Service", () => {
         .spyOn(authUtils, "hashToken")
         .mockReturnValue("hashed_otp");
       sendPasswordResetMailSpy = vi
-        .spyOn(mailerService, "sendPasswordResetMail")
+        .spyOn(MailerService, "sendPasswordResetMail")
         .mockResolvedValue(undefined);
     });
 

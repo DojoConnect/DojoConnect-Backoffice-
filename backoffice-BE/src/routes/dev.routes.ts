@@ -3,7 +3,7 @@
 import { Request, Router, Response } from "express";
 import AppConfig from "../config/AppConfig.js";
 import { formatApiResponse } from "../utils/api.utils.js";
-import * as dojosService from "../services/dojos.service.js";
+import {DojosService} from "../services/dojos.service.js";
 import * as dbService from "../db/index.js";
 import {
   BadRequestException,
@@ -18,7 +18,7 @@ router.get("/stripe/setup-intent", async (req: Request, res: Response) => {
 
   const { dojoId } = req.body;
 
-  const dojo = await dojosService.getOneDojoByID(dojoId);
+  const dojo = await DojosService.getOneDojoByID(dojoId);
 
   if (!dojo) {
     throw new NotFoundException("Dojo not found");

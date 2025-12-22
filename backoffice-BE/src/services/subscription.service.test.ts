@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import type { MockInstance } from "vitest";
 import  {StripeService} from "./stripe.service.js";
-import * as dojosService from "./dojos.service.js";
+import {DojosService} from "./dojos.service.js";
 import {UsersService} from "./users.service.js";
 import {
   SubscriptionService,
@@ -79,8 +79,8 @@ describe("SubscriptionService", () => {
     );
 
     updateDojoRepoSpy = vi.spyOn(DojoRepository, "update");
-    getOneDojoByUserIdSpy = vi.spyOn(dojosService, "getOneDojoByUserId");
-    updateDojoSpy = vi.spyOn(dojosService, "updateDojo");
+    getOneDojoByUserIdSpy = vi.spyOn(DojosService, "getOneDojoByUserId");
+    updateDojoSpy = vi.spyOn(DojosService, "updateDojo");
   });
 
   afterEach(() => {

@@ -12,8 +12,8 @@ import {
   verifyPassword,
   verifyPasswordResetToken,
 } from "../utils/auth.utils.js";
-import * as dojosService from "./dojos.service.js";
-import * as mailerService from "./mailer.service.js";
+import {DojosService} from "./dojos.service.js";
+import {MailerService} from "./mailer.service.js";
 import {UsersService} from "./users.service.js";
 import {FirebaseService} from "./firebase.service.js";
 import { addDays, addMinutes, isAfter } from "date-fns";
@@ -253,7 +253,7 @@ export class AuthService {
             username: dto.username,
             txInstance: tx,
           }),
-          dojosService.getOneDojoByTag(dto.dojoTag, tx),
+          DojosService.getOneDojoByTag(dto.dojoTag, tx),
         ]);
 
         if (existingUserWithEmail) {
@@ -287,7 +287,7 @@ export class AuthService {
 
         let trialEndsAt: Date | null = addDays(new Date(), 14);
 
-        const newDojo = await dojosService.createDojo(
+        const newDojo = await DojosService.createDojo(
           {
             userId: newUser.id,
             name: dto.dojoName,
@@ -332,7 +332,7 @@ export class AuthService {
           });
 
         try {
-          await mailerService.sendWelcomeEmail(
+          await MailerService.sendWelcomeEmail(
             dto.email,
             dto.fullName,
             Role.DojoAdmin
@@ -410,7 +410,7 @@ export class AuthService {
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
-      const dojo = await dojosService.getOneDojoByTag(tag, tx);
+      const dojo = await DojosService.getOneDojoByTag(tag, tx);
 
       if (dojo) {
         return false;
@@ -550,7 +550,7 @@ export class AuthService {
         },
       });
 
-      await mailerService.sendPasswordResetMail({
+      await MailerService.sendPasswordResetMail({
         dest: user.email,
         name: user.name,
         otp,
