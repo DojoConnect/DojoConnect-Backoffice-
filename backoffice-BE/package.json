@@ -8,7 +8,9 @@
     "dev": "tsx watch src/server.ts",
     "start": "node ./dist/server.js",
     "build": "rm -rf dist && tsc -b",
-    "test": "vitest"
+    "test": "vitest",
+    "db:generate": "tsx node_modules/drizzle-kit/bin.cjs generate",
+    "db:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",

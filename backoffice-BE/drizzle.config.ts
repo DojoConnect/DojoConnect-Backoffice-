@@ -1,4 +1,3 @@
-import AppConfig from './src/config/AppConfig'
 import type { Config } from "drizzle-kit";
 
 import * as dotenv from "dotenv";
@@ -9,10 +8,10 @@ export default {
   out: "./drizzle", // Where migrations will live
   dialect: "mysql",
   dbCredentials: {
-    host: AppConfig.MAIN_DB_HOST,
-    user: AppConfig.MAIN_DB_USER,
-    password: AppConfig.MAIN_DB_PASSWORD,
-    database: AppConfig.MAIN_DB_NAME,
+    host: process.env.MAIN_DB_HOST!,
+    user: process.env.MAIN_DB_USER!,
+    password: process.env.MAIN_DB_PASSWORD!,
+    database: process.env.MAIN_DB_NAME!,
   },
-  strict: false
+  strict: false,
 } satisfies Config;
