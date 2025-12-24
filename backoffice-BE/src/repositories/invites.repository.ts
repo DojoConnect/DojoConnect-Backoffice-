@@ -122,4 +122,15 @@ export class InvitesRepository {
       .where(eq(instructorInvites.id, inviteId))
       .execute();
   };
+
+  static markInviteAsDeclined = async (
+    inviteId: string,
+    tx: Transaction
+  ): Promise<void> => {
+    await tx
+      .update(instructorInvites)
+      .set({ status: InstructorInviteStatus.Declined, respondedAt: new Date() })
+      .where(eq(instructorInvites.id, inviteId))
+      .execute();
+  };
 }

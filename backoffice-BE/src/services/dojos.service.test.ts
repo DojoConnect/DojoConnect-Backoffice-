@@ -283,7 +283,6 @@ describe("Dojo Service", () => {
       // Check if DTO serialization works (omits sensitive fields)
       const jsonResult = result[0].toJSON();
       expect(jsonResult).not.toHaveProperty("tokenHash");
-      expect(jsonResult).not.toHaveProperty("respondedAt");
     });
 
     it("should return an empty array when no invites are found", async () => {

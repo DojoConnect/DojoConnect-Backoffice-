@@ -7,4 +7,9 @@ export const InviteInstructorSchema = z.object({
   classId: z.string().trim().nonempty().uuid().optional().nullable(),
 });
 
+export const DeclineInviteSchema = z.object({
+  token: z.string().trim().nonempty(),
+});
+
 export type InviteInstructorDTO = z.infer<typeof InviteInstructorSchema>;
+export type DeclineInviteDTO = z.infer<typeof DeclineInviteSchema>;
