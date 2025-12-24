@@ -274,7 +274,8 @@ export class AuthService {
 
         const newUser = await UsersService.saveUser(
           {
-            name: dto.fullName,
+            firstName: dto.firstName || dto.fullName.split(" ")[0],
+            lastName: dto.lastName || dto.fullName.split(" ").slice(1).join(" "),
             email: dto.email,
             passwordHash: hashedPassword,
             username: dto.username,
@@ -552,7 +553,7 @@ export class AuthService {
 
       await MailerService.sendPasswordResetMail({
         dest: user.email,
-        name: user.name,
+        name: user.firstName,
         otp,
       });
     };

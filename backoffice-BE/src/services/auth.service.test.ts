@@ -824,7 +824,7 @@ describe("Auth Service", () => {
       });
       expect(sendPasswordResetMailSpy).toHaveBeenCalledWith({
         dest: user.email,
-        name: user.name,
+        name: user.firstName,
         otp: "123456",
       });
     });

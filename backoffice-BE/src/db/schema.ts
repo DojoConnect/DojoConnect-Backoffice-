@@ -516,7 +516,8 @@ export const users = mysqlTable(
     id: varchar("id", { length: 64 })
       .primaryKey()
       .$defaultFn(() => uuidv7()),
-    name: varchar({ length: 100 }).notNull(),
+    firstName: varchar({ length: 100 }).notNull(),
+    lastName: varchar({ length: 100 }).notNull(),
     email: varchar({ length: 150 }).unique().notNull(),
     username: varchar({ length: 100 }).unique().notNull(),
     passwordHash: varchar("password_hash", { length: 255 }),
@@ -533,7 +534,7 @@ export const users = mysqlTable(
     street: varchar({ length: 100 }),
     fcmToken: text("fcm_token"),
     sessionId: varchar("session_id", { length: 255 }),
-    createdAt: timestamp("created_at", { mode: "string" })
+    createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },

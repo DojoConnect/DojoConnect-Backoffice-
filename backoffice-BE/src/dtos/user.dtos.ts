@@ -2,7 +2,8 @@ import { Role } from "../constants/enums.js";
 
 export interface UserDTOParams {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   username: string;
   referredBy: string | null;
@@ -14,12 +15,13 @@ export interface UserDTOParams {
   gender: string | null;
   city: string | null;
   street: string | null;
-  createdAt: string;
+  createdAt: Date;
 }
 
 export class UserDTO implements UserDTOParams {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   username: string;
   referredBy: string | null;
@@ -31,11 +33,12 @@ export class UserDTO implements UserDTOParams {
   gender: string | null;
   city: string | null;
   street: string | null;
-  createdAt: string;
+  createdAt: Date;
 
   constructor(params: UserDTOParams) {
     this.id = params.id;
-    this.name = params.name;
+    this.firstName = params.firstName;
+    this.lastName = params.lastName;
     this.email = params.email;
     this.username = params.username;
     this.referredBy = params.referredBy;
@@ -53,7 +56,12 @@ export class UserDTO implements UserDTOParams {
   toJSON() {
     return {
       id: this.id,
-      name: this.name,
+      firstName: this.firstName,
+      lastName: this.lastName,
+      /**
+       * @deprecated rely on firstName and lastName instead.
+       */
+      name: `${this.firstName} ${this.lastName || ""}`.trim(),
       email: this.email,
       username: this.username,
       referredBy: this.referredBy,

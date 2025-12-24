@@ -24,6 +24,12 @@ export const PasswordSchema = z
   );
 
 export const RegisterDojoAdminSchema = z.object({
+  firstName: z.string().trim().nonempty().optional().nullable(),
+  lastName: z.string().trim().nonempty().optional().nullable(),
+
+  /**
+   * @deprecated rely on firstName and lastName instead.
+   */
   fullName: z.string().trim().nonempty(),
 
   email: z.string().trim().email().nonempty(),

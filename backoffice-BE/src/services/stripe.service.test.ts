@@ -8,6 +8,7 @@ import {
   buildStripeCustMock,
   buildStripePaymentMethodMock,
 } from "../tests/factories/stripe.factory.js";
+import { buildUserMock } from "../tests/factories/user.factory.js";
 
 // Mock the entire stripe module
 const mockCustomersCreate = vi.fn();
@@ -40,19 +41,15 @@ describe("Stripe Service", () => {
 
   describe("createCustomers", () => {
     it("should call stripe.customers.create with correct parameters", async () => {
-      const name = "John Doe";
-      const email = "john.doe@example.com";
-      const paymentMethod = "pm_12345";
-      const mockCustomer = buildStripeCustMock({ id: "cus_123", email });
+      const user = buildUserMock({ id: "1", firstName: "John", lastName: "Doe", email: "john.doe@example.com" });
+      const mockCustomer = buildStripeCustMock({ id: "cus_123", email: user.email });
       mockCustomersCreate.mockResolvedValue(mockCustomer);
 
-      const result = await StripeService.createCustomer(name, email, {
-        userId: "1",
-      });
+      const result = await StripeService.createCustomer(user);
 
       expect(mockCustomersCreate).toHaveBeenCalledWith({
-        name,
-        email,
+        name: user.firstName + " " + user.lastName,
+        email: user.email,
         metadata: expect.objectContaining({ userId: "1" }),
       });
       expect(result).toEqual(mockCustomer);

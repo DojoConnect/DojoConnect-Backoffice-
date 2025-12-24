@@ -44,12 +44,7 @@ export class SubscriptionService {
       }
 
       const customer = await StripeService.createCustomer(
-        user.name,
-        user.email,
-        {
-          ...metadata,
-          userId: user.id,
-        }
+        user
       );
 
       await UsersService.updateUser({

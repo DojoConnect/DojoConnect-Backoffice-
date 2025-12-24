@@ -126,10 +126,7 @@ describe("SubscriptionService", () => {
       });
 
       expect(result).toBe(newStripeCustomerId);
-      expect(createCustomerSpy).toHaveBeenCalledWith(user.name, user.email, {
-        dojoId: "dojo_1",
-        userId: user.id,
-      });
+      expect(createCustomerSpy).toHaveBeenCalledWith(user);
       expect(updateUserSpy).toHaveBeenCalledWith({
         userId: user.id,
         update: { stripeCustomerId: newStripeCustomerId },
