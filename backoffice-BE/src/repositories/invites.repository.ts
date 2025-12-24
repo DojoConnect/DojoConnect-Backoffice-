@@ -1,4 +1,4 @@
-import { and, eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
+import { and, eq, InferInsertModel, InferSelectModel, not, SQL } from "drizzle-orm";
 import { Transaction } from "../db/index.js";
 import { instructorInvites } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
@@ -51,14 +51,19 @@ export class InvitesRepository {
     });
   }
 
-  static fetchDojoInstructorInvites = async (
+  static fetchDojoUnacceptedInstructorInvites = async (
     dojoId: string,
     tx: Transaction
   ): Promise<IInstructorInvite[]> => {
     return await tx
       .select()
       .from(instructorInvites)
-      .where(eq(instructorInvites.dojoId, dojoId))
+      .where(
+        and(
+          eq(instructorInvites.dojoId, dojoId),
+          not(eq(instructorInvites.status, InstructorInviteStatus.Accepted))
+        )
+      )
       .execute();
   };
 }

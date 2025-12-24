@@ -12,8 +12,13 @@ import { MailerService } from "./mailer.service.js";
 import * as assertions from "../utils/assertions.utils.js";
 import { ConflictException } from "../core/errors/ConflictException.js";
 import { ForbiddenException } from "../core/errors/ForbiddenException.js";
-import { Role } from "../constants/enums.js";
-import { buildInstructorInviteMock, buildInstructorMock, buildInviteInstructorDtoMock } from "../tests/factories/instructor.factory.js";
+import { InstructorInviteStatus, Role } from "../constants/enums.js";
+import {
+  buildInstructorInviteMock,
+  buildInstructorMock,
+  buildInviteInstructorDtoMock,
+} from "../tests/factories/instructor.factory.js";
+import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
 
 describe("Dojo Service", () => {
   let mockExecute: Mock;
@@ -67,7 +72,6 @@ describe("Dojo Service", () => {
     let findInstructorByUserIdSpy: MockInstance;
     let getOneClassByIdSpy: MockInstance;
 
-
     beforeEach(() => {
       assertDojoOwnershipSpy = vi
         .spyOn(assertions, "assertDojoOwnership")
@@ -93,7 +97,7 @@ describe("Dojo Service", () => {
 
       getOneClassByIdSpy = vi
         .spyOn(ClassService, "getOneClassById")
-        .mockResolvedValue(null)
+        .mockResolvedValue(null);
     });
 
     it("should successfully invite an instructor", async () => {
@@ -104,9 +108,11 @@ describe("Dojo Service", () => {
         email: dto.email,
         txInstance: expect.anything(),
       });
-      expect(
-        getPendingInviteSpy
-      ).toHaveBeenCalledWith(dto.email, dojo.id, expect.anything());
+      expect(getPendingInviteSpy).toHaveBeenCalledWith(
+        dto.email,
+        dojo.id,
+        expect.anything()
+      );
       expect(createInviteSpy).toHaveBeenCalled();
       expect(sendInviteEmailSpy).toHaveBeenCalledWith({
         dest: dto.email,
@@ -127,9 +133,7 @@ describe("Dojo Service", () => {
     });
 
     it("should throw ConflictException if user with email already exists", async () => {
-      getUserByEmailSpy.mockResolvedValue(
-        buildUserMock()
-      );
+      getUserByEmailSpy.mockResolvedValue(buildUserMock());
 
       await expect(
         DojosService.inviteInstructor({ dojo, user, dto })
@@ -240,6 +244,58 @@ describe("Dojo Service", () => {
         }),
         expect.anything()
       );
+    });
+  });
+
+  describe("fetchInvitedInstructors", () => {
+    let fetchInvitesSpy: MockInstance;
+
+    beforeEach(() => {
+      fetchInvitesSpy = vi
+        .spyOn(InvitesRepository, "fetchDojoUnacceptedInstructorInvites")
+        .mockResolvedValue([]);
+    });
+
+    it("should return an array of InvitedInstructorDTOs", async () => {
+      const dojoId = "dojo-1";
+      const mockInvites = [
+        buildInstructorInviteMock({
+          dojoId,
+          status: InstructorInviteStatus.Pending,
+        }),
+        buildInstructorInviteMock({
+          dojoId,
+          status: InstructorInviteStatus.Accepted,
+        }),
+      ];
+      fetchInvitesSpy.mockResolvedValue(mockInvites);
+
+      const result = await DojosService.fetchInvitedInstructors({ dojoId });
+
+      expect(
+        InvitesRepository.fetchDojoUnacceptedInstructorInvites
+      ).toHaveBeenCalledWith(dojoId, expect.anything());
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBeInstanceOf(InvitedInstructorDTO);
+      expect(result[0].dojoId).toBe(dojoId);
+      expect(result[1].status).toBe(InstructorInviteStatus.Accepted);
+
+      // Check if DTO serialization works (omits sensitive fields)
+      const jsonResult = result[0].toJSON();
+      expect(jsonResult).not.toHaveProperty("tokenHash");
+      expect(jsonResult).not.toHaveProperty("respondedAt");
+    });
+
+    it("should return an empty array when no invites are found", async () => {
+      const dojoId = "dojo-1";
+      fetchInvitesSpy.mockResolvedValue([]);
+
+      const result = await DojosService.fetchInvitedInstructors({ dojoId });
+
+      expect(result).toEqual([]);
+      expect(
+        InvitesRepository.fetchDojoUnacceptedInstructorInvites
+      ).toHaveBeenCalledWith(dojoId, expect.anything());
     });
   });
 });

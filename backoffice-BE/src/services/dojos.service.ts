@@ -241,10 +241,11 @@ export class DojosService {
     txInstance?: Transaction;
   }): Promise<InvitedInstructorDTO[]> => {
     const execute = async (tx: Transaction) => {
-      const invites = await InvitesRepository.fetchDojoInstructorInvites(
-        dojoId,
-        tx
-      );
+      const invites =
+        await InvitesRepository.fetchDojoUnacceptedInstructorInvites(
+          dojoId,
+          tx
+        );
 
       return invites.map((invite) => new InvitedInstructorDTO(invite));
     };
