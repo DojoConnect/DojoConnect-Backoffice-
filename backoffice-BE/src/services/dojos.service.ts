@@ -17,7 +17,7 @@ import { InvitesRepository } from "../repositories/invites.repository.js";
 import { generateInviteToken, hashToken } from "../utils/auth.utils.js";
 import { addDays } from "date-fns";
 import { InstructorInviteStatus } from "../constants/enums.js";
-import { InstructorService } from "./instructors.service.js";
+import { InstructorService } from "./instructor.service.js";
 import { ClassService } from "./class.service.js";
 import { MailerService } from "./mailer.service.js";
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";

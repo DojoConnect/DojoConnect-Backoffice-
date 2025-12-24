@@ -1,5 +1,9 @@
 import { InstructorInviteStatus } from "../constants/enums.js";
-import { IInstructorInvite } from "../repositories/invites.repository.js";
+import {
+  IInstructorInvite,
+  InstructorInviteDetails,
+} from "../repositories/invites.repository.js";
+import { getFullName } from "../utils/text.utils.js";
 
 export class InvitedInstructorDTO implements IInstructorInvite {
   id: string;
@@ -42,6 +46,38 @@ export class InvitedInstructorDTO implements IInstructorInvite {
       status: this.status,
       invitedBy: this.invitedBy,
       createdAt: this.createdAt,
+      respondedAt: this.respondedAt,
+    };
+  }
+}
+
+export class InstructorInviteDetailsDTO {
+  firstName: string;
+  lastName: string;
+  instructorEmail: string;
+  expiresAt: Date;
+  dojoName: string;
+  className: string | null;
+  invitedAt: Date;
+
+  constructor(params: InstructorInviteDetails) {
+    this.firstName = params.firstName;
+    this.lastName = params.lastName;
+    this.instructorEmail = params.email;
+    this.expiresAt = params.expiresAt;
+    this.dojoName = params.dojoName;
+    this.className = params.className;
+    this.invitedAt = params.invitedAt;
+  }
+
+  toJSON() {
+    return {
+      name: getFullName(this.firstName, this.lastName),
+      email: this.instructorEmail,
+      expiresAt: this.expiresAt,
+      dojoName: this.dojoName,
+      className: this.className,
+      invitedAt: this.invitedAt,
     };
   }
 }

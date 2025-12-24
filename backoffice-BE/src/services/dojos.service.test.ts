@@ -5,7 +5,7 @@ import { DojosService } from "./dojos.service.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
 import { UsersService } from "./users.service.js";
-import { InstructorService } from "./instructors.service.js";
+import { InstructorService } from "./instructor.service.js";
 import { InvitesRepository } from "../repositories/invites.repository.js";
 import { ClassService } from "./class.service.js";
 import { MailerService } from "./mailer.service.js";

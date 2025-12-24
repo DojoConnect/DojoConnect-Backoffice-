@@ -84,6 +84,7 @@ export enum InstructorInviteStatus {
   Pending = "pending",
   Accepted = "accepted",
   Declined = "declined",
+  Expired = "expired",
 }
 
 export enum ClassLevel {
