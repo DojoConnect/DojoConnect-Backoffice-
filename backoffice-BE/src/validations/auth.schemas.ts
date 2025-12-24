@@ -37,6 +37,7 @@ export const RegisterDojoAdminSchema = z.object({
   username: z.string().trim().nonempty(),
 
   referredBy: z.string().trim().optional().default(""),
+  fcmToken: z.string().trim().optional().nullable(),
 
   plan: z.nativeEnum(StripePlans),
   dojoName: z.string().trim().nonempty(),

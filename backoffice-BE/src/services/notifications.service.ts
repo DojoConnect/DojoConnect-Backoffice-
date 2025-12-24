@@ -6,7 +6,7 @@ import { FirebaseService } from "./firebase.service.js";
 export type BaseNotificationData = {};
 
 export type SignUpSuccessfulNotificationData = {
-  push_data: string;
+  screen: string;
 };
 
 export type NotificationData =
@@ -50,5 +50,22 @@ export class NotificationService {
       console.log(`Error sending ${type} notification:`, error);
       throw new InternalServerErrorException("Error Sending Notification");
     }
+  };
+
+  static sendSignUpNotification = async (userId: string, fcmToken: string) => {
+    const title = "Welcome to Dojo Connect!";
+    const body = "Your Dojo Admin account has been created successfully.";
+    const data: SignUpSuccessfulNotificationData = {
+      screen: "complete_profile",
+    };
+
+    await this.sendNotification({
+      type: NotificationType.SignUp,
+      fcmToken,
+      userId,
+      title,
+      body,
+      data,
+    });
   };
 }

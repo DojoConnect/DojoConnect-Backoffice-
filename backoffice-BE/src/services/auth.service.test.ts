@@ -49,6 +49,7 @@ import AppConstants from "../constants/AppConstants.js";
 import { AuthResponseDTO } from "../dtos/auth.dtos.js";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
 import { SubscriptionService } from "./subscription.service.js";
+import { NotificationService } from "./notifications.service.js";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -372,6 +373,7 @@ describe("Auth Service", () => {
       dojoName: mockDojo.name,
       dojoTag: mockDojo.tag,
       dojoTagline: mockDojo.tagline,
+      fcmToken: "test-fcm-token",
     });
 
     const mockStripeCustomer = buildStripeCustMock();
@@ -384,6 +386,7 @@ describe("Auth Service", () => {
     let setupBillingSpy: MockInstance;
     let sendWelcomeEmailSpy: MockInstance;
     let generateAuthTokensSpy: MockInstance;
+    let sendSignUpNotificationSpy: MockInstance;
 
     beforeEach(() => {
       // Default success path mocks
@@ -413,6 +416,9 @@ describe("Auth Service", () => {
         .mockResolvedValue(mockDojo);
       sendWelcomeEmailSpy = vi
         .spyOn(MailerService, "sendWelcomeEmail")
+        .mockResolvedValue();
+      sendSignUpNotificationSpy = vi
+        .spyOn(NotificationService, "sendSignUpNotification")
         .mockResolvedValue();
 
       generateAuthTokensSpy = vi
@@ -475,6 +481,12 @@ describe("Auth Service", () => {
 
       // 6. Send email
       expect(sendWelcomeEmailSpy).toHaveBeenCalled();
+
+      // Send notification
+      expect(sendSignUpNotificationSpy).toHaveBeenCalledWith(
+        mockSavedUser.id,
+        userDTO.fcmToken!
+      );
 
       // 7. Final response
       expect(result.toJSON()).toEqual({

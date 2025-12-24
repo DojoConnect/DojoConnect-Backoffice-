@@ -12,10 +12,10 @@ import {
   verifyPassword,
   verifyPasswordResetToken,
 } from "../utils/auth.utils.js";
-import {DojosService} from "./dojos.service.js";
-import {MailerService} from "./mailer.service.js";
-import {UsersService} from "./users.service.js";
-import {FirebaseService} from "./firebase.service.js";
+import { DojosService } from "./dojos.service.js";
+import { MailerService } from "./mailer.service.js";
+import { UsersService } from "./users.service.js";
+import { FirebaseService } from "./firebase.service.js";
 import { addDays, addMinutes, isAfter } from "date-fns";
 import {
   BadRequestException,
@@ -49,6 +49,7 @@ import { RefreshTokenRepository } from "../repositories/refresh-token.repository
 import { UserDTO } from "../dtos/user.dtos.js";
 import { IUser } from "../repositories/user.repository.js";
 import { SubscriptionService } from "./subscription.service.js";
+import { NotificationService } from "./notifications.service.js";
 
 export class AuthService {
   static generateAuthTokens = async ({
@@ -131,12 +132,13 @@ export class AuthService {
         });
       }
 
-      const { accessToken, refreshToken } = await AuthService.generateAuthTokens({
-        user,
-        userIp,
-        userAgent,
-        txInstance,
-      });
+      const { accessToken, refreshToken } =
+        await AuthService.generateAuthTokens({
+          user,
+          userIp,
+          userAgent,
+          txInstance,
+        });
 
       return new AuthResponseDTO({
         accessToken,
@@ -275,13 +277,15 @@ export class AuthService {
         const newUser = await UsersService.saveUser(
           {
             firstName: dto.firstName || dto.fullName.split(" ")[0],
-            lastName: dto.lastName || dto.fullName.split(" ").slice(1).join(" "),
+            lastName:
+              dto.lastName || dto.fullName.split(" ").slice(1).join(" "),
             email: dto.email,
             passwordHash: hashedPassword,
             username: dto.username,
             role: Role.DojoAdmin,
             referralCode: referral_code,
             referredBy: dto.referredBy,
+            fcmToken: dto.fcmToken || null,
           },
           tx
         );
@@ -338,6 +342,13 @@ export class AuthService {
             dto.fullName,
             Role.DojoAdmin
           );
+
+          if (dto.fcmToken) {
+            await NotificationService.sendSignUpNotification(
+              newUser.id,
+              dto.fcmToken
+            );
+          }
         } catch (err) {
           console.log(
             "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
