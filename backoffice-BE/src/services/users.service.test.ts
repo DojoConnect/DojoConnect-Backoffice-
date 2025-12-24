@@ -56,7 +56,7 @@ describe("Users Service", () => {
     it("should return user WITHOUT passwordHash when withPassword = false (default)", async () => {
       const mockUser = buildUserMock({
         id: "1",
-        name: "John",
+        firstName: "John",
         passwordHash: "hashed_pw",
       });
 
@@ -76,7 +76,7 @@ describe("Users Service", () => {
     it("returns user WITH passwordHash when withPassword = true", async () => {
       const mockUser = buildUserMock({
         id: "1",
-        name: "John",
+        firstName: "John",
         passwordHash: "hashed_pw",
       });
 
@@ -531,7 +531,7 @@ describe("Users Service", () => {
 
     it("should call dbService.runInTransaction when no txInstance is provided", async () => {
       const userId = "user-1";
-      const updateData = { name: "Another Name" };
+      const updateData = { firstName: "Another Name" };
 
       await UsersService.updateUser({ userId, update: updateData });
 
@@ -540,7 +540,7 @@ describe("Users Service", () => {
 
     it("should NOT call dbService.runInTransaction when a txInstance is provided", async () => {
       const userId = "user-2";
-      const updateData = { name: "new-name" };
+      const updateData = { firstName: "new-name" };
 
       await UsersService.updateUser({
         userId,

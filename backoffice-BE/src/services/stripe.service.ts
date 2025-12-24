@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import AppConfig from "../config/AppConfig.js";
 import { StripePlans } from "../constants/enums.js";
+import { IUser } from "../repositories/user.repository.js";
 
 export const StripePriceIDsMap = {
   [StripePlans.Monthly]: "price_1Sg2AkRbZzajfaIIlgDhjLfh",
@@ -25,14 +26,16 @@ export class StripeService {
   };
 
   static createCustomer = async (
-    name: string,
-    email: string,
-    metadata: { userId: string; dojoId?: string }
+    user: IUser,
+    metadata?: { dojoId?: string }
   ) => {
     return await StripeService.getStripeInstance().customers.create({
-      name,
-      email,
-      metadata,
+      name: `${user.firstName} ${user.lastName || ""}`.trim(),
+      email: user.email,
+      metadata: {
+        ...metadata,
+        userId: user.id,
+      },
     });
   };
 

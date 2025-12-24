@@ -88,7 +88,7 @@ const router = Router();
 
 router.post(
   "/login",
-  // authLimiter,
+  authLimiter,
   validateReqBody(LoginSchema),
   loginUser
 );

@@ -27,6 +27,9 @@ import {
   BillingStatus,
   ACTIVE_BILLING_STATUSES,
   StripeSubscriptionStatus,
+  InstructorInviteStatus,
+  ClassLevel,
+  ClassStatus,
 } from "../constants/enums.js";
 
 const activeBillingStatusesSql = sql.join(
@@ -149,24 +152,31 @@ export const childrenSubscription = mysqlTable("children_subscription", {
 export const classes = mysqlTable(
   "classes",
   {
-    id: int().autoincrement().primaryKey(),
+    id: varchar("id", { length: 64 })
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
     classUid: varchar("class_uid", { length: 50 }).notNull(),
+    dojoId: varchar("dojo_id", { length: 64 })
+      .notNull()
+      .references(() => dojos.id, { onDelete: "cascade" }),
+    instructorId: varchar("instructor_id", { length: 64 })
+      .notNull()
+      .references(() => dojoInstructors.id, { onDelete: "cascade" }),
     ownerEmail: varchar("owner_email", { length: 255 }).notNull(),
     className: varchar("class_name", { length: 255 }).notNull(),
     description: text(),
-    instructor: varchar({ length: 255 }),
-    level: mysqlEnum(["Beginner", "Intermediate", "Advanced"]),
+    level: mysqlEnum(ClassLevel).notNull(),
     ageGroup: varchar("age_group", { length: 50 }),
     frequency: varchar({ length: 50 }),
     capacity: int(),
     location: varchar({ length: 255 }),
     streetAddress: varchar("street_address", { length: 255 }),
     city: varchar({ length: 255 }),
-    status: mysqlEnum(["active", "deleted", "hide"]).default("active"),
-    createdAt: timestamp("created_at", { mode: "string" })
+    status: mysqlEnum(ClassStatus).default(ClassStatus.Active).notNull(),
+    createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp("updated_at", { mode: "string" })
+    updatedAt: timestamp("updated_at",)
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     imagePath: varchar("image_path", { length: 255 }),
@@ -327,14 +337,46 @@ export const feedback = mysqlTable("feedback", {
     .notNull(),
 });
 
-export const instructorsTbl = mysqlTable("instructors_tbl", {
-  id: int().autoincrement().primaryKey(),
-  instructorFirstName: varchar("instructor_first_name", { length: 50 }),
-  instructorLastName: varchar("instructor_last_name", { length: 50 }),
-  instructorEmail: varchar("instructor_email", { length: 100 }),
-  invitedBy: varchar("invited_by", { length: 121 }).notNull(),
-  class: varchar({ length: 100 }),
-  status: varchar({ length: 121 }).default("pending").notNull(),
+export const instructorInvites = mysqlTable("instructor_invites", {
+  id: varchar("id", { length: 64 })
+    .primaryKey()
+    .$defaultFn(() => uuidv7()),
+  firstName: varchar({ length: 100 }).notNull(),
+  lastName: varchar({ length: 100 }).notNull(),
+  email: varchar({ length: 150 }).notNull(),
+  dojoId: varchar("dojo_id", { length: 64 })
+    .notNull()
+    .references(() => dojos.id, { onDelete: "cascade" }),
+  classId: varchar("class_id", { length: 64 }).references(() => classes.id, {
+    onDelete: "cascade",
+  }),
+  tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(), // secure random token
+  status: mysqlEnum(InstructorInviteStatus)
+    .default(InstructorInviteStatus.Pending)
+    .notNull(),
+  invitedBy: varchar("invited_by", { length: 64 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  respondedAt: timestamp("responded_at"),
+});
+
+export const dojoInstructors = mysqlTable("dojo_instructors", {
+  id: varchar("id", { length: 64 })
+    .primaryKey()
+    .$defaultFn(() => uuidv7()),
+  userId: varchar("user_id", { length: 64 })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  dojoId: varchar("dojo_id", { length: 64 })
+    .notNull()
+    .references(() => dojos.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
 });
 
 export const messages = mysqlTable(
@@ -516,7 +558,8 @@ export const users = mysqlTable(
     id: varchar("id", { length: 64 })
       .primaryKey()
       .$defaultFn(() => uuidv7()),
-    name: varchar({ length: 100 }).notNull(),
+    firstName: varchar({ length: 100 }).notNull(),
+    lastName: varchar({ length: 100 }).notNull(),
     email: varchar({ length: 150 }).unique().notNull(),
     username: varchar({ length: 100 }).unique().notNull(),
     passwordHash: varchar("password_hash", { length: 255 }),
@@ -533,7 +576,7 @@ export const users = mysqlTable(
     street: varchar({ length: 100 }),
     fcmToken: text("fcm_token"),
     sessionId: varchar("session_id", { length: 255 }),
-    createdAt: timestamp("created_at", { mode: "string" })
+    createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },

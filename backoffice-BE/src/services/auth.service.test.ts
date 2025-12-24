@@ -49,6 +49,7 @@ import AppConstants from "../constants/AppConstants.js";
 import { AuthResponseDTO } from "../dtos/auth.dtos.js";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
 import { SubscriptionService } from "./subscription.service.js";
+import { NotificationService } from "./notifications.service.js";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -167,7 +168,7 @@ describe("Auth Service", () => {
         txInstance: dbSpies.mockTx,
       });
       expect(generateAuthTokensSpy).toHaveBeenCalled();
-      expect(result).toEqual({
+      expect(result.toJSON()).toEqual({
         accessToken: "access",
         refreshToken: "refresh",
         user: new UserDTO(mockUser).toJSON(),
@@ -331,7 +332,7 @@ describe("Auth Service", () => {
       expect(getOneUserByIDSpy).toHaveBeenCalledWith({
         userId: mockUser.id,
       });
-      expect(result).toEqual({
+      expect(result.toJSON()).toEqual({
         accessToken: "new_access",
         refreshToken: "new_refresh",
         user: new UserDTO(mockUser).toJSON(),
@@ -372,6 +373,7 @@ describe("Auth Service", () => {
       dojoName: mockDojo.name,
       dojoTag: mockDojo.tag,
       dojoTagline: mockDojo.tagline,
+      fcmToken: "test-fcm-token",
     });
 
     const mockStripeCustomer = buildStripeCustMock();
@@ -384,6 +386,7 @@ describe("Auth Service", () => {
     let setupBillingSpy: MockInstance;
     let sendWelcomeEmailSpy: MockInstance;
     let generateAuthTokensSpy: MockInstance;
+    let sendSignUpNotificationSpy: MockInstance;
 
     beforeEach(() => {
       // Default success path mocks
@@ -413,6 +416,9 @@ describe("Auth Service", () => {
         .mockResolvedValue(mockDojo);
       sendWelcomeEmailSpy = vi
         .spyOn(MailerService, "sendWelcomeEmail")
+        .mockResolvedValue();
+      sendSignUpNotificationSpy = vi
+        .spyOn(NotificationService, "sendSignUpNotification")
         .mockResolvedValue();
 
       generateAuthTokensSpy = vi
@@ -475,6 +481,12 @@ describe("Auth Service", () => {
 
       // 6. Send email
       expect(sendWelcomeEmailSpy).toHaveBeenCalled();
+
+      // Send notification
+      expect(sendSignUpNotificationSpy).toHaveBeenCalledWith(
+        mockSavedUser.id,
+        userDTO.fcmToken!
+      );
 
       // 7. Final response
       expect(result.toJSON()).toEqual({
@@ -824,7 +836,7 @@ describe("Auth Service", () => {
       });
       expect(sendPasswordResetMailSpy).toHaveBeenCalledWith({
         dest: user.email,
-        name: user.name,
+        name: user.firstName,
         otp: "123456",
       });
     });

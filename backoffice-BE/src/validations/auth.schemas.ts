@@ -24,6 +24,12 @@ export const PasswordSchema = z
   );
 
 export const RegisterDojoAdminSchema = z.object({
+  firstName: z.string().trim().nonempty().optional().nullable(),
+  lastName: z.string().trim().nonempty().optional().nullable(),
+
+  /**
+   * @deprecated rely on firstName and lastName instead.
+   */
   fullName: z.string().trim().nonempty(),
 
   email: z.string().trim().email().nonempty(),
@@ -31,6 +37,7 @@ export const RegisterDojoAdminSchema = z.object({
   username: z.string().trim().nonempty(),
 
   referredBy: z.string().trim().optional().default(""),
+  fcmToken: z.string().trim().optional().nullable(),
 
   plan: z.nativeEnum(StripePlans),
   dojoName: z.string().trim().nonempty(),

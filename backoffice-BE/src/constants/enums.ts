@@ -80,8 +80,28 @@ export enum StripeSubscriptionStatus {
   Paused = "paused",
 }
 
+export enum InstructorInviteStatus {
+  Pending = "pending",
+  Accepted = "accepted",
+  Declined = "declined",
+  Expired = "expired",
+}
+
+export enum ClassLevel {
+  Beginner = "Beginner",
+  Intermediate = "Intermediate",
+  Advanced = "Advanced",
+}
+
+export enum ClassStatus {
+  Active = "active",
+  Deleted = "deleted",
+  Hidden = "hide",
+}
+
 export const ACTIVE_BILLING_STATUSES = [
   BillingStatus.Trialing,
   BillingStatus.Active,
   BillingStatus.PastDue,
 ] as const;
+

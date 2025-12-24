@@ -79,3 +79,7 @@ export const verifyPasswordResetToken = (
 
   return payload;
 };
+
+export const generateInviteToken = () => {
+  return crypto.randomBytes(32).toString("hex");
+}

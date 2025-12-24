@@ -8,6 +8,13 @@ type SendPasswordResetMailParams = {
   otp: string;
 };
 
+type SendInstructorInviteEmailParams = {
+  dest: string;
+  firstName: string;
+  dojoName: string;
+  token: string;
+};
+
 let transporterInstance: any = null;
 
 export class MailerService {
@@ -450,5 +457,32 @@ export class MailerService {
     } catch (error: any) {
       console.error(`Password reset email failed to ${dest}: ${error.message}`);
     }
+  };
+
+  static sendInstructorInviteEmail = async ({
+    dest,
+    firstName,
+    dojoName,
+    token,
+  }: SendInstructorInviteEmailParams) => {
+    const inviteLink = `${AppConfig.WEB_URL}/invites/instructor?token=${token}`;
+
+    const mailOptions = {
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+      to: dest,
+      subject: `You've Been Invited to Teach on Dojo Connect`,
+      html: `
+      <h2>Hi ${firstName},</h2>
+      <p>You’ve been invited to join <strong>Dojo Connect</strong> as an instructor.</p>
+      <p><strong>${dojoName}</strong> invites you to be an instructor of this dojo.</p>
+      <p>To accept the invitation and set up your instructor account, please click the button below:</p>
+      <a href="${inviteLink}" style="padding:8px 24px;background:#E51B1B;color:#fff;border-radius:8px;text-decoration:none;">
+        Accept Invitation
+      </a>
+    `,
+      text: `Hi ${firstName}, accept your invite: ${inviteLink}`,
+    };
+
+    await this.getTransporter().sendMail(mailOptions);
   };
 }

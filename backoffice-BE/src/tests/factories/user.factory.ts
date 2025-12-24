@@ -8,7 +8,8 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   return {
     id: faker.string.uuid(),
     username: "john_d",
-    name: "John Doe",
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
     email: "john@example.com",
     passwordHash: "$argon2id$v=19$m=65536,t=3,p=4$examplehashhere",
     referredBy: "ref_12345",
@@ -24,7 +25,7 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
     stripeCustomerId: "cus_9f3h28fh32",
     fcmToken: "fcm_token_example_8293hf2f",
     sessionId: "sess_8f2h9f23fh2",
-    createdAt: new Date("2024-01-10T12:00:00").toISOString(),
+    createdAt: new Date("2024-01-10T12:00:00"),
     ...overrides, // Allows overriding specific fields for different test scenarios
   };
 };
