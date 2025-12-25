@@ -60,7 +60,7 @@ export class InstructorsRepository {
     dojoId: string,
     tx: Transaction
   ) => {
-    return tx
+    await tx
       .insert(dojoInstructors)
       .values({
         userId,

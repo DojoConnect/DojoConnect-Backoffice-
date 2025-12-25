@@ -5,7 +5,10 @@ import {
   IInstructorInvite,
   InstructorInviteDetails,
 } from "../../repositories/invites.repository.js";
-import { InviteInstructorDTO } from "../../validations/instructors.schemas.js";
+import {
+  AcceptInviteDTO,
+  InviteInstructorDTO,
+} from "../../validations/instructors.schemas.js";
 import { addDays } from "date-fns";
 
 export const buildInstructorInviteMock = (
@@ -61,9 +64,20 @@ export const buildInviteDetailsMock = (
   email: faker.internet.email(),
   status: InstructorInviteStatus.Pending,
   expiresAt: addDays(new Date(), 7),
+  dojoId: faker.string.uuid(),
   dojoOwnerId: faker.string.uuid(),
   dojoName: "Test Dojo",
   className: null,
   invitedAt: new Date(),
   ...overrides,
 });
+
+export const buildAcceptInviteDTOMock = (
+  overrides: Partial<AcceptInviteDTO>
+): AcceptInviteDTO => {
+  return {
+    token: faker.string.alphanumeric(32),
+    password: faker.internet.password(),
+    ...overrides,
+  };
+};
