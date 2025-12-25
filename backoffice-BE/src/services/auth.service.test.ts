@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { MockInstance } from "vitest";
 
-import {AuthService} from "./auth.service.js";
+import { AuthService } from "./auth.service.js";
 import * as dbService from "../db/index.js";
-import {UsersService} from "./users.service.js";
-import {StripeService} from "./stripe.service.js";
-import  {DojosService} from "./dojos.service.js";
-import  {MailerService} from "./mailer.service.js";
+import { UsersService } from "./users.service.js";
+import { StripeService } from "./stripe.service.js";
+import { DojosService } from "./dojos.service.js";
+import { MailerService } from "./mailer.service.js";
 import * as authUtils from "../utils/auth.utils.js";
-import  {FirebaseService} from "./firebase.service.js";
+import { FirebaseService } from "./firebase.service.js";
 import {
   createDrizzleDbSpies,
   DbServiceSpies,
@@ -483,10 +483,7 @@ describe("Auth Service", () => {
       expect(sendWelcomeEmailSpy).toHaveBeenCalled();
 
       // Send notification
-      expect(sendSignUpNotificationSpy).toHaveBeenCalledWith(
-        mockSavedUser.id,
-        userDTO.fcmToken!
-      );
+      expect(sendSignUpNotificationSpy).toHaveBeenCalledWith(mockSavedUser);
 
       // 7. Final response
       expect(result.toJSON()).toEqual({

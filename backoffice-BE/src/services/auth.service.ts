@@ -343,12 +343,7 @@ export class AuthService {
             Role.DojoAdmin
           );
 
-          if (dto.fcmToken) {
-            await NotificationService.sendSignUpNotification(
-              newUser.id,
-              dto.fcmToken
-            );
-          }
+          await NotificationService.sendSignUpNotification(newUser);
         } catch (err) {
           console.log(
             "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
