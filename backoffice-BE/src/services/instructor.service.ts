@@ -85,7 +85,7 @@ export class InstructorService {
         throw new ConflictException(`Invite has already been ${invite.status}`);
       }
 
-      await InvitesRepository.markInviteAsAcceptedOrDeclined(
+      await InvitesRepository.markInviteAsResponded(
         invite.id,
         InstructorInviteStatus.Declined,
         tx
@@ -141,7 +141,7 @@ export class InstructorService {
 
       await this.addInstructorToDojo(newUser, invite.dojoId, tx);
 
-      await InvitesRepository.markInviteAsAcceptedOrDeclined(
+      await InvitesRepository.markInviteAsResponded(
         invite.id,
         InstructorInviteStatus.Accepted,
         tx

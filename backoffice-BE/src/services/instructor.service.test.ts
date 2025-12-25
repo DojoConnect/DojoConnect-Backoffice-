@@ -99,16 +99,16 @@ describe("InstructorService", () => {
   });
 
   describe("declineInvite", () => {
-    let markAsDeclinedSpy: MockInstance;
-    let sendInviteDeclinedNotificationSpy: MockInstance;
+    let markAsRespondedSpy: MockInstance;
+    let notifyDojoOwnerSpy: MockInstance;
 
     beforeEach(() => {
-      markAsDeclinedSpy = vi
-        .spyOn(InvitesRepository, "markInviteAsDeclined")
+      markAsRespondedSpy = vi
+        .spyOn(InvitesRepository, "markInviteAsResponded")
         .mockResolvedValue();
 
-      sendInviteDeclinedNotificationSpy = vi
-        .spyOn(NotificationService, "sendInviteDeclinedNotification")
+      notifyDojoOwnerSpy = vi
+        .spyOn(InstructorService, "notifyDojoOwnerOfResponse")
         .mockResolvedValue();
     });
 
@@ -122,14 +122,18 @@ describe("InstructorService", () => {
         "hashed-valid-token",
         dbServiceSpies.mockTx
       );
-      expect(markAsDeclinedSpy).toHaveBeenCalledWith(
+      expect(markAsRespondedSpy).toHaveBeenCalledWith(
         mockDetails.id,
+        InstructorInviteStatus.Declined,
         dbServiceSpies.mockTx
       );
 
-      expect(sendInviteDeclinedNotificationSpy).toHaveBeenCalledWith(
-        mockUser,
-        mockDetails
+      expect(notifyDojoOwnerSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tx: dbServiceSpies.mockTx,
+          invite: mockDetails,
+          response: InstructorInviteStatus.Declined,
+        })
       );
     });
 
@@ -140,7 +144,7 @@ describe("InstructorService", () => {
         InstructorService.declineInvite({ token: "invalid-token" })
       ).rejects.toThrow(new NotFoundException("Invite not found"));
 
-      expect(markAsDeclinedSpy).not.toHaveBeenCalled();
+      expect(markAsRespondedSpy).not.toHaveBeenCalled();
     });
 
     it("should throw ConflictException if invite is not pending", async () => {
@@ -155,7 +159,7 @@ describe("InstructorService", () => {
         new ConflictException(`Invite has already been ${mockDetails.status}`)
       );
 
-      expect(markAsDeclinedSpy).not.toHaveBeenCalled();
+      expect(markAsRespondedSpy).not.toHaveBeenCalled();
     });
   });
 });

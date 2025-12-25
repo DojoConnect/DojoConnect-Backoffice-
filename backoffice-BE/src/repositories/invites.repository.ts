@@ -134,14 +134,14 @@ export class InvitesRepository {
       .execute();
   };
 
-  static markInviteAsAcceptedOrDeclined = async (
+  static markInviteAsResponded = async (
     inviteId: string,
-    status: InstructorInviteStatus.Accepted | InstructorInviteStatus.Declined,
+    response: InstructorInviteStatus.Accepted | InstructorInviteStatus.Declined,
     tx: Transaction
   ): Promise<void> => {
     await tx
       .update(instructorInvites)
-      .set({ status, respondedAt: new Date() })
+      .set({ status: response, respondedAt: new Date() })
       .where(eq(instructorInvites.id, inviteId))
       .execute();
   };
