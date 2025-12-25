@@ -230,6 +230,8 @@ export const dojos = mysqlTable(
     activeSub: mysqlEnum("active_sub", StripePlans).notNull(),
     hasUsedTrial: boolean("has_used_trial").notNull().default(false),
     trialEndsAt: datetime("trial_ends_at"),
+    referralCode: varchar("referral_code", { length: 255 }).notNull(),
+    referredBy: varchar("referred_by", { length: 255 }),
     createdAt: timestamp("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -564,11 +566,9 @@ export const users = mysqlTable(
     username: varchar({ length: 100 }).unique().notNull(),
     passwordHash: varchar("password_hash", { length: 255 }),
     emailVerified: boolean("email_verified").default(false).notNull(),
-    referredBy: varchar("referred_by", { length: 255 }),
     avatar: text(),
     role: mysqlEnum(Role).notNull(),
     balance: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
-    referralCode: varchar("referral_code", { length: 255 }).notNull(),
     stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
     dob: varchar({ length: 20 }),
     gender: varchar({ length: 10 }),

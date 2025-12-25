@@ -301,6 +301,8 @@ export class AuthService {
             activeSub: dto.plan,
             trialEndsAt,
             status: DojoStatus.Registered,
+            referralCode: referral_code,
+            referredBy: dto.referredBy,
           },
           tx
         );

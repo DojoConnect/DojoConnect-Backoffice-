@@ -23,6 +23,8 @@ export const buildRegisterUserDTOMock = (
   overrides?: Partial<RegisterDojoAdminDTO>
 ): RegisterDojoAdminDTO => {
   return {
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
     fullName: "John",
     username: "John Doe",
     email: "john.doe@example.com",
