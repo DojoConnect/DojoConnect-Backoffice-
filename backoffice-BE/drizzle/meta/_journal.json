@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1765290952449,
-      "tag": "0000_polite_captain_midlands",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1765813388273,
-      "tag": "0001_luxuriant_killmonger",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1765920860037,
-      "tag": "0002_flowery_roxanne_simpson",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1766155191013,
-      "tag": "0003_optimal_stick",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1766586425022,
-      "tag": "0004_daffy_beyonder",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1766687060880,
-      "tag": "0005_useful_hiroim",
+      "when": 1766771408030,
+      "tag": "0000_careless_jean_grey",
       "breakpoints": true
     }
   ]
