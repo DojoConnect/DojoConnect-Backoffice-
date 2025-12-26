@@ -9,15 +9,15 @@ import { NotFoundException } from "../core/errors/index.js";
 
 export class DojosController {
   static async handleFetchDojoByTag(req: Request, res: Response) {
-    const slug = req.params.slug;
-    if (!slug) {
+    const tag = req.params.tag;
+    if (!tag) {
       throw new BadRequestException("Slug is required");
     }
 
-    const dojo = await DojosService.getOneDojoByTag(req.params.slug);
+    const dojo = await DojosService.getOneDojoByTag(req.params.tag);
 
     if (!dojo) {
-      throw new NotFoundException(`Dojo with slug ${slug} not found`);
+      throw new NotFoundException(`Dojo with tag ${tag} not found`);
     }
 
     res.json(formatApiResponse({ data: dojo }));

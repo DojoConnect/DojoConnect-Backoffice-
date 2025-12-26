@@ -9,7 +9,7 @@ import { InviteInstructorSchema } from "../validations/instructors.schemas.js";
 
 const router = Router();
 
-router.get("/slug/:slug", DojosController.handleFetchDojoByTag);
+router.get("/tag/:tag", DojosController.handleFetchDojoByTag);
 
 router.get(
   "/:dojoId/instructors",
