@@ -19,6 +19,7 @@ import {
   buildInviteInstructorDtoMock,
 } from "../tests/factories/instructor.factory.js";
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
+import { InstructorsRepository } from "../repositories/instructors.repository.js";
 
 describe("Dojo Service", () => {
   let mockExecute: Mock;
@@ -295,6 +296,56 @@ describe("Dojo Service", () => {
       expect(
         InvitesRepository.fetchDojoUnacceptedInstructorInvites
       ).toHaveBeenCalledWith(dojoId, expect.anything());
+    });
+  });
+
+  describe("fetchInstructors", () => {
+    let fetchInstructorsSpy: MockInstance;
+
+    beforeEach(() => {
+      fetchInstructorsSpy = vi
+        .spyOn(InstructorsRepository, "fetchDojoInstructors")
+        .mockResolvedValue([]);
+    });
+
+    it("should return an array of instructors", async () => {
+      const dojoId = "dojo-1";
+      const mockInstructors = [
+        buildInstructorMock({ dojoId }),
+        buildInstructorMock({ dojoId }),
+      ];
+      fetchInstructorsSpy.mockResolvedValue(mockInstructors);
+
+      const result = await DojosService.fetchInstructors({ dojoId });
+
+      expect(fetchInstructorsSpy).toHaveBeenCalledWith({
+        dojoId,
+        tx: expect.anything(),
+      });
+      expect(result).toEqual(mockInstructors);
+    });
+
+    it("should return an empty array if no instructors are found", async () => {
+      const dojoId = "dojo-1";
+      fetchInstructorsSpy.mockResolvedValue([]);
+
+      const result = await DojosService.fetchInstructors({ dojoId });
+
+      expect(result).toEqual([]);
+      expect(fetchInstructorsSpy).toHaveBeenCalledWith({
+        dojoId,
+        tx: expect.anything(),
+      });
+    });
+
+    it("should throw an error if the repository throws an error", async () => {
+      const dojoId = "dojo-1";
+      const testError = new Error("Database error");
+      fetchInstructorsSpy.mockRejectedValue(testError);
+
+      await expect(DojosService.fetchInstructors({ dojoId })).rejects.toThrow(
+        testError
+      );
     });
   });
 });

@@ -1,6 +1,6 @@
 // Use zod for schema validation
 import { z } from "zod";
-import { Role, StripePlans } from "../constants/enums.js";
+import { StripePlans } from "../constants/enums.js";
 
 export const LoginSchema = z.object({
   email: z.string().trim().email(),
@@ -23,21 +23,23 @@ export const PasswordSchema = z
     "Password must contain uppercase, lowercase, number, and special character; and contain no spaces"
   );
 
-export const RegisterDojoAdminSchema = z.object({
-  firstName: z.string().trim().nonempty().optional().nullable(),
-  lastName: z.string().trim().nonempty().optional().nullable(),
+export const CreateUserBaseSchema = z.object({
+  firstName: z.string().trim().nonempty(),
+  lastName: z.string().trim().nonempty(),
+  email: z.string().trim().email(),
+  password: PasswordSchema,
+  username: z.string().trim().nonempty(),
+  fcmToken: z.string().trim().optional().nullable(),
+});
 
+
+export const RegisterDojoAdminSchema = CreateUserBaseSchema.extend({
   /**
    * @deprecated rely on firstName and lastName instead.
    */
   fullName: z.string().trim().nonempty(),
 
-  email: z.string().trim().email().nonempty(),
-  password: PasswordSchema,
-  username: z.string().trim().nonempty(),
-
   referredBy: z.string().trim().optional().default(""),
-  fcmToken: z.string().trim().optional().nullable(),
 
   plan: z.nativeEnum(StripePlans),
   dojoName: z.string().trim().nonempty(),
@@ -67,6 +69,7 @@ export const ResetPasswordSchema = z.object({
   newPassword: PasswordSchema,
 });
 
+export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema>;
 export type RegisterDojoAdminDTO = z.infer<typeof RegisterDojoAdminSchema>;
 export type LoginDTO = z.infer<typeof LoginSchema>;
 export type RefreshTokenDTO = z.infer<typeof RefreshTokenSchema>;

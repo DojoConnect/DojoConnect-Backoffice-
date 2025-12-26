@@ -7,6 +7,8 @@ type INewNotification = InferInsertModel<typeof notifications>;
 
 export class NotificationRepository {
   static create = async (notification: INewNotification) => {
-    await dbService.getDB().insert(notifications).values(notification);
+    dbService.runInTransaction(async (tx) => {
+      await tx.insert(notifications).values(notification).execute();
+    });
   };
 }

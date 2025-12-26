@@ -17,7 +17,9 @@ export enum AppointmentType {
 
 export enum NotificationType {
   Event = "event",
-  Invitation = "invitation",
+  InvitationCreated = "invitation_created",
+  InvitationResponse = "invitation_response",
+  InvitationAccepted = "invitation_accepted",
   Message = "message",
   SignUp = "signup",
 }

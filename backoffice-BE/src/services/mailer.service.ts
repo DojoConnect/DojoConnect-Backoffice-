@@ -1,6 +1,9 @@
 import AppConfig from "../config/AppConfig.js";
 import nodemailer from "nodemailer";
-import { Role } from "../constants/enums.js";
+import { InstructorInviteStatus, Role } from "../constants/enums.js";
+import { InstructorInviteDetails } from "../repositories/invites.repository.js";
+import { IUser } from "../repositories/user.repository.js";
+import { capitalize, getFullName } from "../utils/text.utils.js";
 
 type SendPasswordResetMailParams = {
   dest: string;
@@ -481,6 +484,58 @@ export class MailerService {
       </a>
     `,
       text: `Hi ${firstName}, accept your invite: ${inviteLink}`,
+    };
+
+    await this.getTransporter().sendMail(mailOptions);
+  };
+
+  static sendInviteResponseEmail = async ({
+    inviteDetails,
+    response,
+    dojoOwner,
+  }: {
+    dojoOwner: IUser;
+    inviteDetails: InstructorInviteDetails;
+    response: InstructorInviteStatus.Accepted | InstructorInviteStatus.Declined;
+  }) => {
+    const instructorFullName = getFullName(
+      inviteDetails.firstName,
+      inviteDetails.lastName
+    );
+
+    const fragment = `${instructorFullName} has ${response} your invite to become an instructor for ${inviteDetails.dojoName}`;
+
+    const mailOptions = {
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+      to: dojoOwner.email,
+      subject: `Instructor Invite ${capitalize(response)}`,
+      text: `Hi ${dojoOwner.firstName}, ${fragment}`,
+      html: `
+      <h2>Hi ${dojoOwner.firstName},</h2>
+
+      <p>${fragment}</p>
+      
+      `,
+    };
+
+    await this.getTransporter().sendMail(mailOptions);
+  };
+
+  static sendInviteAcceptedEmail = async ({instructor, inviteDetails}: {instructor: IUser, inviteDetails: InstructorInviteDetails}) => {
+
+    const fragment = `You accepted the invite to become an instructor for ${inviteDetails.dojoName}.`;
+
+    const mailOptions = {
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+      to: instructor.email,
+      subject: `Invite Accepted`,
+      text: `Hi ${instructor.firstName}, ${fragment}`,
+      html: `
+      <h2>Hi ${instructor.firstName},</h2>
+
+      <p>${fragment}</p>
+      
+      `,
     };
 
     await this.getTransporter().sendMail(mailOptions);

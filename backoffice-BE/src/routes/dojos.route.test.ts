@@ -20,8 +20,8 @@ describe("Dojo Routes", () => {
     vi.clearAllMocks();
   });
 
-  describe("GET /api/dojos/slug/:slug", () => {
-    it("should return a 200 status and the dojo data if the slug exists", async () => {
+  describe("GET /api/dojos/tag/:tag", () => {
+    it("should return a 200 status and the dojo data if the tag exists", async () => {
       // Arrange: Mock the database response for a found dojo
       const mockDojo = buildDojoMock({
         tag: "test-dojo",
@@ -30,7 +30,7 @@ describe("Dojo Routes", () => {
       mockExecute.mockResolvedValue([mockDojo as any]);
 
       // Act: Make the API request
-      const response = await request(app).get("/api/dojos/slug/test-dojo");
+      const response = await request(app).get("/api/dojos/tag/test-dojo");
 
       // Assert: Check the response
       expect(response.status).toBe(200);
@@ -43,12 +43,12 @@ describe("Dojo Routes", () => {
       expect(mockExecute).toHaveBeenCalled();
     });
 
-    it("should return a 404 status if the slug does not exist", async () => {
+    it("should return a 404 status if the tag does not exist", async () => {
       // Arrange: Mock the database to return no results
       mockExecute.mockResolvedValue([] as any); // Empty array signifies "not found"
 
       // Act & Assert
-      await request(app).get("/api/dojos/slug/non-existent-dojo").expect(404);
+      await request(app).get("/api/dojos/tag/non-existent-dojo").expect(404);
     });
   });
 });
