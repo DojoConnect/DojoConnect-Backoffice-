@@ -27,6 +27,7 @@ import {
   UnauthorizedException,
 } from "../core/errors/index.js";
 import {
+  CreateUserBaseDTO,
   FirebaseSignInDTO,
   ForgotPasswordDTO,
   LoginDTO,
@@ -227,6 +228,31 @@ export class AuthService {
       : dbService.runInTransaction(execute);
   };
 
+  static createUser = async ({
+    dto,
+    role,
+    tx,
+  }: {
+    dto: CreateUserBaseDTO;
+    role: Role;
+    tx: Transaction;
+  }) => {
+    const hashedPassword = await hashPassword(dto.password);
+
+    return await UsersService.saveUser(
+      {
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+        email: dto.email,
+        passwordHash: hashedPassword,
+        username: dto.username,
+        role,
+        fcmToken: dto.fcmToken || null,
+      },
+      tx
+    );
+  };
+
   static registerDojoAdmin = async (
     {
       dto,
@@ -270,25 +296,22 @@ export class AuthService {
           throw new ConflictException("Dojo tag already exists");
         }
 
-        // Generate Referral Code and Hash Password
-        const referral_code = UsersService.generateReferralCode();
-        const hashedPassword = await hashPassword(dto.password);
-
-        const newUser = await UsersService.saveUser(
-          {
+        const newUser = await AuthService.createUser({
+          dto: {
             firstName: dto.firstName || dto.fullName.split(" ")[0],
             lastName:
               dto.lastName || dto.fullName.split(" ").slice(1).join(" "),
-            email: dto.email,
-            passwordHash: hashedPassword,
             username: dto.username,
-            role: Role.DojoAdmin,
-            referralCode: referral_code,
-            referredBy: dto.referredBy,
-            fcmToken: dto.fcmToken || null,
+            email: dto.email,
+            password: dto.password,
+            fcmToken: dto.fcmToken,
           },
-          tx
-        );
+          role: Role.DojoAdmin,
+          tx,
+        });
+
+        // Generate Referral Code and Hash Password
+        const referral_code = UsersService.generateReferralCode();
 
         let trialEndsAt: Date | null = addDays(new Date(), 14);
 
@@ -301,6 +324,8 @@ export class AuthService {
             activeSub: dto.plan,
             trialEndsAt,
             status: DojoStatus.Registered,
+            referralCode: referral_code,
+            referredBy: dto.referredBy,
           },
           tx
         );
@@ -343,12 +368,7 @@ export class AuthService {
             Role.DojoAdmin
           );
 
-          if (dto.fcmToken) {
-            await NotificationService.sendSignUpNotification(
-              newUser.id,
-              dto.fcmToken
-            );
-          }
+          await NotificationService.sendSignUpNotification(newUser);
         } catch (err) {
           console.log(
             "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",

@@ -1,6 +1,11 @@
-import { NotificationType } from "../constants/enums.js";
-import { InternalServerErrorException } from "../core/errors/index.js";
+import {
+  InstructorInviteStatus,
+  NotificationType,
+} from "../constants/enums.js";
+import { InstructorInviteDetails } from "../repositories/invites.repository.js";
 import { NotificationRepository } from "../repositories/notification.repository.js";
+import { IUser } from "../repositories/user.repository.js";
+import { capitalize, getFullName } from "../utils/text.utils.js";
 import { FirebaseService } from "./firebase.service.js";
 
 export type BaseNotificationData = {};
@@ -14,33 +19,37 @@ export type NotificationData =
   | SignUpSuccessfulNotificationData;
 
 export class NotificationService {
-  static sendNotification = async ({
+  static sendAndSaveNotification = async ({
     type,
-    fcmToken,
-    userId,
+    user,
     title,
     body = "",
     data,
   }: {
-    userId: string;
-    fcmToken: string;
+    user: IUser;
     title: string;
     body?: string;
     data: NotificationData;
     type: NotificationType;
   }) => {
     try {
+      await NotificationRepository.create({
+        type,
+        userId: user.id,
+        title,
+        message: body,
+      });
+
+      if (!user.fcmToken) {
+        // Return early if there's no FCM token
+        return;
+      }
+
       const message = {
-        token: fcmToken,
+        token: user.fcmToken,
         data: data,
         notification: { title, body },
       };
-
-      await NotificationRepository.create({
-        type,
-        userId: userId,
-        title,
-      });
 
       const response = await FirebaseService.getFirebaseMessaging().send(
         message
@@ -48,24 +57,64 @@ export class NotificationService {
       console.log(`Successfully sent ${type} notification:`, response);
     } catch (error) {
       console.log(`Error sending ${type} notification:`, error);
-      throw new InternalServerErrorException("Error Sending Notification");
     }
   };
 
-  static sendSignUpNotification = async (userId: string, fcmToken: string) => {
+  static sendSignUpNotification = async (user: IUser) => {
     const title = "Welcome to Dojo Connect!";
     const body = "Your Dojo Admin account has been created successfully.";
     const data: SignUpSuccessfulNotificationData = {
       screen: "complete_profile",
     };
 
-    await this.sendNotification({
+    await this.sendAndSaveNotification({
       type: NotificationType.SignUp,
-      fcmToken,
-      userId,
+      user,
       title,
       body,
       data,
+    });
+  };
+
+  static notifyDojoOwnerOfInviteResponse = async ({
+    user,
+    inviteDetails,
+    status,
+  }: {
+    user: IUser;
+    inviteDetails: InstructorInviteDetails;
+    status: InstructorInviteStatus.Accepted | InstructorInviteStatus.Declined;
+  }) => {
+    const title = `Instructor Invite ${capitalize(status)}`;
+    const body = `${getFullName(
+      inviteDetails.firstName,
+      inviteDetails.lastName
+    )} has ${status} your invite to become an instructor for ${
+      inviteDetails.dojoName
+    }.`;
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.InvitationResponse,
+      user,
+      title,
+      body,
+      data: {},
+    });
+  };
+
+  static sendInviteAcceptedNotification = async (
+    user: IUser,
+    inviteDetails: InstructorInviteDetails
+  ) => {
+    const title = "Invite Accepted";
+    const body = `You accepted the invite to become an instructor for ${inviteDetails.dojoName}.`;
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.InvitationAccepted,
+      user,
+      title,
+      body,
+      data: {},
     });
   };
 }

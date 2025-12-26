@@ -6,11 +6,9 @@ export interface UserDTOParams {
   lastName: string;
   email: string;
   username: string;
-  referredBy: string | null;
   avatar: string | null;
   role: Role;
   balance: string;
-  referralCode: string;
   dob: string | null;
   gender: string | null;
   city: string | null;
@@ -24,11 +22,9 @@ export class UserDTO implements UserDTOParams {
   lastName: string;
   email: string;
   username: string;
-  referredBy: string | null;
   avatar: string | null;
   role: Role;
   balance: string;
-  referralCode: string;
   dob: string | null;
   gender: string | null;
   city: string | null;
@@ -41,11 +37,9 @@ export class UserDTO implements UserDTOParams {
     this.lastName = params.lastName;
     this.email = params.email;
     this.username = params.username;
-    this.referredBy = params.referredBy;
     this.avatar = params.avatar;
     this.role = params.role;
     this.balance = params.balance;
-    this.referralCode = params.referralCode;
     this.dob = params.dob;
     this.gender = params.gender;
     this.city = params.city;
@@ -64,11 +58,9 @@ export class UserDTO implements UserDTOParams {
       name: `${this.firstName} ${this.lastName || ""}`.trim(),
       email: this.email,
       username: this.username,
-      referredBy: this.referredBy,
       avatar: this.avatar,
       role: this.role,
       balance: this.balance,
-      referralCode: this.referralCode,
       dob: this.dob,
       gender: this.gender,
       city: this.city,

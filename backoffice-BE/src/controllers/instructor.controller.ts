@@ -2,7 +2,14 @@ import { Request, Response } from "express";
 import { InstructorService } from "../services/instructor.service.js";
 
 export class InstructorController {
-  static async handleAcceptInvite(req: Request, res: Response) {}
+  static async handleAcceptInvite(req: Request, res: Response) {
+    await InstructorService.acceptInvite(req.body);
+
+    res.status(200).json({
+      data: undefined,
+      message: "Invite accepted successfully",
+    });
+  }
 
   static async handleFetchInviteDetails(req: Request, res: Response) {
     const { token } = req.params;

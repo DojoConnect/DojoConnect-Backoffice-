@@ -21,6 +21,7 @@ import { InstructorService } from "./instructor.service.js";
 import { ClassService } from "./class.service.js";
 import { MailerService } from "./mailer.service.js";
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
+import { InstructorsRepository } from "../repositories/instructors.repository.js";
 
 export class DojosService {
   static getOneDojo = async (
@@ -249,6 +250,27 @@ export class DojosService {
 
       return invites.map((invite) => new InvitedInstructorDTO(invite));
     };
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
+
+  static fetchInstructors = async ({
+    dojoId,
+    txInstance,
+  }: {
+    dojoId: string;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      const instructors = await InstructorsRepository.fetchDojoInstructors({
+        dojoId,
+        tx,
+      });
+
+      return instructors;
+    };
+
     return txInstance
       ? execute(txInstance)
       : dbService.runInTransaction(execute);

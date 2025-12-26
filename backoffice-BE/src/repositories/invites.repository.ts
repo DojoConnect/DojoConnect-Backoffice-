@@ -24,7 +24,9 @@ export interface InstructorInviteDetails {
   email: string;
   status: InstructorInviteStatus;
   expiresAt: Date;
+  dojoId: string;
   dojoName: string;
+  dojoOwnerId: string;
   className: string | null;
   invitedAt: Date;
 }
@@ -53,6 +55,13 @@ export class InvitesRepository {
         .limit(1)
         .execute()
     );
+  }
+
+  static getOneInstructorInviteByTokenHash(tokenHash: string, tx: Transaction) {
+    return this.findOneInstructorInvite({
+      whereClause: eq(instructorInvites.tokenHash, tokenHash),
+      tx,
+    });
   }
 
   static getOnePendingInviteByEmailAndDojoId(
@@ -98,8 +107,10 @@ export class InvitesRepository {
         email: instructorInvites.email,
         status: instructorInvites.status,
         expiresAt: instructorInvites.expiresAt,
+        dojoId: dojos.id, // join with dojos table
         dojoName: dojos.name, // join with dojos table
         className: classes.className, // join with classes table if classId exists
+        dojoOwnerId: dojos.userId,
         invitedAt: instructorInvites.createdAt,
       })
       .from(instructorInvites)
@@ -123,13 +134,14 @@ export class InvitesRepository {
       .execute();
   };
 
-  static markInviteAsDeclined = async (
+  static markInviteAsResponded = async (
     inviteId: string,
+    response: InstructorInviteStatus.Accepted | InstructorInviteStatus.Declined,
     tx: Transaction
   ): Promise<void> => {
     await tx
       .update(instructorInvites)
-      .set({ status: InstructorInviteStatus.Declined, respondedAt: new Date() })
+      .set({ status: response, respondedAt: new Date() })
       .where(eq(instructorInvites.id, inviteId))
       .execute();
   };

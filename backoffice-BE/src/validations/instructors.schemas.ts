@@ -11,5 +11,11 @@ export const DeclineInviteSchema = z.object({
   token: z.string().trim().nonempty(),
 });
 
+export const AcceptInviteSchema = z.object({
+  token: z.string().trim().nonempty(),
+  password: z.string().trim().nonempty(),
+});
+
 export type InviteInstructorDTO = z.infer<typeof InviteInstructorSchema>;
 export type DeclineInviteDTO = z.infer<typeof DeclineInviteSchema>;
+export type AcceptInviteDTO = z.infer<typeof AcceptInviteSchema>;
