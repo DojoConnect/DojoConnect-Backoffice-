@@ -1,4 +1,5 @@
 import { Role } from "../constants/enums.js";
+import { BaseDojoDTO } from "./dojo.dtos.js";
 
 export interface UserDTOParams {
   id: string;
@@ -14,6 +15,7 @@ export interface UserDTOParams {
   city: string | null;
   street: string | null;
   createdAt: Date;
+  dojo: BaseDojoDTO;
 }
 
 export class UserDTO implements UserDTOParams {
@@ -30,6 +32,8 @@ export class UserDTO implements UserDTOParams {
   city: string | null;
   street: string | null;
   createdAt: Date;
+  dojo: BaseDojoDTO;
+
 
   constructor(params: UserDTOParams) {
     this.id = params.id;
@@ -45,6 +49,7 @@ export class UserDTO implements UserDTOParams {
     this.city = params.city;
     this.street = params.street;
     this.createdAt = params.createdAt;
+    this.dojo = new BaseDojoDTO(params.dojo);
   }
 
   toJSON() {
@@ -66,6 +71,7 @@ export class UserDTO implements UserDTOParams {
       city: this.city,
       street: this.street,
       createdAt: this.createdAt,
+      dojo: this.dojo.toJSON(),
     };
   }
 }

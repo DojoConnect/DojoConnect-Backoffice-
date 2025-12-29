@@ -232,7 +232,7 @@ export const dojos = mysqlTable(
     trialEndsAt: datetime("trial_ends_at"),
     referralCode: varchar("referral_code", { length: 255 }).notNull(),
     referredBy: varchar("referred_by", { length: 255 }),
-    createdAt: timestamp("created_at", { mode: "string" })
+    createdAt: timestamp("created_at",)
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
