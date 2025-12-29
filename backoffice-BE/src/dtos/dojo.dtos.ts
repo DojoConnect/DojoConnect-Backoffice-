@@ -37,7 +37,6 @@ export class BaseDojoDTO implements IDojo {
       name: this.name,
       tag: this.tag,
       tagline: this.tagline,
-      status: this.status,
       createdAt: this.createdAt,
     };
   }
