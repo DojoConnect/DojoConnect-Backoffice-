@@ -20,6 +20,7 @@ import {
 } from "../tests/factories/instructor.factory.js";
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
 import { InstructorsRepository } from "../repositories/instructors.repository.js";
+import { DojoRepository } from "../repositories/dojo.repository.js";
 
 describe("Dojo Service", () => {
   let mockExecute: Mock;
@@ -346,6 +347,73 @@ describe("Dojo Service", () => {
       await expect(DojosService.fetchInstructors({ dojoId })).rejects.toThrow(
         testError
       );
+    });
+  });
+
+  describe("fetchUserDojo", () => {
+    let getDojoForOwnerSpy: MockInstance;
+    let getDojoForInstructorSpy: MockInstance;
+
+    beforeEach(() => {
+      getDojoForOwnerSpy = vi
+        .spyOn(DojoRepository, "getDojoForOwner")
+        .mockResolvedValue(null);
+      getDojoForInstructorSpy = vi
+        .spyOn(DojoRepository, "getDojoForInstructor")
+        .mockResolvedValue(null);
+    });
+
+    it("should call getDojoForOwner when user is a DojoAdmin", async () => {
+      const user = buildUserMock({ role: Role.DojoAdmin });
+      const dojo = buildDojoMock();
+      getDojoForOwnerSpy.mockResolvedValue(dojo);
+
+      const result = await DojosService.fetchUserDojo({ user });
+
+      expect(getDojoForOwnerSpy).toHaveBeenCalledWith(user.id, expect.anything());
+      expect(getDojoForInstructorSpy).not.toHaveBeenCalled();
+      expect(result).toEqual(dojo);
+    });
+
+    it("should call getDojoForInstructor when user is an Instructor", async () => {
+      const user = buildUserMock({ role: Role.Instructor });
+      const dojo = buildDojoMock();
+      getDojoForInstructorSpy.mockResolvedValue(dojo);
+
+      const result = await DojosService.fetchUserDojo({ user });
+
+      expect(getDojoForInstructorSpy).toHaveBeenCalledWith(
+        user.id,
+        expect.anything()
+      );
+      expect(getDojoForOwnerSpy).not.toHaveBeenCalled();
+      expect(result).toEqual(dojo);
+    });
+
+    it("should throw InternalServerErrorException for other roles", async () => {
+      const user = buildUserMock({ role: Role.Parent });
+
+      await expect(DojosService.fetchUserDojo({ user })).rejects.toThrow(
+        "Code Path not implemented"
+      );
+    });
+
+    it("should return null if no dojo is found for DojoAdmin", async () => {
+      const user = buildUserMock({ role: Role.DojoAdmin });
+      getDojoForOwnerSpy.mockResolvedValue(null);
+
+      const result = await DojosService.fetchUserDojo({ user });
+
+      expect(result).toBeNull();
+    });
+
+    it("should return null if no dojo is found for Instructor", async () => {
+      const user = buildUserMock({ role: Role.Instructor });
+      getDojoForInstructorSpy.mockResolvedValue(null);
+
+      const result = await DojosService.fetchUserDojo({ user });
+
+      expect(result).toBeNull();
     });
   });
 });

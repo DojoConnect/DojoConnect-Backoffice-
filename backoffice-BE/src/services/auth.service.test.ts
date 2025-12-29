@@ -50,16 +50,20 @@ import { AuthResponseDTO } from "../dtos/auth.dtos.js";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
 import { SubscriptionService } from "./subscription.service.js";
 import { NotificationService } from "./notifications.service.js";
+import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
   let logSpy: MockInstance;
+  const mockDojo = buildDojoMock({name: "Test Dojo",});
+  const mockDojoDTO = new BaseDojoDTO(mockDojo);
 
   let getOneUserByEmailSpy: MockInstance;
   let getOneUserByUsernameSpy: MockInstance;
   let getOneDojoByTagSpy: MockInstance;
   let saveUserSpy: MockInstance;
   let getOneUserByIDSpy: MockInstance;
+  let getUserDojoSpy : MockInstance;
 
   beforeEach(() => {
     dbSpies = createDrizzleDbSpies();
@@ -69,6 +73,7 @@ describe("Auth Service", () => {
     getOneUserByUsernameSpy = vi.spyOn(UsersService, "getOneUserByUserName");
     getOneDojoByTagSpy = vi.spyOn(DojosService, "getOneDojoByTag");
     saveUserSpy = vi.spyOn(UsersService, "saveUser");
+    getUserDojoSpy = vi.spyOn(DojosService, "fetchUserDojo").mockResolvedValue(mockDojo);
 
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -132,6 +137,7 @@ describe("Auth Service", () => {
       passwordHash: "hashed_password",
     });
 
+
     let verifyPasswordSpy: MockInstance;
     let updateUserSpy: MockInstance;
     let generateAuthTokensSpy: MockInstance;
@@ -171,7 +177,10 @@ describe("Auth Service", () => {
       expect(result.toJSON()).toEqual({
         accessToken: "access",
         refreshToken: "refresh",
-        user: new UserDTO(mockUser).toJSON(),
+        user: new UserDTO({
+          ...mockUser,
+          dojo: mockDojoDTO
+        }).toJSON(),
       });
     });
 
@@ -335,7 +344,10 @@ describe("Auth Service", () => {
       expect(result.toJSON()).toEqual({
         accessToken: "new_access",
         refreshToken: "new_refresh",
-        user: new UserDTO(mockUser).toJSON(),
+        user: new UserDTO({
+          ...mockUser,
+          dojo: mockDojoDTO
+        }).toJSON(),
       });
     });
 
@@ -490,7 +502,10 @@ describe("Auth Service", () => {
         stripeClientSecret: "test_secret",
         accessToken: "access",
         refreshToken: "refresh",
-        user: new UserDTO(mockSavedUser).toJSON(),
+        user: new UserDTO({
+          ...mockSavedUser,
+          dojo: mockDojoDTO,
+        }).toJSON(),
       });
     });
 
