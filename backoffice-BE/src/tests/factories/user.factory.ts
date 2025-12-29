@@ -3,6 +3,8 @@ import { Role } from "../../constants/enums.js";
 import { UserDTO, UserDTOParams } from "../../dtos/user.dtos.js";
 import { INewUser, IUser } from "../../repositories/user.repository.js";
 import { INewUserCard, IUserCard } from "../../services/users.service.js";
+import { BaseDojoDTO } from "../../dtos/dojo.dtos.js";
+import { buildDojoMock } from "./dojos.factory.js";
 
 export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   return {
@@ -64,5 +66,5 @@ export const buildNewUserCardMock = (
 export const buildUserDtoMock = (
   overrides?: Partial<UserDTOParams>
 ): UserDTO => {
-  return new UserDTO(buildUserMock(overrides));
+  return new UserDTO({ ...buildUserMock(overrides),  dojo: new BaseDojoDTO(buildDojoMock()) });
 };

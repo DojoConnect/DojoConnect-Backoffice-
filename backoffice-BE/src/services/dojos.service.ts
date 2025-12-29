@@ -16,12 +16,13 @@ import { ConflictException } from "../core/errors/ConflictException.js";
 import { InvitesRepository } from "../repositories/invites.repository.js";
 import { generateInviteToken, hashToken } from "../utils/auth.utils.js";
 import { addDays } from "date-fns";
-import { InstructorInviteStatus } from "../constants/enums.js";
+import { InstructorInviteStatus, Role } from "../constants/enums.js";
 import { InstructorService } from "./instructor.service.js";
 import { ClassService } from "./class.service.js";
 import { MailerService } from "./mailer.service.js";
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
 import { InstructorsRepository } from "../repositories/instructors.repository.js";
+import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 
 export class DojosService {
   static getOneDojo = async (
@@ -275,4 +276,33 @@ export class DojosService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
+
+  static fetchUserDojo = async ({
+    user,
+    txInstance,
+  }: {
+    user: IUser;
+    txInstance?: Transaction;
+  }): Promise<IDojo | null> => {
+    const execute = async (tx: Transaction) => {
+      let dojo : IDojo | null = null;
+
+      switch (user.role) {
+        case Role.DojoAdmin:
+          dojo = await DojoRepository.getDojoForOwner(user.id, tx);
+          break;
+        case Role.Instructor:
+          dojo = await DojoRepository.getDojoForInstructor(user.id, tx);
+          break;
+        case Role.Parent:
+        case Role.Child:
+        default:
+          throw new InternalServerErrorException("Code Path not implemented");
+      }
+
+      return dojo;
+    }
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  }
 }

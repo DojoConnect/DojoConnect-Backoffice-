@@ -14,7 +14,7 @@ export const buildDojoMock = (overrides?: Partial<IDojo>): IDojo => {
     referredBy: "ref_12345",
     hasUsedTrial: false,
     trialEndsAt: new Date("2025-02-01T10:00:00.000Z"),
-    createdAt: new Date("2024-01-10T12:00:00").toISOString(),
+    createdAt: new Date("2024-01-10T12:00:00"),
     ...overrides, // Allows overriding specific fields for different test scenarios
   };
 };

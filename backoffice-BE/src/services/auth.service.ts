@@ -51,6 +51,7 @@ import { UserDTO } from "../dtos/user.dtos.js";
 import { IUser } from "../repositories/user.repository.js";
 import { SubscriptionService } from "./subscription.service.js";
 import { NotificationService } from "./notifications.service.js";
+import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
 
 export class AuthService {
   static generateAuthTokens = async ({
@@ -133,18 +134,26 @@ export class AuthService {
         });
       }
 
-      const { accessToken, refreshToken } =
-        await AuthService.generateAuthTokens({
+      const [authTokens, dojo] = await Promise.all([
+        AuthService.generateAuthTokens({
           user,
           userIp,
           userAgent,
-          txInstance,
-        });
+          txInstance: tx,
+        }),
+        DojosService.fetchUserDojo({
+          user,
+          txInstance: tx,
+        }),
+      ]);
+
+      if (!dojo) {
+        throw new NotFoundException("Dojo not found for user");
+      }
 
       return new AuthResponseDTO({
-        accessToken,
-        refreshToken,
-        user: new UserDTO(user),
+        ...authTokens,
+        user: new UserDTO({ ...user, dojo: new BaseDojoDTO(dojo) }),
       });
     };
 
@@ -210,16 +219,26 @@ export class AuthService {
 
       if (!user) throw new NotFoundException("User not found");
 
-      const authTokens = await AuthService.generateAuthTokens({
-        user,
-        userIp,
-        userAgent,
-        txInstance: tx,
-      });
+      const [authTokens, dojo] = await Promise.all([
+        AuthService.generateAuthTokens({
+          user,
+          userIp,
+          userAgent,
+          txInstance: tx,
+        }),
+        DojosService.fetchUserDojo({
+          user,
+          txInstance: tx,
+        }),
+      ]);
+
+      if (!dojo) {
+        throw new NotFoundException("Dojo not found for user");
+      }
 
       return new AuthResponseDTO({
         ...authTokens,
-        user: new UserDTO(user),
+        user: new UserDTO({ ...user, dojo: new BaseDojoDTO(dojo) }),
       });
     };
 
@@ -353,13 +372,22 @@ export class AuthService {
           );
         }
 
-        const { accessToken, refreshToken } =
-          await AuthService.generateAuthTokens({
+        const [authTokens, dojo] = await Promise.all([
+          AuthService.generateAuthTokens({
             user: newUser,
-            userAgent,
             userIp,
+            userAgent,
             txInstance: tx,
-          });
+          }),
+          DojosService.fetchUserDojo({
+            user: newUser,
+            txInstance: tx,
+          }),
+        ]);
+
+        if (!dojo) {
+          throw new NotFoundException("Dojo not found for user");
+        }
 
         try {
           await MailerService.sendWelcomeEmail(
@@ -378,9 +406,8 @@ export class AuthService {
 
         return new RegisterDojoAdminResponseDTO({
           stripeClientSecret: stripeClientSecret!,
-          accessToken,
-          refreshToken,
-          user: new UserDTO(newUser),
+          ...authTokens,
+          user: new UserDTO({ ...newUser, dojo: new BaseDojoDTO(dojo) }),
         });
       } catch (err) {
         console.log(`An error occurred while trying to register user: ${err}`);
@@ -522,18 +549,26 @@ export class AuthService {
         });
       }
 
-      const { accessToken, refreshToken } =
-        await AuthService.generateAuthTokens({
+      const [authTokens, dojo] = await Promise.all([
+        AuthService.generateAuthTokens({
           user,
           userIp,
           userAgent,
-          txInstance,
-        });
+          txInstance: tx,
+        }),
+        DojosService.fetchUserDojo({
+          user,
+          txInstance: tx,
+        }),
+      ]);
+
+      if (!dojo) {
+        throw new NotFoundException("Dojo not found for user");
+      }
 
       return new AuthResponseDTO({
-        accessToken,
-        refreshToken,
-        user: new UserDTO(user),
+        ...authTokens,
+        user: new UserDTO({ ...user, dojo: new BaseDojoDTO(dojo) }),
       });
     };
 
