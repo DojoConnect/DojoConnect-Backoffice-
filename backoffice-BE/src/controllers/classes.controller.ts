@@ -18,7 +18,7 @@ export class ClassesController {
 
     const newClass = await ClassService.createClass({
       dto: req.body,
-      dojoId: dojo.id,
+      dojo: dojo,
     });
 
     res.status(201).json(

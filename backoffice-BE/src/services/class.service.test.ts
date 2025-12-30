@@ -24,15 +24,14 @@ import {
 import { CreateClassDTO } from "../validations/classes.schemas.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
 import { nextDay } from "date-fns";
+import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 
 vi.mock("date-fns");
 vi.mock("../utils/date.utils.js");
 
 describe("Class Service", () => {
-  let mockExecute: Mock;
   const mockedNextDay = vi.mocked(nextDay);
   let dbServiceSpy : DbServiceSpies
-
 
   beforeEach(() => {
     dbServiceSpy = createDrizzleDbSpies();
@@ -48,6 +47,8 @@ describe("Class Service", () => {
     let createClassSpy: MockInstance;
     let findByIdSpy: MockInstance;
     const dojoId = "dojo-1";
+
+    const mockedDojo = buildDojoMock({ id: dojoId })
 
     beforeEach(() => {
       const mockClass = buildClassMock();
@@ -84,7 +85,7 @@ describe("Class Service", () => {
         const fakeDate = new Date();
         mockedNextDay.mockReturnValue(fakeDate);
 
-        const result = await ClassService.createClass({ dto, dojoId });
+        const result = await ClassService.createClass({ dto, dojo: mockedDojo });
 
         const { schedules, ...classDetails } = dto;
         const { type, ...scheduleData } = schedules[0];
@@ -138,7 +139,7 @@ describe("Class Service", () => {
       });
 
       it("should successfully create a one-time class", async () => {
-        const result = await ClassService.createClass({ dto, dojoId });
+        const result = await ClassService.createClass({ dto, dojo: mockedDojo });
 
         const { schedules, ...classDetails } = dto;
         const { type, ...scheduleData } = schedules[0];

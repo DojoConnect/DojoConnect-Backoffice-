@@ -4,6 +4,7 @@ import {
   ClassFrequency,
   ClassLevel,
   ClassSubscriptionType,
+  GradingNotificationUnit,
   Weekday,
 } from "../constants/enums.js";
 
@@ -73,6 +74,13 @@ const BaseClassSchema = z.object({
     .optional()
     .nullable()
     .transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  gradingNotification: z
+    .object({
+      unit: z.enum(GradingNotificationUnit),
+      value: z.number().nonnegative(),
+    })
+    .optional()
+    .nullable(),
   subscriptionType: z.enum(ClassSubscriptionType),
   price: z.number().min(0).optional(),
   instructorId: z.uuid().optional().nullable(),

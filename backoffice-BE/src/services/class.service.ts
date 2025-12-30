@@ -111,6 +111,8 @@ export class ClassService {
 
       // TODO: Set Up Chat
 
+      // TODO: Set up Grading Notification
+
       const dojoOwner = await UsersService.getOneUserByID({
         userId: dojo.ownerUserId,
         txInstance: tx,
@@ -132,8 +134,6 @@ export class ClassService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
-
-  
 
   static getOneClassById = async (
     classId: string,

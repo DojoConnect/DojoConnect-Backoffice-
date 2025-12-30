@@ -373,7 +373,7 @@ describe("Auth Service", () => {
       name: "My Dojo",
       tag: "DOJO",
       tagline: "The best",
-      userId: mockSavedUser.id,
+      ownerUserId: mockSavedUser.id,
     });
 
     const userDTO = buildRegisterDojoAdminDTOMock({

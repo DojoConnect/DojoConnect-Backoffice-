@@ -4,7 +4,7 @@ import { IDojo } from "../../repositories/dojo.repository.js";
 export const buildDojoMock = (overrides?: Partial<IDojo>): IDojo => {
   return {
     id: "1`",
-    userId: "1",
+    ownerUserId: "1",
     name: "Desmond Dojo",
     tag: "DESM",
     tagline: "Building champions",

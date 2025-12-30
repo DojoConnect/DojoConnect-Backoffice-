@@ -130,6 +130,12 @@ export enum ClassOccurrenceStatus {
   Cancelled = "cancelled",
 }
 
+export enum GradingNotificationUnit {
+  Hours = "hours",
+  Days = "days",
+  Weeks = "weeks",
+}
+
 export const ACTIVE_BILLING_STATUSES = [
   BillingStatus.Trialing,
   BillingStatus.Active,

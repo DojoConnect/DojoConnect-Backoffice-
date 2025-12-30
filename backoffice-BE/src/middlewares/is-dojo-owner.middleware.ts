@@ -29,7 +29,7 @@ export const isDojoOwnerMiddleware = async (
       throw new NotFoundException("Dojo not found");
     }
 
-    if (dojo.userId !== req.user.id) {
+    if (dojo.ownerUserId !== req.user.id) {
       throw new ForbiddenException("Access Denied");
     }
 
