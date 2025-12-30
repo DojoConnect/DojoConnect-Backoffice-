@@ -4,7 +4,7 @@ import { IDojo } from "../repositories/dojo.repository.js";
 /** Used for data we send with auth for all user types. Hence the `toJson` Hides sensitive data */
 export class BaseDojoDTO implements IDojo {
   id: string;
-  userId: string;
+  ownerUserId: string;
   name: string;
   tag: string;
   tagline: string;
@@ -18,7 +18,7 @@ export class BaseDojoDTO implements IDojo {
 
   constructor(params: IDojo) {
     this.id = params.id;
-    this.userId = params.userId;
+    this.ownerUserId = params.ownerUserId;
     this.name = params.name;
     this.tag = params.tag;
     this.tagline = params.tagline;

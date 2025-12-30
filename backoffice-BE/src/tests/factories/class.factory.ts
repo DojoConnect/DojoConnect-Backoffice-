@@ -1,3 +1,4 @@
+import { faker } from "@faker-js/faker";
 import {
   ClassFrequency,
   ClassLevel,
@@ -38,7 +39,7 @@ export const buildClassMock = (
 
   return {
     id: "class-1",
-    dojoId: "dojo-1",
+    dojoId: faker.string.uuid(),
     instructorId: "instructor-1",
     name: "Karate 101",
     description: "Beginner's karate class.",
@@ -51,6 +52,7 @@ export const buildClassMock = (
     gradingDate: null,
     frequency: ClassFrequency.Weekly,
     subscriptionType: ClassSubscriptionType.Paid,
+    stripePriceId: null,
     price: "50.00",
     imagePublicId: null,
     status: ClassStatus.Active,

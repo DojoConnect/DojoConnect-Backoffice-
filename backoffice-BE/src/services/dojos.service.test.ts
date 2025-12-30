@@ -21,6 +21,7 @@ import {
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
 import { InstructorsRepository } from "../repositories/instructors.repository.js";
 import { DojoRepository } from "../repositories/dojo.repository.js";
+import { buildClassMock } from "../tests/factories/class.factory.js";
 
 describe("Dojo Service", () => {
   let mockExecute: Mock;
@@ -58,7 +59,7 @@ describe("Dojo Service", () => {
 
   describe("inviteInstructor", () => {
     const user = buildUserMock({ id: "user-1", role: Role.DojoAdmin });
-    const dojo = buildDojoMock({ id: "dojo-1", userId: "user-1" });
+    const dojo = buildDojoMock({ id: "dojo-1", ownerUserId: "user-1" });
     const dto = buildInviteInstructorDtoMock({
       email: "new.instructor@test.com",
       firstName: "New",
@@ -99,7 +100,7 @@ describe("Dojo Service", () => {
 
       getOneClassByIdSpy = vi
         .spyOn(ClassService, "getOneClassById")
-        .mockResolvedValue(null);
+        .mockResolvedValue(buildClassMock());
     });
 
     it("should successfully invite an instructor", async () => {
@@ -150,7 +151,7 @@ describe("Dojo Service", () => {
       findInstructorByUserIdSpy.mockResolvedValue(
         buildInstructorMock({
           id: "instructor-1",
-          userId: existingUser.id,
+          instructorUserId: existingUser.id,
           dojoId: dojo.id,
         })
       );
@@ -170,7 +171,7 @@ describe("Dojo Service", () => {
       findInstructorByUserIdSpy.mockResolvedValue(
         buildInstructorMock({
           id: "instructor-1",
-          userId: existingUser.id,
+          instructorUserId: existingUser.id,
           dojoId: "another-dojo-id",
         })
       );
