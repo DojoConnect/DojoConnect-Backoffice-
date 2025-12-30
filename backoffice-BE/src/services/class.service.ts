@@ -37,22 +37,22 @@ export class ClassService {
         {
           classData,
           schedulesData: schedules.map((s) => {
-            let initialClassDate: null | Date = null;
+            let initialClassDate: Date;
 
             if (s.type === ClassFrequency.OneTime) {
               initialClassDate = s.date;
-            }
-
-            if (s.type === ClassFrequency.Weekly) {
+            } else {
               initialClassDate = nextDay(
                 new Date(),
                 mapWeekdayToDayNumber(s.weekday)
               );
             }
 
+            const { type, ...scheduleData } = s;
+
             return {
-              ...s,
-              initialClassDate: s.date ?? nextDay(new Date(), 1),
+              ...scheduleData,
+              initialClassDate,
             };
           }),
         },

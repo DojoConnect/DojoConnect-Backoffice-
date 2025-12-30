@@ -70,7 +70,7 @@ const BaseClassSchema = z.object({
   city: z.string().trim().min(1),
   gradingDate: z.iso
     .date()
-    .optional()
+    .optional().nullable()
     .transform((v) => (typeof v === "string" ? new Date(v) : v)),
   subscriptionType: z.enum(ClassSubscriptionType),
   price: z.number().min(0).optional(),
