@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "fdb96738-49cf-4487-af9c-e3e8b59c0e5b",
+  "id": "f09bfbdd-5d92-46dc-8837-53c7bb7ba2d3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "admin": {
@@ -541,26 +541,135 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "class_schedule": {
-      "name": "class_schedule",
+    "class_occurrences": {
+      "name": "class_occurrences",
       "columns": {
         "id": {
           "name": "id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "class_id": {
-          "name": "class_id",
-          "type": "int",
+          "type": "varchar(36)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "day": {
-          "name": "day",
-          "type": "varchar(20)",
+        "schedule_id": {
+          "name": "schedule_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "class_id": {
+          "name": "class_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "date": {
+          "name": "date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "start_time": {
+          "name": "start_time",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "end_time": {
+          "name": "end_time",
+          "type": "time",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('scheduled','completed','cancelled')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'scheduled'"
+        },
+        "cancellation_reason": {
+          "name": "cancellation_reason",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "class_occurrences_schedule_id_class_schedules_id_fk": {
+          "name": "class_occurrences_schedule_id_class_schedules_id_fk",
+          "tableFrom": "class_occurrences",
+          "tableTo": "class_schedules",
+          "columnsFrom": [
+            "schedule_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "class_occurrences_class_id_classes_id_fk": {
+          "name": "class_occurrences_class_id_classes_id_fk",
+          "tableFrom": "class_occurrences",
+          "tableTo": "classes",
+          "columnsFrom": [
+            "class_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "class_occurrences_id": {
+          "name": "class_occurrences_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
+    "class_schedules": {
+      "name": "class_schedules",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "class_id": {
+          "name": "class_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "weekday": {
+          "name": "weekday",
+          "type": "enum('sunday','monday','tuesday','wednesday','thursday','friday','saturday')",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -579,34 +688,53 @@
           "notNull": true,
           "autoincrement": false
         },
-        "schedule_date": {
-          "name": "schedule_date",
+        "initial_class_date": {
+          "name": "initial_class_date",
           "type": "date",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         }
       },
       "indexes": {
-        "class_id": {
-          "name": "class_id",
+        "class_idx": {
+          "name": "class_idx",
           "columns": [
             "class_id"
           ],
           "isUnique": false
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "class_schedules_class_id_classes_id_fk": {
+          "name": "class_schedules_class_id_classes_id_fk",
+          "tableFrom": "class_schedules",
+          "tableTo": "classes",
+          "columnsFrom": [
+            "class_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
-        "class_schedule_id": {
-          "name": "class_schedule_id",
+        "class_schedules_id": {
+          "name": "class_schedules_id",
           "columns": [
             "id"
           ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraint": {}
+      "checkConstraint": {
+        "time_order_check": {
+          "name": "time_order_check",
+          "value": "`class_schedules`.`start_time` < `class_schedules`.`end_time`"
+        }
+      }
     },
     "classes": {
       "name": "classes",
@@ -614,13 +742,6 @@
         "id": {
           "name": "id",
           "type": "varchar(36)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "class_uid": {
-          "name": "class_uid",
-          "type": "varchar(50)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -636,74 +757,102 @@
           "name": "instructor_id",
           "type": "varchar(36)",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
-        "owner_email": {
-          "name": "owner_email",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "class_name": {
-          "name": "class_name",
-          "type": "varchar(255)",
+        "name": {
+          "name": "name",
+          "type": "varchar(150)",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
         "description": {
           "name": "description",
-          "type": "text",
+          "type": "varchar(150)",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
         "level": {
           "name": "level",
-          "type": "enum('Beginner','Intermediate','Advanced')",
+          "type": "enum('beginner','intermediate','advanced')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "age_group": {
-          "name": "age_group",
-          "type": "varchar(50)",
+        "min_age": {
+          "name": "min_age",
+          "type": "tinyint unsigned",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
-        "frequency": {
-          "name": "frequency",
-          "type": "varchar(50)",
+        "max_age": {
+          "name": "max_age",
+          "type": "tinyint unsigned",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "capacity": {
           "name": "capacity",
-          "type": "int",
+          "type": "smallint unsigned",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "location": {
-          "name": "location",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "street_address": {
           "name": "street_address",
           "type": "varchar(255)",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "city": {
           "name": "city",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "grading_date": {
+          "name": "grading_date",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "frequency": {
+          "name": "frequency",
+          "type": "enum('one_time','weekly')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "subscription_type": {
+          "name": "subscription_type",
+          "type": "enum('free','paid')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "price": {
+          "name": "price",
+          "type": "decimal(10,2) unsigned",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "stripe_price_id": {
+          "name": "stripe_price_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "image_public_id": {
+          "name": "image_public_id",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false,
@@ -711,7 +860,7 @@
         },
         "status": {
           "name": "status",
-          "type": "enum('active','deleted','hide')",
+          "type": "enum('active','deleted','hidden')",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
@@ -732,52 +881,24 @@
           "notNull": true,
           "autoincrement": false,
           "default": "CURRENT_TIMESTAMP"
-        },
-        "image_path": {
-          "name": "image_path",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "subscription": {
-          "name": "subscription",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "price": {
-          "name": "price",
-          "type": "decimal(10,2)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": "'0.00'"
-        },
-        "chat_id": {
-          "name": "chat_id",
-          "type": "int",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "stripe_price_id": {
-          "name": "stripe_price_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "stripe_product_id": {
-          "name": "stripe_product_id",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "instructor_idx": {
+          "name": "instructor_idx",
+          "columns": [
+            "instructor_id"
+          ],
+          "isUnique": false
+        },
+        "dojo_idx": {
+          "name": "dojo_idx",
+          "columns": [
+            "dojo_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "classes_dojo_id_dojos_id_fk": {
           "name": "classes_dojo_id_dojos_id_fk",
@@ -802,7 +923,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -814,15 +935,21 @@
           ]
         }
       },
-      "uniqueConstraints": {
-        "class_uid": {
-          "name": "class_uid",
-          "columns": [
-            "class_uid"
-          ]
+      "uniqueConstraints": {},
+      "checkConstraint": {
+        "age_range_check": {
+          "name": "age_range_check",
+          "value": "`classes`.`min_age` <= `classes`.`max_age`"
+        },
+        "capacity_check": {
+          "name": "capacity_check",
+          "value": "`classes`.`capacity` > 0"
+        },
+        "subscription_price_check": {
+          "name": "subscription_price_check",
+          "value": "(`classes`.`subscription_type` = 'free' AND (`classes`.`price` IS NULL OR `classes`.`price` = 0)) OR (`classes`.`subscription_type` = 'paid' AND `classes`.`price` > 0)"
         }
-      },
-      "checkConstraint": {}
+      }
     },
     "deletion_requests": {
       "name": "deletion_requests",
@@ -895,8 +1022,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "user_id": {
-          "name": "user_id",
+        "instructor_user_id": {
+          "name": "instructor_user_id",
           "type": "varchar(36)",
           "primaryKey": false,
           "notNull": true,
@@ -920,12 +1047,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "dojo_instructors_user_id_users_id_fk": {
-          "name": "dojo_instructors_user_id_users_id_fk",
+        "dojo_instructors_instructor_user_id_users_id_fk": {
+          "name": "dojo_instructors_instructor_user_id_users_id_fk",
           "tableFrom": "dojo_instructors",
           "tableTo": "users",
           "columnsFrom": [
-            "user_id"
+            "instructor_user_id"
           ],
           "columnsTo": [
             "id"
@@ -956,10 +1083,10 @@
         }
       },
       "uniqueConstraints": {
-        "dojo_instructors_user_id_unique": {
-          "name": "dojo_instructors_user_id_unique",
+        "dojo_instructors_instructor_user_id_unique": {
+          "name": "dojo_instructors_instructor_user_id_unique",
           "columns": [
-            "user_id"
+            "instructor_user_id"
           ]
         }
       },
@@ -1082,8 +1209,8 @@
           "notNull": true,
           "autoincrement": false
         },
-        "user_id": {
-          "name": "user_id",
+        "owner_user_id": {
+          "name": "owner_user_id",
           "type": "varchar(36)",
           "primaryKey": false,
           "notNull": true,
@@ -1164,12 +1291,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "dojos_user_id_users_id_fk": {
-          "name": "dojos_user_id_users_id_fk",
+        "dojos_owner_user_id_users_id_fk": {
+          "name": "dojos_owner_user_id_users_id_fk",
           "tableFrom": "dojos",
           "tableTo": "users",
           "columnsFrom": [
-            "user_id"
+            "owner_user_id"
           ],
           "columnsTo": [
             "id"
@@ -1784,7 +1911,7 @@
         },
         "type": {
           "name": "type",
-          "type": "enum('event','invitation_created','invitation_response','invitation_accepted','message','signup')",
+          "type": "enum('event','class_created','class_updated','class_deleted','invitation_created','invitation_response','invitation_accepted','message','signup')",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
