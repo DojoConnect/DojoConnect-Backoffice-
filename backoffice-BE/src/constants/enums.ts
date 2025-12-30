@@ -98,7 +98,17 @@ export enum ClassLevel {
 export enum ClassStatus {
   Active = "active",
   Deleted = "deleted",
-  Hidden = "hide",
+  Hidden = "hidden",
+}
+
+export enum ClassFrequency {
+  OneTime = "one_time",
+  Weekly = "weekly",
+}
+
+export enum ClassSubscription {
+  Free = "free",
+  Paid = "paid",
 }
 
 export const ACTIVE_BILLING_STATUSES = [

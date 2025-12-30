@@ -16,6 +16,8 @@ import {
   boolean,
   json,
   uniqueIndex,
+  smallint,
+  check,
 } from "drizzle-orm/mysql-core";
 import { uuidv7 } from "uuidv7";
 import {
@@ -30,6 +32,8 @@ import {
   InstructorInviteStatus,
   ClassLevel,
   ClassStatus,
+  ClassFrequency,
+  ClassSubscription,
 } from "../constants/enums.js";
 
 const activeBillingStatusesSql = sql.join(
@@ -155,20 +159,20 @@ export const classes = mysqlTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .$defaultFn(() => uuidv7()),
-    classUid: varchar("class_uid", { length: 50 }).notNull(),
     dojoId: varchar("dojo_id", { length: 36 })
       .notNull()
       .references(() => dojos.id, { onDelete: "cascade" }),
-    instructorId: varchar("instructor_id", { length: 36 })
-      .notNull()
-      .references(() => dojoInstructors.id, { onDelete: "cascade" }),
-    ownerEmail: varchar("owner_email", { length: 255 }).notNull(),
+    instructorId: varchar("instructor_id", { length: 36 }).references(
+      () => dojoInstructors.id,
+      { onDelete: "cascade" }
+    ),
     className: varchar("class_name", { length: 255 }).notNull(),
     description: text(),
     level: mysqlEnum(ClassLevel).notNull(),
-    ageGroup: varchar("age_group", { length: 50 }),
-    frequency: varchar({ length: 50 }),
-    capacity: int(),
+    minAge: tinyint("min_age", { unsigned: true }).notNull(),
+    maxAge: tinyint("max_age", { unsigned: true }).notNull(),
+    capacity: smallint({ unsigned: true }).notNull(),
+    frequency: mysqlEnum(ClassFrequency).notNull(),
     location: varchar({ length: 255 }),
     streetAddress: varchar("street_address", { length: 255 }),
     city: varchar({ length: 255 }),
@@ -176,17 +180,30 @@ export const classes = mysqlTable(
     createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp("updated_at",)
+    updatedAt: timestamp("updated_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     imagePath: varchar("image_path", { length: 255 }),
-    subscription: varchar({ length: 100 }),
-    price: decimal({ precision: 10, scale: 2 }).default("0.00"),
+    subscription: mysqlEnum(ClassSubscription).notNull(),
+    price: decimal({ precision: 10, scale: 2, unsigned: true }).default("0.00"),
     chatId: int("chat_id"),
     stripePriceId: varchar("stripe_price_id", { length: 255 }),
     stripeProductId: varchar("stripe_product_id", { length: 255 }).notNull(),
   },
-  (table) => [unique("class_uid").on(table.classUid)]
+  (t) => [
+    check("age_range_check", sql`${t.minAge} <= ${t.maxAge}`),
+    check("capacity_check", sql`${t.capacity} > 0`),
+    check(
+      "subscription_price_check",
+      sql`
+        (
+          (${t.subscription} = ${ClassSubscription.Free} AND ${t.price} = 0)
+          OR
+          (${t.subscription} = ${ClassSubscription.Paid} AND ${t.price} > 0)
+        )
+      `
+    ),
+  ]
 );
 
 export const classSchedule = mysqlTable(
