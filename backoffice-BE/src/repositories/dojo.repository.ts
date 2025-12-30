@@ -1,4 +1,9 @@
-import { eq, getTableColumns, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import {
+  eq,
+  getTableColumns,
+  InferInsertModel,
+  InferSelectModel,
+} from "drizzle-orm";
 import { dojoInstructors, dojos } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
 import { Transaction } from "../db/index.js";
@@ -63,27 +68,27 @@ export class DojoRepository {
         .select({ ...getTableColumns(dojos) })
         .from(dojos)
         .innerJoin(dojoInstructors, eq(dojoInstructors.dojoId, dojos.id))
-        .where(eq(dojoInstructors.userId, instructorUserId))
+        .where(eq(dojoInstructors.instructorUserId, instructorUserId))
         .limit(1)
         .execute()
     );
 
     return dojo;
-  }
+  };
 
   static getDojoForOwner = async (
     ownerUserId: string,
     tx: Transaction
-  ) : Promise<IDojo | null> => {
+  ): Promise<IDojo | null> => {
     const dojo = returnFirst(
       await tx
         .select({ ...getTableColumns(dojos) })
         .from(dojos)
-        .where(eq(dojos.userId, ownerUserId))
+        .where(eq(dojos.ownerUserId, ownerUserId))
         .limit(1)
         .execute()
     );
 
     return dojo;
-  }
+  };
 }

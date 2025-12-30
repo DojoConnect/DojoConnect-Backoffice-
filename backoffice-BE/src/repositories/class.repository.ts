@@ -9,6 +9,8 @@ export type INewClass = InferInsertModel<typeof classes>;
 export type IClassSchedule = InferSelectModel<typeof classSchedules>;
 export type INewClassSchedule = InferInsertModel<typeof classSchedules>;
 
+export type IUpdateClass = Partial<Omit<INewClass, "id" | "createdAt">>;
+
 export class ClassRepository {
   static async create(
     {
@@ -21,7 +23,6 @@ export class ClassRepository {
       .insert(classes)
       .values(classData)
       .$returningId();
-    
 
     const schedulesToInsert = schedulesData.map((schedule) => ({
       ...schedule,
@@ -67,8 +68,22 @@ export class ClassRepository {
     const result = await tx
       .select()
       .from(classes)
-      .where(and(eq(classes.dojoId, dojoId), eq(classes.status, ClassStatus.Active)));
+      .where(
+        and(eq(classes.dojoId, dojoId), eq(classes.status, ClassStatus.Active))
+      );
 
     return result;
   }
+
+  static update = async ({
+    classId,
+    update,
+    tx,
+  }: {
+    classId: string;
+    update: IUpdateClass;
+    tx: Transaction;
+  }) => {
+    await tx.update(classes).set(update).where(eq(classes.id, classId));
+  };
 }

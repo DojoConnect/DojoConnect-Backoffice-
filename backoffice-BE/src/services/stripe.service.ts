@@ -8,7 +8,9 @@ export const StripePriceIDsMap = {
   [StripePlans.Yearly]: "price_1Sg2AkRbZzajfaIInUpYkpcw",
 };
 
-type CreateStripeCustRes = Awaited<ReturnType<typeof StripeService.createCustomer>>;
+type CreateStripeCustRes = Awaited<
+  ReturnType<typeof StripeService.createCustomer>
+>;
 export type StripePaymentMethodRes = Awaited<
   ReturnType<typeof StripeService.retrievePaymentMethod>
 >;
@@ -86,5 +88,19 @@ export class StripeService {
       setupIntentId
     );
   };
-}
 
+  static createClassProduct = async (productName: string, dojoId: string) => {
+    return await StripeService.getStripeInstance().products.create({
+      name: `DJC-${dojoId}-${productName}`,
+    });
+  };
+
+  static createClassPrice = async (stripeProductId: string, price: number) => {
+    return await StripeService.getStripeInstance().prices.create({
+      unit_amount: Math.round((price ?? 0) * 100),
+      currency: "gbp",
+      recurring: { interval: "month" },
+      product: stripeProductId,
+    });
+  };
+}

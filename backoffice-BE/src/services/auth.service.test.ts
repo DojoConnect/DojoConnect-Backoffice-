@@ -477,7 +477,7 @@ describe("Auth Service", () => {
 
       expect(createDojoSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          userId: mockSavedUser.id,
+          ownerUserId: mockSavedUser.id,
           name: userDTO.dojoName,
         }),
         dbSpies.mockTx

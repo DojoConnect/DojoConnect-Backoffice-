@@ -186,6 +186,7 @@ export const classes = mysqlTable(
       ClassSubscriptionType
     ).notNull(),
     price: decimal({ precision: 10, scale: 2, unsigned: true }),
+    stripePriceId: varchar("stripe_price_id", { length: 255 }),
     imagePublicId: varchar("image_public_id", { length: 255 }),
     status: mysqlEnum("status", ClassStatus)
       .default(ClassStatus.Active)
@@ -271,7 +272,7 @@ export const dojos = mysqlTable(
     id: varchar("id", { length: 36 })
       .primaryKey()
       .$defaultFn(() => uuidv7()),
-    userId: varchar("user_id", { length: 36 })
+    ownerUserId: varchar("owner_user_id", { length: 36 })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 255 }).notNull(),
@@ -421,7 +422,7 @@ export const dojoInstructors = mysqlTable("dojo_instructors", {
   id: varchar("id", { length: 36 })
     .primaryKey()
     .$defaultFn(() => uuidv7()),
-  userId: varchar("user_id", { length: 36 })
+  instructorUserId: varchar("instructor_user_id", { length: 36 })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),

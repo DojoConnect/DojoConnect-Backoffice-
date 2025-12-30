@@ -336,7 +336,7 @@ export class AuthService {
 
         const newDojo = await DojosService.createDojo(
           {
-            userId: newUser.id,
+            ownerUserId: newUser.id,
             name: dto.dojoName,
             tag: dto.dojoTag,
             tagline: dto.dojoTagline,

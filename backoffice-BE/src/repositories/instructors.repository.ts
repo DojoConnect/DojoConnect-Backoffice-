@@ -45,7 +45,21 @@ export class InstructorsRepository {
 
   static findOneByUserId = async (userId: string, tx: Transaction) => {
     return this.findOne({
-      whereClause: eq(dojoInstructors.userId, userId),
+      whereClause: eq(dojoInstructors.instructorUserId, userId),
+      tx,
+    });
+  };
+
+  static findOneByIdAndDojoId = async (
+    id: string,
+    dojoId: string,
+    tx: Transaction
+  ) => {
+    return this.findOne({
+      whereClause: and(
+        eq(dojoInstructors.id, id),
+        eq(dojoInstructors.dojoId, dojoId)
+      ),
       tx,
     });
   };
@@ -57,7 +71,7 @@ export class InstructorsRepository {
   ) {
     return this.findOne({
       whereClause: and(
-        eq(dojoInstructors.userId, userId),
+        eq(dojoInstructors.instructorUserId, userId),
         eq(dojoInstructors.dojoId, dojoId)
       ),
       tx,
@@ -81,21 +95,21 @@ export class InstructorsRepository {
         createdAt: dojoInstructors.createdAt,
       })
       .from(dojoInstructors)
-      .innerJoin(users, eq(dojoInstructors.userId, users.id))
+      .innerJoin(users, eq(dojoInstructors.instructorUserId, users.id))
       .where(eq(dojoInstructors.dojoId, dojoId))
       .orderBy(dojoInstructors.createdAt)
       .execute();
   };
 
   static attachInstructorToDojo = async (
-    userId: string,
+    instructorUserId: string,
     dojoId: string,
     tx: Transaction
   ) => {
     await tx
       .insert(dojoInstructors)
       .values({
-        userId,
+        instructorUserId,
         dojoId,
       })
       .execute();
