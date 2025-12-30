@@ -90,9 +90,9 @@ export enum InstructorInviteStatus {
 }
 
 export enum ClassLevel {
-  Beginner = "Beginner",
-  Intermediate = "Intermediate",
-  Advanced = "Advanced",
+  Beginner = "beginner",
+  Intermediate = "intermediate",
+  Advanced = "advanced",
 }
 
 export enum ClassStatus {
@@ -106,9 +106,25 @@ export enum ClassFrequency {
   Weekly = "weekly",
 }
 
-export enum ClassSubscription {
+export enum ClassSubscriptionType {
   Free = "free",
   Paid = "paid",
+}
+
+export enum Weekday {
+  Sunday = "sunday",
+  Monday = "monday",
+  Tuesday = "tuesday",
+  Wednesday = "wednesday",
+  Thursday = "thursday",
+  Friday = "friday",
+  Saturday = "saturday",
+}
+
+export enum ClassOccurrenceStatus {
+  Scheduled = "scheduled",
+  Completed = "completed",
+  Cancelled = "cancelled",
 }
 
 export const ACTIVE_BILLING_STATUSES = [
@@ -116,4 +132,3 @@ export const ACTIVE_BILLING_STATUSES = [
   BillingStatus.Active,
   BillingStatus.PastDue,
 ] as const;
-

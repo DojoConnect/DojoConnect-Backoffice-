@@ -1,21 +1,74 @@
-import { eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { classes } from "../db/schema.js";
+import { and, eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { classes, classSchedules } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
 import { Transaction } from "../db/index.js";
+import { ClassStatus } from "../constants/enums.js";
 
 export type IClass = InferSelectModel<typeof classes>;
 export type INewClass = InferInsertModel<typeof classes>;
-export type IUpdateClass = Partial<Omit<INewClass, "id" | "createdAt">>;
+export type IClassSchedule = InferSelectModel<typeof classSchedules>;
+export type INewClassSchedule = InferInsertModel<typeof classSchedules>;
 
 export class ClassRepository {
-  static getOneById = async (id: string, tx: Transaction) => {
-    return returnFirst(
-      await tx
-        .select()
-        .from(classes)
-        .where(eq(classes.id, id))
-        .limit(1)
-        .execute()
-    );
-  };
+  static async create(
+    {
+      classData,
+      schedulesData,
+    }: { classData: INewClass; schedulesData: INewClassSchedule[] },
+    tx: Transaction
+  ) {
+    const [insertResult] = await tx
+      .insert(classes)
+      .values(classData)
+      .$returningId();
+    
+
+    const schedulesToInsert = schedulesData.map((schedule) => ({
+      ...schedule,
+      classId: insertResult.id,
+    }));
+
+    if (schedulesToInsert.length > 0) {
+      await tx.insert(classSchedules).values(schedulesToInsert);
+    }
+
+    return insertResult.id;
+  }
+
+  static async findById(
+    classId: string,
+    tx: Transaction
+  ): Promise<(IClass & { schedules: IClassSchedule[] }) | null> {
+    const result = await tx
+      .select()
+      .from(classes)
+      .leftJoin(classSchedules, eq(classes.id, classSchedules.classId))
+      .where(eq(classes.id, classId));
+
+    if (result.length === 0) {
+      return null;
+    }
+
+    const classData = result[0].classes;
+    const schedules = result
+      .map((row) => row.class_schedules)
+      .filter((schedule) => schedule !== null) as IClassSchedule[];
+
+    return {
+      ...classData,
+      schedules,
+    };
+  }
+
+  static async findAllByDojoId(
+    dojoId: string,
+    tx: Transaction
+  ): Promise<IClass[]> {
+    const result = await tx
+      .select()
+      .from(classes)
+      .where(and(eq(classes.dojoId, dojoId), eq(classes.status, ClassStatus.Active)));
+
+    return result;
+  }
 }

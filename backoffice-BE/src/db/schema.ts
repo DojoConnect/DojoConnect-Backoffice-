@@ -33,13 +33,18 @@ import {
   ClassLevel,
   ClassStatus,
   ClassFrequency,
-  ClassSubscription,
+  ClassSubscriptionType,
+  Weekday,
+  ClassOccurrenceStatus,
 } from "../constants/enums.js";
 
 const activeBillingStatusesSql = sql.join(
   ACTIVE_BILLING_STATUSES.map((status) => sql.raw(`'${status}'`)),
   sql`, `
 );
+
+const SubTypeFreeSQL = sql.raw(`'${ClassSubscriptionType.Free}'`);
+const SubTypePaidSQL = sql.raw(`'${ClassSubscriptionType.Paid}'`);
 
 export const admin = mysqlTable(
   "admin",
@@ -164,61 +169,90 @@ export const classes = mysqlTable(
       .references(() => dojos.id, { onDelete: "cascade" }),
     instructorId: varchar("instructor_id", { length: 36 }).references(
       () => dojoInstructors.id,
-      { onDelete: "cascade" }
+      { onDelete: "set null" }
     ),
-    className: varchar("class_name", { length: 255 }).notNull(),
-    description: text(),
+    name: varchar({ length: 150 }).notNull(),
+    description: varchar({ length: 150 }),
     level: mysqlEnum(ClassLevel).notNull(),
     minAge: tinyint("min_age", { unsigned: true }).notNull(),
     maxAge: tinyint("max_age", { unsigned: true }).notNull(),
     capacity: smallint({ unsigned: true }).notNull(),
+    streetAddress: varchar("street_address", { length: 255 }).notNull(),
+    city: varchar("city", { length: 255 }).notNull(),
+    gradingDate: timestamp("grading_date"),
     frequency: mysqlEnum(ClassFrequency).notNull(),
-    location: varchar({ length: 255 }),
-    streetAddress: varchar("street_address", { length: 255 }),
-    city: varchar({ length: 255 }),
-    status: mysqlEnum(ClassStatus).default(ClassStatus.Active).notNull(),
+    subscriptionType: mysqlEnum(
+      "subscription_type",
+      ClassSubscriptionType
+    ).notNull(),
+    price: decimal({ precision: 10, scale: 2, unsigned: true }),
+    imagePublicId: varchar("image_public_id", { length: 255 }),
+    status: mysqlEnum("status", ClassStatus)
+      .default(ClassStatus.Active)
+      .notNull(),
     createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     updatedAt: timestamp("updated_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    imagePath: varchar("image_path", { length: 255 }),
-    subscription: mysqlEnum(ClassSubscription).notNull(),
-    price: decimal({ precision: 10, scale: 2, unsigned: true }).default("0.00"),
-    chatId: int("chat_id"),
-    stripePriceId: varchar("stripe_price_id", { length: 255 }),
-    stripeProductId: varchar("stripe_product_id", { length: 255 }).notNull(),
   },
   (t) => [
+    index("instructor_idx").on(t.instructorId),
+    index("dojo_idx").on(t.dojoId),
     check("age_range_check", sql`${t.minAge} <= ${t.maxAge}`),
     check("capacity_check", sql`${t.capacity} > 0`),
     check(
       "subscription_price_check",
-      sql`
-        (
-          (${t.subscription} = ${ClassSubscription.Free} AND ${t.price} = 0)
-          OR
-          (${t.subscription} = ${ClassSubscription.Paid} AND ${t.price} > 0)
-        )
-      `
+      sql`(${t.subscriptionType} = ${SubTypeFreeSQL} AND (${t.price} IS NULL OR ${t.price} = 0)) OR (${t.subscriptionType} = ${SubTypePaidSQL} AND ${t.price} > 0)`
     ),
   ]
 );
 
-export const classSchedule = mysqlTable(
-  "class_schedule",
+export const classSchedules = mysqlTable(
+  "class_schedules",
   {
-    id: int().autoincrement().primaryKey(),
-    classId: int("class_id").notNull(),
-    day: varchar({ length: 20 }),
+    id: varchar("id", { length: 36 })
+      .primaryKey()
+      .$defaultFn(() => uuidv7()),
+    classId: varchar("class_id", { length: 36 })
+      .notNull()
+      .references(() => classes.id, { onDelete: "cascade" }),
+    weekday: mysqlEnum("weekday", Weekday),
     startTime: time("start_time").notNull(),
     endTime: time("end_time").notNull(),
-    // you can use { mode: 'date' }, if you want to have Date as type for this column
-    scheduleDate: date("schedule_date", { mode: "string" }),
+    initialClassDate: date("initial_class_date").notNull(),
   },
-  (table) => [index("class_id").on(table.classId)]
+  (t) => [
+    index("class_idx").on(t.classId),
+    check("time_order_check", sql`${t.startTime} < ${t.endTime}`),
+  ]
 );
+
+// Concrete class sessions
+export const classOccurrences = mysqlTable("class_occurrences", {
+  id: varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => uuidv7()),
+  scheduleId: varchar("schedule_id", { length: 36 })
+    .notNull()
+    .references(() => classSchedules.id),
+  classId: varchar("class_id", { length: 36 })
+    .notNull()
+    .references(() => classes.id), // denormalized for faster queries
+
+  date: date("date").notNull(),
+  startTime: time("start_time").notNull(),
+  endTime: time("end_time").notNull(),
+
+  status: mysqlEnum(ClassOccurrenceStatus)
+    .notNull()
+    .default(ClassOccurrenceStatus.Scheduled),
+  cancellationReason: varchar("cancellation_reason", { length: 500 }),
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
 
 export const deletionRequests = mysqlTable("deletion_requests", {
   id: int().autoincrement().primaryKey(),
@@ -249,7 +283,7 @@ export const dojos = mysqlTable(
     trialEndsAt: datetime("trial_ends_at"),
     referralCode: varchar("referral_code", { length: 255 }).notNull(),
     referredBy: varchar("referred_by", { length: 255 }),
-    createdAt: timestamp("created_at",)
+    createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
@@ -389,7 +423,8 @@ export const dojoInstructors = mysqlTable("dojo_instructors", {
     .$defaultFn(() => uuidv7()),
   userId: varchar("user_id", { length: 36 })
     .notNull()
-    .references(() => users.id, { onDelete: "cascade" }).unique(),
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
   dojoId: varchar("dojo_id", { length: 36 })
     .notNull()
     .references(() => dojos.id, { onDelete: "cascade" }),
