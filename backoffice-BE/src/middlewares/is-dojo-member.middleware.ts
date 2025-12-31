@@ -18,7 +18,9 @@ export const isDojoMemberMiddleware = async (
       throw new UnauthorizedException("Unauthenticated");
     }
 
-    if (!req.params.dojoId) {
+    const dojoId = req.params.dojoId || req.query.dojoId || req.body.dojoId;
+
+    if (!dojoId) {
       throw new BadRequestException("Missing dojoId");
     }
 
@@ -28,7 +30,7 @@ export const isDojoMemberMiddleware = async (
       throw new NotFoundException("Dojo not found");
     }
 
-    if (userDojo.id !== req.params.dojoId) {
+    if (userDojo.id !== dojoId) {
       throw new ForbiddenException("Access Denied");
     }
 
