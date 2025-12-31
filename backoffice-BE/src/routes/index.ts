@@ -5,6 +5,7 @@ import appointmentsRouter from "./appointments.routes.js";
 import devRouter from "./dev.routes.js";
 import billingRouter from "./billing.routes.js";
 import instructorsRouter from "./instructors.routes.js";
+import uploadRouter from "./upload.routes.js";
 
 const router = Router();
 
@@ -17,6 +18,7 @@ router.use("/dojos", dojosRouter);
 router.use("/appointments", appointmentsRouter);
 router.use("/billing", billingRouter);
 router.use("/instructors", instructorsRouter);
+router.use("/uploads", uploadRouter);
 
 router.use("/dev", devRouter);
 
