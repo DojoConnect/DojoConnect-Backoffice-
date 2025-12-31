@@ -1,6 +1,5 @@
-// src/middlewares/require-role.ts
 import { Request, Response, NextFunction } from "express";
-import {DojosService} from "../services/dojos.service.js";
+import { DojosService } from "../services/dojos.service.js";
 import {
   BadRequestException,
   ForbiddenException,
@@ -9,7 +8,7 @@ import {
   UnauthorizedException,
 } from "../core/errors/index.js";
 
-export const isDojoOwnerMiddleware = async (
+export const isDojoMemberMiddleware = async (
   req: Request,
   _: Response,
   next: NextFunction
@@ -23,24 +22,24 @@ export const isDojoOwnerMiddleware = async (
       throw new BadRequestException("Missing dojoId");
     }
 
-    const dojo = await DojosService.getOneDojoByID(req.params.dojoId);
+    const userDojo = await DojosService.fetchUserDojo({ user: req.user });
 
-    if (!dojo) {
+    if (!userDojo) {
       throw new NotFoundException("Dojo not found");
     }
 
-    if (dojo.ownerUserId !== req.user.id) {
+    if (userDojo.id !== req.params.dojoId) {
       throw new ForbiddenException("Access Denied");
     }
 
-    req.dojo = dojo;
+    req.dojo = userDojo;
 
     next();
   } catch (error) {
     if (error instanceof HttpException) {
-      throw error;
+      next(error);
+    } else {
+      next(new ForbiddenException("Forbidden: Access Denied"));
     }
-
-    throw new ForbiddenException("Forbidden: Access Denied");
   }
 };

@@ -46,8 +46,7 @@ export class DojosService {
       try {
         return await DojoRepository.getOneByTag(tag, tx);
       } catch (err: any) {
-        console.error(`Error fetching dojo by slug: ${tag}`, { err });
-        throw new Error(err);
+        throw err;
       }
     };
 
@@ -64,8 +63,7 @@ export class DojosService {
       try {
         return await DojoRepository.getOneByID(dojoId, tx);
       } catch (err: any) {
-        console.error(`Error fetching dojo by ID: ${dojoId}`, { err });
-        throw new Error(err);
+        throw err;
       }
     };
 
@@ -83,7 +81,7 @@ export class DojosService {
   }): Promise<IDojo | null> => {
     const execute = async (tx: Transaction) => {
       try {
-        return await DojosService.getOneDojo(eq(dojos.userId, userId), tx);
+        return await DojosService.getOneDojo(eq(dojos.ownerUserId, userId), tx);
       } catch (err: any) {
         console.error(`Error fetching dojo by UserId: ${userId}`, { err });
         throw err;
@@ -101,6 +99,12 @@ export class DojosService {
   ): Promise<IDojo> => {
     const execute = async (tx: Transaction) => {
       const newDojoID = await DojoRepository.create(newDojoDTO, tx);
+
+      await InstructorsRepository.attachInstructorToDojo(
+        newDojoDTO.ownerUserId,
+        newDojoID,
+        tx
+      );
 
       return (await DojosService.getOneDojoByID(newDojoID, tx))!;
     };
@@ -285,7 +289,7 @@ export class DojosService {
     txInstance?: Transaction;
   }): Promise<IDojo | null> => {
     const execute = async (tx: Transaction) => {
-      let dojo : IDojo | null = null;
+      let dojo: IDojo | null = null;
 
       switch (user.role) {
         case Role.DojoAdmin:
@@ -301,8 +305,10 @@ export class DojosService {
       }
 
       return dojo;
-    }
+    };
 
-    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
-  }
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
 }

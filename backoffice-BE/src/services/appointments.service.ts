@@ -63,7 +63,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         dojo.tag,
-        dojo.userId,
+        dojo.ownerUserId,
         parent_name,
         email_address,
         contact_details,
@@ -96,7 +96,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
       `INSERT INTO notifications (user_email, title, message, type, event_id, status)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        dojo.userId,
+        dojo.ownerUserId,
         title,
         message,
         "consultation_request",
@@ -108,7 +108,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
     return {
       id: result.insertId,
       dojo_tag: dojo.tag,
-      dojo_email: dojo.userId,
+      dojo_email: dojo.ownerUserId,
       parent_name,
       email_address,
       contact_details,

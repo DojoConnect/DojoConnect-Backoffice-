@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { AnyZodObject, ZodError } from "zod";
+import z, { ZodObject, ZodError, ZodTypeAny } from "zod";
 import { BadRequestException } from "../core/errors/index.js";
 
 /**
@@ -11,7 +11,7 @@ import { BadRequestException } from "../core/errors/index.js";
  * @returns An Express middleware function.
  */
 export const validateReqBody =
-  (schema: AnyZodObject) =>
+  (schema: ZodTypeAny) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       // The `parse` method will throw an error if validation fails.
@@ -34,7 +34,7 @@ export const validateReqBody =
         console.log(error);
         throw new BadRequestException(
           "Validation failed",
-          error.flatten().fieldErrors
+          z.treeifyError(error)
         );
       }
 
@@ -44,7 +44,7 @@ export const validateReqBody =
   };
 
 export const validateReqQuery =
-  (schema: AnyZodObject) =>
+  (schema: ZodObject) =>
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Parse req.query instead of req.body
@@ -52,7 +52,7 @@ export const validateReqQuery =
 
       // Replace req.query with the parsed version.
       // This allows Zod to perform "coercion" (converting strings to numbers/booleans)
-      req.query = parsedQuery;
+      req.query = parsedQuery as any;
 
       return next();
     } catch (error) {
@@ -62,7 +62,7 @@ export const validateReqQuery =
 
         throw new BadRequestException(
           "Invalid query parameters",
-          error.flatten().fieldErrors
+          z.treeifyError(error)
         );
       }
       next(error);

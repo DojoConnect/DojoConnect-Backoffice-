@@ -21,6 +21,7 @@ import {
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
 import { InstructorsRepository } from "../repositories/instructors.repository.js";
 import { DojoRepository } from "../repositories/dojo.repository.js";
+import { buildClassMock } from "../tests/factories/class.factory.js";
 
 describe("Dojo Service", () => {
   let mockExecute: Mock;
@@ -36,20 +37,62 @@ describe("Dojo Service", () => {
     vi.clearAllMocks();
   });
 
+  describe("createDojo", () => {
+    let createDojoRepoSpy: MockInstance;
+    let attachInstructorSpy: MockInstance;
+    let getDojoByIdSpy: MockInstance;
+
+    beforeEach(() => {
+      createDojoRepoSpy = vi
+        .spyOn(DojoRepository, "create")
+        .mockResolvedValue("new-dojo-id");
+      attachInstructorSpy = vi
+        .spyOn(InstructorsRepository, "attachInstructorToDojo")
+        .mockResolvedValue();
+      getDojoByIdSpy = vi
+        .spyOn(DojosService, "getOneDojoByID")
+        .mockResolvedValue(buildDojoMock());
+    });
+
+    it("should create a dojo, attach the owner as an instructor, and return the dojo", async () => {
+      const newDojoDto = buildDojoMock();
+
+      const result = await DojosService.createDojo(newDojoDto);
+
+      expect(createDojoRepoSpy).toHaveBeenCalledWith(
+        newDojoDto,
+        expect.anything()
+      );
+      expect(attachInstructorSpy).toHaveBeenCalledWith(
+        newDojoDto.ownerUserId,
+        "new-dojo-id",
+        expect.anything()
+      );
+      expect(getDojoByIdSpy).toHaveBeenCalledWith(
+        "new-dojo-id",
+        expect.anything()
+      );
+      expect(result).toEqual(buildDojoMock());
+    });
+  });
+
   describe("fetchDojoByTag", () => {
     it("should return a dojo object when the database finds a match", async () => {
       const mockDojo = buildDojoMock({ tag: "test-dojo" });
-      mockExecute.mockResolvedValue([mockDojo]);
+      const getOneByTagSpy = vi
+        .spyOn(DojoRepository, "getOneByTag")
+        .mockResolvedValue(mockDojo);
 
       const result = await DojosService.getOneDojoByTag("test-dojo");
 
       expect(result).toEqual(mockDojo);
-      expect(mockExecute).toHaveBeenCalled();
+      expect(getOneByTagSpy).toHaveBeenCalled();
     });
 
     it("should return null when the database finds no match", async () => {
-      mockExecute.mockResolvedValue([]);
-
+      const getOneByTagSpy = vi
+        .spyOn(DojoRepository, "getOneByTag")
+        .mockResolvedValue(null);
       const result = await DojosService.getOneDojoByTag("non-existent-dojo");
 
       expect(result).toEqual(null);
@@ -58,7 +101,7 @@ describe("Dojo Service", () => {
 
   describe("inviteInstructor", () => {
     const user = buildUserMock({ id: "user-1", role: Role.DojoAdmin });
-    const dojo = buildDojoMock({ id: "dojo-1", userId: "user-1" });
+    const dojo = buildDojoMock({ id: "dojo-1", ownerUserId: "user-1" });
     const dto = buildInviteInstructorDtoMock({
       email: "new.instructor@test.com",
       firstName: "New",
@@ -99,7 +142,7 @@ describe("Dojo Service", () => {
 
       getOneClassByIdSpy = vi
         .spyOn(ClassService, "getOneClassById")
-        .mockResolvedValue(null);
+        .mockResolvedValue(buildClassMock());
     });
 
     it("should successfully invite an instructor", async () => {
@@ -150,7 +193,7 @@ describe("Dojo Service", () => {
       findInstructorByUserIdSpy.mockResolvedValue(
         buildInstructorMock({
           id: "instructor-1",
-          userId: existingUser.id,
+          instructorUserId: existingUser.id,
           dojoId: dojo.id,
         })
       );
@@ -170,7 +213,7 @@ describe("Dojo Service", () => {
       findInstructorByUserIdSpy.mockResolvedValue(
         buildInstructorMock({
           id: "instructor-1",
-          userId: existingUser.id,
+          instructorUserId: existingUser.id,
           dojoId: "another-dojo-id",
         })
       );

@@ -109,8 +109,8 @@ export class InvitesRepository {
         expiresAt: instructorInvites.expiresAt,
         dojoId: dojos.id, // join with dojos table
         dojoName: dojos.name, // join with dojos table
-        className: classes.className, // join with classes table if classId exists
-        dojoOwnerId: dojos.userId,
+        className: classes.name, // join with classes table if classId exists
+        dojoOwnerId: dojos.ownerUserId,
         invitedAt: instructorInvites.createdAt,
       })
       .from(instructorInvites)

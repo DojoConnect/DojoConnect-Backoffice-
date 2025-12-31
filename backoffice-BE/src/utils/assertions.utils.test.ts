@@ -12,7 +12,7 @@ describe("Assertions Utils", () => {
 
   beforeEach(() => {
     user = buildUserMock();
-    dojo = buildDojoMock({ userId: user.id });
+    dojo = buildDojoMock({ ownerUserId: user.id });
   });
 
   afterEach(() => {

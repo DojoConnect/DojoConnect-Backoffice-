@@ -17,6 +17,9 @@ export enum AppointmentType {
 
 export enum NotificationType {
   Event = "event",
+  ClassCreated = "class_created",
+  ClassUpdated = "class_updated",
+  ClassDeleted = "class_deleted",
   InvitationCreated = "invitation_created",
   InvitationResponse = "invitation_response",
   InvitationAccepted = "invitation_accepted",
@@ -90,15 +93,47 @@ export enum InstructorInviteStatus {
 }
 
 export enum ClassLevel {
-  Beginner = "Beginner",
-  Intermediate = "Intermediate",
-  Advanced = "Advanced",
+  Beginner = "beginner",
+  Intermediate = "intermediate",
+  Advanced = "advanced",
 }
 
 export enum ClassStatus {
   Active = "active",
   Deleted = "deleted",
-  Hidden = "hide",
+  Hidden = "hidden",
+}
+
+export enum ClassFrequency {
+  OneTime = "one_time",
+  Weekly = "weekly",
+}
+
+export enum ClassSubscriptionType {
+  Free = "free",
+  Paid = "paid",
+}
+
+export enum Weekday {
+  Sunday = "sunday",
+  Monday = "monday",
+  Tuesday = "tuesday",
+  Wednesday = "wednesday",
+  Thursday = "thursday",
+  Friday = "friday",
+  Saturday = "saturday",
+}
+
+export enum ClassOccurrenceStatus {
+  Scheduled = "scheduled",
+  Completed = "completed",
+  Cancelled = "cancelled",
+}
+
+export enum GradingNotificationUnit {
+  Hours = "hours",
+  Days = "days",
+  Weeks = "weeks",
 }
 
 export const ACTIVE_BILLING_STATUSES = [
@@ -106,4 +141,3 @@ export const ACTIVE_BILLING_STATUSES = [
   BillingStatus.Active,
   BillingStatus.PastDue,
 ] as const;
-
