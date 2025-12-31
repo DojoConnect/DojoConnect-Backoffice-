@@ -4,6 +4,10 @@ export enum ImageType {
   PROFILE = "profile",
 }
 
+export enum CloudinaryResourceType {
+  IMAGE = "image",
+}
+
 // Allowed image formats for uploads.
 export const ALLOWED_FORMATS = ["jpg", "jpeg", "png", "webp"];
 

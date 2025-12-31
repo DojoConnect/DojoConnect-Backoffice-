@@ -2,6 +2,7 @@ import { v2 as cloudinary } from "cloudinary";
 import AppConfig from "../config/AppConfig.js";
 import {
   ALLOWED_FORMATS,
+  CloudinaryResourceType,
   IMAGE_TRANSFORMATIONS,
   ImageType,
   MAX_FILE_SIZE_BYTES,
@@ -75,7 +76,7 @@ export class CloudinaryService {
 
   static async fetchImageAsset(publicId: string) {
     return await cloudinary.api.resource(publicId, {
-      resource_type: "image",
+      resource_type: CloudinaryResourceType.IMAGE,
     });
   }
 
@@ -90,7 +91,7 @@ export class CloudinaryService {
   ) => {
     return await cloudinary.uploader.explicit(publicId, {
       type: "upload",
-      resource_type: "image",
+      resource_type: CloudinaryResourceType.IMAGE,
       asset_folder: getFinalUploadFolder(imageType, dojoId),
     });
   };

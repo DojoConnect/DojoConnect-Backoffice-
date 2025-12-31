@@ -21,7 +21,7 @@ import { UsersService } from "./users.service.js";
 import { IDojo } from "../repositories/dojo.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { CloudinaryService } from "./cloudinary.service.js";
-import { ImageType } from "../constants/cloudinary.js";
+import { CloudinaryResourceType, ImageType } from "../constants/cloudinary.js";
 
 export class ClassService {
   static createClass = async (
@@ -48,7 +48,7 @@ export class ClassService {
           );
         }
 
-        if (asset.resource_type !== "image") {
+        if (asset.resource_type !== CloudinaryResourceType.IMAGE) {
           throw new BadRequestException(
             `Asset with ID ${dto.imagePublicId} is not an image`
           );
