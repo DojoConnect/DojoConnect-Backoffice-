@@ -46,8 +46,7 @@ export class DojosService {
       try {
         return await DojoRepository.getOneByTag(tag, tx);
       } catch (err: any) {
-        console.error(`Error fetching dojo by slug: ${tag}`, { err });
-        throw new Error(err);
+        throw err;
       }
     };
 
@@ -64,8 +63,7 @@ export class DojosService {
       try {
         return await DojoRepository.getOneByID(dojoId, tx);
       } catch (err: any) {
-        console.error(`Error fetching dojo by ID: ${dojoId}`, { err });
-        throw new Error(err);
+        throw err;
       }
     };
 

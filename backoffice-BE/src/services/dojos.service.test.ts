@@ -37,20 +37,62 @@ describe("Dojo Service", () => {
     vi.clearAllMocks();
   });
 
+  describe("createDojo", () => {
+    let createDojoRepoSpy: MockInstance;
+    let attachInstructorSpy: MockInstance;
+    let getDojoByIdSpy: MockInstance;
+
+    beforeEach(() => {
+      createDojoRepoSpy = vi
+        .spyOn(DojoRepository, "create")
+        .mockResolvedValue("new-dojo-id");
+      attachInstructorSpy = vi
+        .spyOn(InstructorsRepository, "attachInstructorToDojo")
+        .mockResolvedValue();
+      getDojoByIdSpy = vi
+        .spyOn(DojosService, "getOneDojoByID")
+        .mockResolvedValue(buildDojoMock());
+    });
+
+    it("should create a dojo, attach the owner as an instructor, and return the dojo", async () => {
+      const newDojoDto = buildDojoMock();
+
+      const result = await DojosService.createDojo(newDojoDto);
+
+      expect(createDojoRepoSpy).toHaveBeenCalledWith(
+        newDojoDto,
+        expect.anything()
+      );
+      expect(attachInstructorSpy).toHaveBeenCalledWith(
+        newDojoDto.ownerUserId,
+        "new-dojo-id",
+        expect.anything()
+      );
+      expect(getDojoByIdSpy).toHaveBeenCalledWith(
+        "new-dojo-id",
+        expect.anything()
+      );
+      expect(result).toEqual(buildDojoMock());
+    });
+  });
+
   describe("fetchDojoByTag", () => {
     it("should return a dojo object when the database finds a match", async () => {
       const mockDojo = buildDojoMock({ tag: "test-dojo" });
-      mockExecute.mockResolvedValue([mockDojo]);
+      const getOneByTagSpy = vi
+        .spyOn(DojoRepository, "getOneByTag")
+        .mockResolvedValue(mockDojo);
 
       const result = await DojosService.getOneDojoByTag("test-dojo");
 
       expect(result).toEqual(mockDojo);
-      expect(mockExecute).toHaveBeenCalled();
+      expect(getOneByTagSpy).toHaveBeenCalled();
     });
 
     it("should return null when the database finds no match", async () => {
-      mockExecute.mockResolvedValue([]);
-
+      const getOneByTagSpy = vi
+        .spyOn(DojoRepository, "getOneByTag")
+        .mockResolvedValue(null);
       const result = await DojosService.getOneDojoByTag("non-existent-dojo");
 
       expect(result).toEqual(null);
