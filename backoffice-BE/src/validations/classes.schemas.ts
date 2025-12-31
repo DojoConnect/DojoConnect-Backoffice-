@@ -105,7 +105,7 @@ const OneTimeClassSchema = BaseClassSchema.extend({
 
 // Combine them
 export const CreateClassSchema = z
-  .discriminatedUnion("frequency", [WeeklyClassSchema, OneTimeClassSchema])
+  .discriminatedUnion("frequency", [WeeklyClassSchema, OneTimeClassSchema], {error: `Invalid class frequency. Expected : ${ClassFrequency.Weekly} | ${ClassFrequency.OneTime}`})
   .refine((data) => data.minAge <= data.maxAge, {
     message: "Minimum age cannot be greater than maximum age.",
     path: ["minAge"],
