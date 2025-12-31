@@ -28,7 +28,11 @@ export const appConfigSchema = z.object({
   STRIPE_SECRET_KEY: z.string().nonempty(),
   STRIPE_TEST_SECRET_KEY: z.string(),
 
-  WEB_URL: z.string().nonempty().url(),
+  WEB_URL: z.url().nonempty(),
+
+  CLOUDINARY_CLOUD_NAME: z.string().nonempty(),
+  CLOUDINARY_API_KEY: z.string().nonempty(),
+  CLOUDINARY_API_SECRET: z.string().nonempty(),
 });
 
 // extract the inferred type
@@ -59,6 +63,10 @@ export const AppConfig: IAppConfig = {
   STRIPE_TEST_SECRET_KEY: process.env.STRIPE_TEST_SECRET_KEY || "",
 
   WEB_URL: process.env.WEB_URL || "",
+
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
 };
 
 export default AppConfig;
