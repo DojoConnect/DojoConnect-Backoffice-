@@ -36,7 +36,7 @@ export const buildInstructorMock = (
 ): IDojoInstructor => {
   return {
     id: faker.string.uuid(),
-    userId: faker.string.uuid(),
+    instructorUserId: faker.string.uuid(),
     dojoId: faker.string.uuid(),
     createdAt: new Date(),
     ...overrides,

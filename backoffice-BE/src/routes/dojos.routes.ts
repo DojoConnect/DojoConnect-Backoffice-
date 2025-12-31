@@ -6,6 +6,7 @@ import { requireRole } from "../middlewares/require-role.middleware.js";
 import { Role } from "../constants/enums.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
 import { InviteInstructorSchema } from "../validations/instructors.schemas.js";
+import classesRouter from "./classes.routes.js";
 
 const router = Router();
 
@@ -35,5 +36,7 @@ router.post(
   validateReqBody(InviteInstructorSchema),
   DojosController.handleInviteInstructor
 );
+
+router.use("/:dojoId/classes", classesRouter);
 
 export default router;

@@ -51,7 +51,7 @@ describe("SubscriptionService", () => {
 
   beforeEach(() => {
     user = buildUserMock();
-    dojo = buildDojoMock({ userId: user.id });
+    dojo = buildDojoMock({ ownerUserId: user.id });
 
     // Mock runInTransaction to just execute the callback
     dbSpies = createDrizzleDbSpies();

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS `admin` (
+CREATE TABLE `admin` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`first_name` varchar(100) NOT NULL,
 	`last_name` varchar(100) NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS `admin` (
 	CONSTRAINT `email` UNIQUE(`email`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `admin_password_resets` (
+CREATE TABLE `admin_password_resets` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`admin_email` varchar(255) NOT NULL,
 	`otp` varchar(6) NOT NULL,
@@ -18,14 +18,14 @@ CREATE TABLE IF NOT EXISTS `admin_password_resets` (
 	CONSTRAINT `admin_password_resets_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `announcement_recipients` (
+CREATE TABLE `announcement_recipients` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`announcement_id` int NOT NULL,
 	`recipient_email` varchar(255) NOT NULL,
 	CONSTRAINT `announcement_recipients_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `announcements` (
+CREATE TABLE `announcements` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`title` varchar(255) NOT NULL,
 	`message` text NOT NULL,
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS `announcements` (
 	CONSTRAINT `announcements_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `attendance_records` (
+CREATE TABLE `attendance_records` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`class_id` varchar(255) NOT NULL,
 	`email` varchar(255) NOT NULL,
@@ -45,21 +45,21 @@ CREATE TABLE IF NOT EXISTS `attendance_records` (
 	CONSTRAINT `attendance_records_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `broadcast_recipients` (
+CREATE TABLE `broadcast_recipients` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`message_id` int NOT NULL,
 	`recipient_id` int NOT NULL,
 	CONSTRAINT `broadcast_recipients_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `chat_participants` (
+CREATE TABLE `chat_participants` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`chat_id` int NOT NULL,
 	`user_id` int NOT NULL,
 	CONSTRAINT `chat_participants_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `chats` (
+CREATE TABLE `chats` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`type` enum('dm','group','broadcast') NOT NULL,
 	`name` varchar(100),
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS `chats` (
 	CONSTRAINT `chats_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `children_subscription` (
+CREATE TABLE `children_subscription` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`child_id` int NOT NULL,
 	`enrollment_id` varchar(50) NOT NULL,
@@ -81,45 +81,58 @@ CREATE TABLE IF NOT EXISTS `children_subscription` (
 	CONSTRAINT `children_subscription_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `class_schedule` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`class_id` int NOT NULL,
-	`day` varchar(20),
+CREATE TABLE `class_occurrences` (
+	`id` varchar(36) NOT NULL,
+	`schedule_id` varchar(36) NOT NULL,
+	`class_id` varchar(36) NOT NULL,
+	`date` date NOT NULL,
 	`start_time` time NOT NULL,
 	`end_time` time NOT NULL,
-	`schedule_date` date,
-	CONSTRAINT `class_schedule_id` PRIMARY KEY(`id`)
+	`status` enum('scheduled','completed','cancelled') NOT NULL DEFAULT 'scheduled',
+	`cancellation_reason` varchar(500),
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT `class_occurrences_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `classes` (
+CREATE TABLE `class_schedules` (
 	`id` varchar(36) NOT NULL,
-	`class_uid` varchar(50) NOT NULL,
+	`class_id` varchar(36) NOT NULL,
+	`weekday` enum('sunday','monday','tuesday','wednesday','thursday','friday','saturday'),
+	`start_time` time NOT NULL,
+	`end_time` time NOT NULL,
+	`initial_class_date` date NOT NULL,
+	CONSTRAINT `class_schedules_id` PRIMARY KEY(`id`),
+	CONSTRAINT `time_order_check` CHECK(`class_schedules`.`start_time` < `class_schedules`.`end_time`)
+);
+--> statement-breakpoint
+CREATE TABLE `classes` (
+	`id` varchar(36) NOT NULL,
 	`dojo_id` varchar(36) NOT NULL,
-	`instructor_id` varchar(36) NOT NULL,
-	`owner_email` varchar(255) NOT NULL,
-	`class_name` varchar(255) NOT NULL,
-	`description` text,
-	`level` enum('Beginner','Intermediate','Advanced') NOT NULL,
-	`age_group` varchar(50),
-	`frequency` varchar(50),
-	`capacity` int,
-	`location` varchar(255),
-	`street_address` varchar(255),
-	`city` varchar(255),
-	`status` enum('active','deleted','hide') NOT NULL DEFAULT 'active',
+	`instructor_id` varchar(36),
+	`name` varchar(150) NOT NULL,
+	`description` varchar(150),
+	`level` enum('beginner','intermediate','advanced') NOT NULL,
+	`min_age` tinyint unsigned NOT NULL,
+	`max_age` tinyint unsigned NOT NULL,
+	`capacity` smallint unsigned NOT NULL,
+	`street_address` varchar(255) NOT NULL,
+	`city` varchar(255) NOT NULL,
+	`grading_date` timestamp,
+	`frequency` enum('one_time','weekly') NOT NULL,
+	`subscription_type` enum('free','paid') NOT NULL,
+	`price` decimal(10,2) unsigned,
+	`stripe_price_id` varchar(255),
+	`image_public_id` varchar(255),
+	`status` enum('active','deleted','hidden') NOT NULL DEFAULT 'active',
 	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`image_path` varchar(255),
-	`subscription` varchar(100),
-	`price` decimal(10,2) DEFAULT '0.00',
-	`chat_id` int,
-	`stripe_price_id` varchar(255),
-	`stripe_product_id` varchar(255) NOT NULL,
 	CONSTRAINT `classes_id` PRIMARY KEY(`id`),
-	CONSTRAINT `class_uid` UNIQUE(`class_uid`)
+	CONSTRAINT `age_range_check` CHECK(`classes`.`min_age` <= `classes`.`max_age`),
+	CONSTRAINT `capacity_check` CHECK(`classes`.`capacity` > 0),
+	CONSTRAINT `subscription_price_check` CHECK((`classes`.`subscription_type` = 'free' AND (`classes`.`price` IS NULL OR `classes`.`price` = 0)) OR (`classes`.`subscription_type` = 'paid' AND `classes`.`price` > 0))
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `deletion_requests` (
+CREATE TABLE `deletion_requests` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`title` varchar(50) NOT NULL,
 	`email` varchar(255) NOT NULL,
@@ -129,16 +142,16 @@ CREATE TABLE IF NOT EXISTS `deletion_requests` (
 	CONSTRAINT `deletion_requests_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `dojo_instructors` (
+CREATE TABLE `dojo_instructors` (
 	`id` varchar(36) NOT NULL,
-	`user_id` varchar(36) NOT NULL,
+	`instructor_user_id` varchar(36) NOT NULL,
 	`dojo_id` varchar(36) NOT NULL,
 	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `dojo_instructors_id` PRIMARY KEY(`id`),
-	CONSTRAINT `dojo_instructors_user_id_unique` UNIQUE(`user_id`)
+	CONSTRAINT `dojo_instructors_instructor_user_id_unique` UNIQUE(`instructor_user_id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `dojo_subscriptions` (
+CREATE TABLE `dojo_subscriptions` (
 	`id` varchar(36) NOT NULL,
 	`dojo_id` varchar(36) NOT NULL,
 	`billing_status` enum('no_customer','customer_created','setup_intent_created','payment_method_attached','subscription_created','trialing','active','past_due','unpaid','cancelled') NOT NULL,
@@ -158,9 +171,9 @@ CREATE TABLE IF NOT EXISTS `dojo_subscriptions` (
 	CONSTRAINT `one_active_subscription_per_user` UNIQUE(`active_dojo_id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `dojos` (
+CREATE TABLE `dojos` (
 	`id` varchar(36) NOT NULL,
-	`user_id` varchar(36) NOT NULL,
+	`owner_user_id` varchar(36) NOT NULL,
 	`name` varchar(255) NOT NULL,
 	`tag` varchar(50) NOT NULL,
 	`tagline` varchar(255) NOT NULL,
@@ -175,7 +188,7 @@ CREATE TABLE IF NOT EXISTS `dojos` (
 	CONSTRAINT `dojos_tag_unique` UNIQUE(`tag`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `enrolled_children` (
+CREATE TABLE `enrolled_children` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`enrollment_id` varchar(50) NOT NULL,
 	`child_name` varchar(100) NOT NULL,
@@ -184,7 +197,7 @@ CREATE TABLE IF NOT EXISTS `enrolled_children` (
 	CONSTRAINT `enrolled_children_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `enrollments` (
+CREATE TABLE `enrollments` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`enrollment_id` varchar(50) NOT NULL,
 	`class_id` varchar(50) NOT NULL,
@@ -194,7 +207,7 @@ CREATE TABLE IF NOT EXISTS `enrollments` (
 	CONSTRAINT `enrollment_id` UNIQUE(`enrollment_id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `events` (
+CREATE TABLE `events` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`title` varchar(255) NOT NULL,
 	`description` text,
@@ -215,7 +228,7 @@ CREATE TABLE IF NOT EXISTS `events` (
 	CONSTRAINT `events_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `feedback` (
+CREATE TABLE `feedback` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_email` varchar(255),
 	`message` text,
@@ -225,7 +238,7 @@ CREATE TABLE IF NOT EXISTS `feedback` (
 	CONSTRAINT `feedback_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `instructor_invites` (
+CREATE TABLE `instructor_invites` (
 	`id` varchar(36) NOT NULL,
 	`firstName` varchar(100) NOT NULL,
 	`lastName` varchar(100) NOT NULL,
@@ -242,7 +255,7 @@ CREATE TABLE IF NOT EXISTS `instructor_invites` (
 	CONSTRAINT `instructor_invites_token_hash_unique` UNIQUE(`token_hash`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `messages` (
+CREATE TABLE `messages` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`chat_id` int NOT NULL,
 	`sender_id` int NOT NULL,
@@ -251,21 +264,21 @@ CREATE TABLE IF NOT EXISTS `messages` (
 	CONSTRAINT `messages_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `notifications` (
+CREATE TABLE `notifications` (
 	`id` varchar(36) NOT NULL,
 	`user_id` varchar(36) NOT NULL,
 	`title` varchar(255),
 	`message` text,
 	`is_read` boolean DEFAULT false,
 	`created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-	`type` enum('event','invitation_created','invitation_response','invitation_accepted','message','signup'),
+	`type` enum('event','class_created','class_updated','class_deleted','invitation_created','invitation_response','invitation_accepted','message','signup'),
 	`event_id` varchar(121),
 	`accept_decline` varchar(20),
 	`status` varchar(20) DEFAULT 'pending',
 	CONSTRAINT `notifications_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `parents` (
+CREATE TABLE `parents` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`email` varchar(255) NOT NULL,
 	`enrollment_id` varchar(255) DEFAULT '',
@@ -274,7 +287,7 @@ CREATE TABLE IF NOT EXISTS `parents` (
 	CONSTRAINT `unique_parent_enrollment` UNIQUE(`email`,`enrollment_id`,`class_id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `password_reset_otps` (
+CREATE TABLE `password_reset_otps` (
 	`id` varchar(36) NOT NULL,
 	`user_id` varchar(36) NOT NULL,
 	`hashed_otp` varchar(255) NOT NULL,
@@ -286,7 +299,7 @@ CREATE TABLE IF NOT EXISTS `password_reset_otps` (
 	CONSTRAINT `password_reset_otps_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `refresh_tokens` (
+CREATE TABLE `refresh_tokens` (
 	`id` varchar(36) NOT NULL,
 	`user_id` varchar(36) NOT NULL,
 	`hashed_token` varchar(255) NOT NULL,
@@ -299,7 +312,7 @@ CREATE TABLE IF NOT EXISTS `refresh_tokens` (
 	CONSTRAINT `refresh_tokens_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `sessions` (
+CREATE TABLE `sessions` (
 	`session_id` varchar(255) NOT NULL,
 	`user_email` varchar(255) NOT NULL,
 	`user_ip` varchar(50),
@@ -308,7 +321,7 @@ CREATE TABLE IF NOT EXISTS `sessions` (
 	`expires_at` datetime NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `students` (
+CREATE TABLE `students` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`full_name` varchar(255),
 	`email` varchar(255),
@@ -319,7 +332,7 @@ CREATE TABLE IF NOT EXISTS `students` (
 	CONSTRAINT `email` UNIQUE(`email`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `tasks` (
+CREATE TABLE `tasks` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`title` varchar(255),
 	`description` text,
@@ -334,7 +347,7 @@ CREATE TABLE IF NOT EXISTS `tasks` (
 	CONSTRAINT `tasks_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `transactions` (
+CREATE TABLE `transactions` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`user_email` varchar(255) NOT NULL,
 	`transaction_title` varchar(255) NOT NULL,
@@ -346,7 +359,7 @@ CREATE TABLE IF NOT EXISTS `transactions` (
 	CONSTRAINT `transactions_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `user_cards` (
+CREATE TABLE `user_cards` (
 	`id` varchar(36) NOT NULL,
 	`user_id` varchar(36) NOT NULL,
 	`payment_method_id` varchar(255),
@@ -359,7 +372,7 @@ CREATE TABLE IF NOT EXISTS `user_cards` (
 	CONSTRAINT `user_cards_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `user_oauth_accounts` (
+CREATE TABLE `user_oauth_accounts` (
 	`id` varchar(36) NOT NULL,
 	`user_id` varchar(36) NOT NULL,
 	`provider` enum('google') NOT NULL,
@@ -371,7 +384,7 @@ CREATE TABLE IF NOT EXISTS `user_oauth_accounts` (
 	CONSTRAINT `provider_user_unique` UNIQUE(`provider`,`provider_user_id`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `users` (
+CREATE TABLE `users` (
 	`id` varchar(36) NOT NULL,
 	`firstName` varchar(100) NOT NULL,
 	`lastName` varchar(100) NOT NULL,
@@ -395,7 +408,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 	CONSTRAINT `users_username_unique` UNIQUE(`username`)
 );
 --> statement-breakpoint
-CREATE TABLE IF NOT EXISTS `waitlist` (
+CREATE TABLE `waitlist` (
 	`id` int AUTO_INCREMENT NOT NULL,
 	`fullname` varchar(255) NOT NULL,
 	`email` varchar(255) NOT NULL,
@@ -404,12 +417,15 @@ CREATE TABLE IF NOT EXISTS `waitlist` (
 	CONSTRAINT `email` UNIQUE(`email`)
 );
 --> statement-breakpoint
+ALTER TABLE `class_occurrences` ADD CONSTRAINT `class_occurrences_schedule_id_class_schedules_id_fk` FOREIGN KEY (`schedule_id`) REFERENCES `class_schedules`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `class_occurrences` ADD CONSTRAINT `class_occurrences_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `class_schedules` ADD CONSTRAINT `class_schedules_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `classes` ADD CONSTRAINT `classes_dojo_id_dojos_id_fk` FOREIGN KEY (`dojo_id`) REFERENCES `dojos`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `classes` ADD CONSTRAINT `classes_instructor_id_dojo_instructors_id_fk` FOREIGN KEY (`instructor_id`) REFERENCES `dojo_instructors`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `dojo_instructors` ADD CONSTRAINT `dojo_instructors_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `classes` ADD CONSTRAINT `classes_instructor_id_dojo_instructors_id_fk` FOREIGN KEY (`instructor_id`) REFERENCES `dojo_instructors`(`id`) ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `dojo_instructors` ADD CONSTRAINT `dojo_instructors_instructor_user_id_users_id_fk` FOREIGN KEY (`instructor_user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `dojo_instructors` ADD CONSTRAINT `dojo_instructors_dojo_id_dojos_id_fk` FOREIGN KEY (`dojo_id`) REFERENCES `dojos`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `dojo_subscriptions` ADD CONSTRAINT `dojo_subscriptions_dojo_id_dojos_id_fk` FOREIGN KEY (`dojo_id`) REFERENCES `dojos`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `dojos` ADD CONSTRAINT `dojos_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `dojos` ADD CONSTRAINT `dojos_owner_user_id_users_id_fk` FOREIGN KEY (`owner_user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `instructor_invites` ADD CONSTRAINT `instructor_invites_dojo_id_dojos_id_fk` FOREIGN KEY (`dojo_id`) REFERENCES `dojos`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `instructor_invites` ADD CONSTRAINT `instructor_invites_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `instructor_invites` ADD CONSTRAINT `instructor_invites_invited_by_users_id_fk` FOREIGN KEY (`invited_by`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -424,7 +440,9 @@ CREATE INDEX `recipient_id` ON `broadcast_recipients` (`recipient_id`);--> state
 CREATE INDEX `user_id` ON `chat_participants` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_chat_participants` ON `chat_participants` (`chat_id`,`user_id`);--> statement-breakpoint
 CREATE INDEX `created_by` ON `chats` (`created_by`);--> statement-breakpoint
-CREATE INDEX `class_id` ON `class_schedule` (`class_id`);--> statement-breakpoint
+CREATE INDEX `class_idx` ON `class_schedules` (`class_id`);--> statement-breakpoint
+CREATE INDEX `instructor_idx` ON `classes` (`instructor_id`);--> statement-breakpoint
+CREATE INDEX `dojo_idx` ON `classes` (`dojo_id`);--> statement-breakpoint
 CREATE INDEX `enrollment_id` ON `enrolled_children` (`enrollment_id`);--> statement-breakpoint
 CREATE INDEX `idx_messages_chat_id` ON `messages` (`chat_id`);--> statement-breakpoint
 CREATE INDEX `idx_messages_sender_id` ON `messages` (`sender_id`);--> statement-breakpoint

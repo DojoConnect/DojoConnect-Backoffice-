@@ -117,4 +117,23 @@ export class NotificationService {
       data: {},
     });
   };
+
+  static notifyDojoOwnerOfClassCreation = async ({
+    dojoOwner,
+    className,
+  }: {
+    dojoOwner: IUser;
+    className: string;
+  }) => {
+    const title = "New Class Created";
+    const body = `Your class "${className}" was created successfully.`;
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.ClassCreated,
+      user: dojoOwner,
+      title,
+      body,
+      data: {},
+    });
+  };
 }
