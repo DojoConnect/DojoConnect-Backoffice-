@@ -84,7 +84,7 @@ const BaseClassSchema = z.object({
   subscriptionType: z.enum(ClassSubscriptionType),
   price: z.number().min(0).optional(),
   instructorId: z.uuid().optional().nullable(),
-  imagePublicId: z.string().optional(),
+  imagePublicId: z.string().nonempty().optional().nullable(),
 });
 
 // -------------------

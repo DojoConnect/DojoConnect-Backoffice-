@@ -20,6 +20,8 @@ import { NotificationService } from "./notifications.service.js";
 import { UsersService } from "./users.service.js";
 import { IDojo } from "../repositories/dojo.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
+import { CloudinaryService } from "./cloudinary.service.js";
+import { ImageType } from "../constants/cloudinary.js";
 
 export class ClassService {
   static createClass = async (
@@ -34,6 +36,24 @@ export class ClassService {
   ): Promise<ClassDTO> => {
     const execute = async (tx: Transaction) => {
       const { schedules, ...classDetails } = dto;
+
+      if (dto.imagePublicId) {
+        const asset = await CloudinaryService.fetchImageAsset(
+          dto.imagePublicId
+        );
+
+        if (!asset) {
+          throw new NotFoundException(
+            `Image with ID ${dto.imagePublicId} not found`
+          );
+        }
+
+        if (asset.resource_type !== "image") {
+          throw new BadRequestException(
+            `Asset with ID ${dto.imagePublicId} is not an image`
+          );
+        }
+      }
 
       if (dto.instructorId) {
         const instructor = await InstructorsRepository.findOneByIdAndDojoId(
@@ -54,6 +74,14 @@ export class ClassService {
         dojoId: dojo.id,
         price: classDetails.price ? classDetails.price.toString() : null,
       };
+
+      if (dto.imagePublicId) {
+        await CloudinaryService.moveImageFromTempFolder(
+          dto.imagePublicId,
+          dojo.id,
+          ImageType.CLASS
+        );
+      }
 
       const newClassId = await ClassRepository.create(
         {
