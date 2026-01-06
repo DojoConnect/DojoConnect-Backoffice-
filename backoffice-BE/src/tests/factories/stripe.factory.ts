@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { faker } from "@faker-js/faker";
 
 export const buildStripePaymentMethodCardMock = (
   overrides?: Partial<Stripe.PaymentMethod.Card>
@@ -54,4 +55,38 @@ export const buildStripeSetupIntentMock = (
     client_secret: "seti_client_secret_123",
     ...overrides,
   } as Stripe.SetupIntent;
-}
+};
+
+export const buildStripeProductMock = (
+  overrides?: Partial<Stripe.Product>
+): Stripe.Response<Stripe.Product> => {
+  return {
+    id: "prod_123",
+    name: "Test Product",
+    ...buildLastResponseMock(),
+    ...overrides,
+  } as Stripe.Response<Stripe.Product>;
+};
+
+export const buildStripePriceMock = (
+  overrides?: Partial<Stripe.Price>
+): Stripe.Response<Stripe.Price> => {
+  return {
+    id: "price_123",
+    product: "prod_123",
+    unit_amount: 1000,
+    currency: "gbp",
+    recurring: { interval: "month" },
+    ...overrides,
+  } as Stripe.Response<Stripe.Price>;
+};
+
+const buildLastResponseMock = () => {
+  return {
+    lastResponse: {
+      headers: {},
+      requestId: faker.string.uuid(),
+      statusCode: faker.number.int({ min: 200, max: 500 }),
+    },
+  };
+};

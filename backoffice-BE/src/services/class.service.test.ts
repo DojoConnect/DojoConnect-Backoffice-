@@ -5,9 +5,8 @@ import {
   beforeEach,
   afterEach,
   vi,
-  Mocked,
+  MockInstance,
 } from "vitest";
-import type { MockInstance } from "vitest";
 import {
   createDrizzleDbSpies,
   DbServiceSpies,
@@ -17,11 +16,13 @@ import {
   buildClassMock,
   buildCreateClassDTOMock,
 } from "../tests/factories/class.factory.js";
-import { ClassRepository } from "../repositories/class.repository.js";
+import { ClassRepository, IUpdateClass } from "../repositories/class.repository.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
-import { ClassFrequency, ClassSubscriptionType } from "../constants/enums.js";
-import { ClassDTO } from "../dtos/class.dtos.js";
-import { nextDay } from "date-fns";
+import {
+  ClassFrequency,
+  ClassSubscriptionType,
+  Weekday,
+} from "../constants/enums.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { mapWeekdayToDayNumber } from "../utils/date.utils.js";
 import { InstructorsRepository } from "../repositories/instructors.repository.js";
@@ -33,9 +34,13 @@ import { buildInstructorMock } from "../tests/factories/instructor.factory.js";
 import { CloudinaryService } from "./cloudinary.service.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
 import { CloudinaryResourceType, ImageType } from "../constants/cloudinary.js";
+import { nextDay } from "date-fns";
+import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
+import { buildStripePriceMock, buildStripeProductMock } from "../tests/factories/stripe.factory.js";
 
 vi.mock("date-fns");
 vi.mock("../utils/date.utils.js");
+vi.mock("../repositories/class.repository.js");
 vi.mock("../repositories/instructors.repository.js");
 vi.mock("./stripe.service.js");
 vi.mock("./notifications.service.js");
@@ -43,45 +48,76 @@ vi.mock("./users.service.js");
 vi.mock("./cloudinary.service.js");
 
 describe("Class Service", () => {
-  const mockedNextDay = vi.mocked(nextDay);
-  const mockedMapWeekdayToDayNumber = vi.mocked(mapWeekdayToDayNumber);
   let dbServiceSpy: DbServiceSpies;
 
-  // Spies for external services and repositories
+  // Mocks
+  const dojo = buildDojoMock();
+  const owner = buildUserMock({ id: dojo.ownerUserId });
+  const instructor = buildInstructorMock({ dojoId: dojo.id });
+  const instructorProfile = buildUserMock({ id: instructor.instructorUserId });
+  const newClassId = "new-class-id";
+
+  // Spies
   let findInstructorSpy: MockInstance;
   let createStripeProdSpy: MockInstance;
   let createStripePriceSpy: MockInstance;
-  let updateClassRepoSpy: MockInstance;
   let getUserByIdSpy: MockInstance;
   let notifyOwnerSpy: MockInstance;
+  let notifyInstructorSpy: MockInstance;
   let fetchImageAssetSpy: MockInstance;
   let moveImageSpy: MockInstance;
   let createClassRepoSpy: MockInstance;
   let findClassByIdRepoSpy: MockInstance;
+  let updateClassRepoSpy: MockInstance;
+  const mockedNextDay = vi.mocked(nextDay);
+  const mockedMapWeekdayToDayNumber = vi.mocked(mapWeekdayToDayNumber);
 
   beforeEach(() => {
     dbServiceSpy = createDrizzleDbSpies();
     vi.useFakeTimers();
 
-    // Setup spies
-    findInstructorSpy = vi.spyOn(InstructorsRepository, "findOneByIdAndDojoId");
-    createStripeProdSpy = vi.spyOn(StripeService, "createClassProduct");
-    createStripePriceSpy = vi.spyOn(StripeService, "createClassPrice");
-    updateClassRepoSpy = vi.spyOn(ClassRepository, "update");
+    // Mock external dependencies
+    findInstructorSpy = vi
+      .spyOn(InstructorsRepository, "findOneByIdAndDojoId")
+      .mockResolvedValue(instructor);
+    createStripeProdSpy = vi
+      .spyOn(StripeService, "createClassProduct")
+      .mockResolvedValue(buildStripeProductMock({ id: "prod_123" }));
+    createStripePriceSpy = vi
+      .spyOn(StripeService, "createClassPrice")
+      .mockResolvedValue(buildStripePriceMock({ id: "price_123" }));
     getUserByIdSpy = vi.spyOn(UsersService, "getOneUserByID");
     notifyOwnerSpy = vi.spyOn(
       NotificationService,
       "notifyDojoOwnerOfClassCreation"
     );
-
-    fetchImageAssetSpy = vi.spyOn(CloudinaryService, "fetchImageAsset");
+    notifyInstructorSpy = vi.spyOn(
+      NotificationService,
+      "notifyInstructorOfNewClassAssigned"
+    );
+    fetchImageAssetSpy = vi
+      .spyOn(CloudinaryService, "fetchImageAsset")
+      .mockResolvedValue({
+        resource_type: CloudinaryResourceType.IMAGE,
+      } as any);
     moveImageSpy = vi.spyOn(CloudinaryService, "moveImageFromTempFolder");
-    createClassRepoSpy = vi.spyOn(ClassRepository, "create");
-    findClassByIdRepoSpy = vi.spyOn(ClassRepository, "findById");
+    createClassRepoSpy = vi
+      .spyOn(ClassRepository, "create")
+      .mockResolvedValue(newClassId);
+    findClassByIdRepoSpy = vi
+      .spyOn(ClassRepository, "findById")
+      .mockResolvedValue(buildClassMock());
+    updateClassRepoSpy = vi.spyOn(ClassRepository, "update");
 
     // Default happy path mocks
-    getUserByIdSpy.mockResolvedValue(buildUserMock());
-    notifyOwnerSpy.mockResolvedValue(undefined);
+    getUserByIdSpy.mockImplementation(({ userId }) => {
+      if (userId === dojo.ownerUserId) return Promise.resolve(owner);
+      if (userId === instructor.instructorUserId)
+        return Promise.resolve(instructorProfile);
+      return Promise.resolve(buildUserMock());
+    });
+    mockedMapWeekdayToDayNumber.mockReturnValue(1); // Monday
+    mockedNextDay.mockReturnValue(new Date("2023-01-02T10:00:00.000Z"));
   });
 
   afterEach(() => {
@@ -90,64 +126,34 @@ describe("Class Service", () => {
   });
 
   describe("createClass", () => {
-    let createClassSpy: MockInstance;
-    let findByIdSpy: MockInstance;
-    const dojo = buildDojoMock();
-
-    beforeEach(() => {
-      createClassSpy = vi
-        .spyOn(ClassRepository, "create")
-        .mockResolvedValue("new-class-id");
-      findByIdSpy = vi
-        .spyOn(ClassRepository, "findById")
-        .mockResolvedValue(buildClassMock({ dojoId: dojo.id }));
-    });
-
     it("should throw NotFoundException if imagePublicId is provided but asset not found", async () => {
-      const dto = buildCreateClassDTOMock({
-        imagePublicId: "non-existent-img",
-      });
+      const dto = buildCreateClassDTOMock({ imagePublicId: "non-existent" });
       fetchImageAssetSpy.mockResolvedValue(null);
-
       await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(
         NotFoundException
       );
-
-      expect(fetchImageAssetSpy).toHaveBeenCalledWith("non-existent-img");
     });
 
     it("should throw BadRequestException if asset is not an image", async () => {
-      const dto = buildCreateClassDTOMock({ imagePublicId: "not-an-image" });
+      const dto = buildCreateClassDTOMock({ imagePublicId: "video-id" });
       fetchImageAssetSpy.mockResolvedValue({ resource_type: "video" } as any);
-
       await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(
         BadRequestException
       );
     });
 
-    it("should throw NotFoundException if instructorId is provided but instructor not found", async () => {
-      const dto = buildCreateClassDTOMock({ instructorId: "non-existent-ins" });
+    it("should throw NotFoundException if instructorId is provided but not found", async () => {
+      const dto = buildCreateClassDTOMock({ instructorId: "ghost" });
       findInstructorSpy.mockResolvedValue(null);
-
       await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(
-        NotFoundException
-      );
-
-      expect(findInstructorSpy).toHaveBeenCalledWith(
-        "non-existent-ins",
-        dojo.id,
-        dbServiceSpy.mockTx
+        new NotFoundException("Instructor with ID ghost not found for Dojo")
       );
     });
 
     it("should move image from temp folder if imagePublicId is provided", async () => {
-      const imagePublicId = "temp-image-id";
+      const imagePublicId = "temp-img-id";
       const dto = buildCreateClassDTOMock({ imagePublicId });
-
-      fetchImageAssetSpy.mockResolvedValue({ resource_type: CloudinaryResourceType.IMAGE } as any);
-
       await ClassService.createClass({ dto, dojo });
-
       expect(moveImageSpy).toHaveBeenCalledWith(
         imagePublicId,
         dojo.id,
@@ -155,19 +161,52 @@ describe("Class Service", () => {
       );
     });
 
-    it("should successfully create a class when a valid instructorId is provided", async () => {
-      const instructor = buildInstructorMock();
-      const dto = buildCreateClassDTOMock({ instructorId: instructor.id });
-      findInstructorSpy.mockResolvedValue(instructor);
-
+    it("should create a class with correct data for a one-time schedule", async () => {
+      const scheduleDate = new Date("2024-08-15T10:00:00.000Z");
+      const dto = buildCreateClassDTOMock({
+        frequency: ClassFrequency.OneTime,
+        schedules: [
+          {
+            type: ClassFrequency.OneTime,
+            date: scheduleDate,
+            startTime: "10:00",
+            endTime: "11:00",
+          },
+        ],
+      });
       await ClassService.createClass({ dto, dojo });
-
-      expect(findInstructorSpy).toHaveBeenCalledWith(
-        instructor.id,
-        dojo.id,
+      expect(createClassRepoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          schedulesData: [
+            expect.objectContaining({ initialClassDate: scheduleDate }),
+          ],
+        }),
         dbServiceSpy.mockTx
       );
-      expect(createClassSpy).toHaveBeenCalled();
+    });
+
+    it("should create a class with correct data for a weekly schedule", async () => {
+      const dto = buildCreateClassDTOMock({
+        frequency: ClassFrequency.Weekly,
+        schedules: [{
+          type: ClassFrequency.Weekly,
+          weekday: Weekday.Tuesday,
+          startTime: "18:00",
+          endTime: "19:00",
+        }],
+      });
+      const expectedDate = new Date("2023-01-02T10:00:00.000Z");
+      mockedNextDay.mockReturnValue(expectedDate);
+      await ClassService.createClass({ dto, dojo });
+      expect(mockedMapWeekdayToDayNumber).toHaveBeenCalledWith(Weekday.Tuesday);
+      expect(createClassRepoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          schedulesData: [
+            expect.objectContaining({ initialClassDate: expectedDate }),
+          ],
+        }),
+        dbServiceSpy.mockTx
+      );
     });
 
     describe("for a paid weekly class", () => {
@@ -178,32 +217,33 @@ describe("Class Service", () => {
           price: 50,
         });
 
-        const stripeProd = { id: "prod_123" };
-        const stripePrice = { id: "price_123" };
-        createStripeProdSpy.mockResolvedValue(stripeProd as any);
-        createStripePriceSpy.mockResolvedValue(stripePrice as any);
-        updateClassRepoSpy.mockResolvedValue(undefined);
-
+        const createdClass = buildClassMock({ dojoId: dojo.id, id: newClassId });
+        findClassByIdRepoSpy.mockResolvedValue(createdClass);
         await ClassService.createClass({ dto, dojo });
 
         expect(createStripeProdSpy).toHaveBeenCalledWith(dto.name, dojo.id);
-        expect(createStripePriceSpy).toHaveBeenCalledWith(
-          stripeProd.id,
-          dto.price
-        );
+        expect(createStripePriceSpy).toHaveBeenCalledWith("prod_123", dto.price);
         expect(updateClassRepoSpy).toHaveBeenCalledWith({
-          classId: "new-class-id",
-          update: { stripePriceId: stripePrice.id },
+          classId: newClassId,
+          update: { stripePriceId: "price_123" },
           tx: dbServiceSpy.mockTx,
         });
+      });
+
+      it("should throw BadRequestException if price is not provided", async () => {
+        const dto = buildCreateClassDTOMock({
+          frequency: ClassFrequency.Weekly,
+          subscriptionType: ClassSubscriptionType.Paid,
+          price: undefined,
+        });
+        await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(
+          new BadRequestException("Price is required for paid classes")
+        );
       });
     });
 
     it("should notify the dojo owner upon class creation", async () => {
-      const owner = buildUserMock({ id: dojo.ownerUserId });
-      getUserByIdSpy.mockResolvedValue(owner);
       const dto = buildCreateClassDTOMock();
-
       await ClassService.createClass({ dto, dojo });
 
       expect(getUserByIdSpy).toHaveBeenCalledWith({
@@ -215,74 +255,81 @@ describe("Class Service", () => {
         dojoOwner: owner,
       });
     });
+
+    it("should notify the assigned instructor", async () => {
+      const dto = buildCreateClassDTOMock({ instructorId: instructor.id });
+      await ClassService.createClass({ dto, dojo });
+      expect(getUserByIdSpy).toHaveBeenCalledWith({
+        userId: instructor.instructorUserId,
+        txInstance: dbServiceSpy.mockTx,
+      });
+      expect(notifyInstructorSpy).toHaveBeenCalledWith({
+        className: dto.name,
+        instructor: instructorProfile,
+      });
+    });
+
+    it("should throw InternalServerErrorException if dojo owner not found", async () => {
+        const dto = buildCreateClassDTOMock();
+        getUserByIdSpy.mockImplementation(({ userId }) => {
+            if (userId === dojo.ownerUserId) return Promise.resolve(null);
+            return Promise.resolve(buildUserMock());
+        });
+        await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(
+            new InternalServerErrorException("Dojo owner not found")
+        );
+    });
+    
+    it("should throw InternalServerErrorException if instructor profile not found", async () => {
+        const dto = buildCreateClassDTOMock({ instructorId: instructor.id });
+        getUserByIdSpy.mockImplementation(({ userId }) => {
+            if (userId === dojo.ownerUserId) return Promise.resolve(owner);
+            if (userId === instructor.instructorUserId) return Promise.resolve(null);
+            return Promise.resolve(buildUserMock());
+        });
+        await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(
+            new InternalServerErrorException("Dojo Instructor not found")
+        );
+    });
   });
 
   describe("getOneClassById", () => {
-    let findByIdSpy: MockInstance;
-
-    beforeEach(() => {
-      findByIdSpy = vi.spyOn(ClassRepository, "findById");
-    });
-
     it("should return a class object when found", async () => {
-      const mockClass = buildClassMock();
-      findByIdSpy.mockResolvedValue(mockClass);
-
-      const result = await ClassService.getOneClassById("class-1");
-
-      expect(result).toEqual(mockClass);
-      expect(findByIdSpy).toHaveBeenCalledWith("class-1", dbServiceSpy.mockTx);
+        const mockClass = buildClassMock();
+        findClassByIdRepoSpy.mockResolvedValue(mockClass);
+        const result = await ClassService.getOneClassById(mockClass.id);
+        expect(result).toEqual(mockClass);
+        expect(findClassByIdRepoSpy).toHaveBeenCalledWith(mockClass.id, dbServiceSpy.mockTx);
     });
 
     it("should throw NotFoundException when class is not found", async () => {
-      findByIdSpy.mockResolvedValue(null);
-
-      await expect(
-        ClassService.getOneClassById("non-existent-id")
-      ).rejects.toThrow(NotFoundException);
+        findClassByIdRepoSpy.mockResolvedValue(null);
+        await expect(ClassService.getOneClassById("non-existent-id")).rejects.toThrow(
+            new NotFoundException("Class with ID non-existent-id not found.")
+        );
     });
   });
 
   describe("getAllClassesByDojoId", () => {
-    let findAllByDojoIdSpy: MockInstance;
-
-    beforeEach(() => {
-      findAllByDojoIdSpy = vi.spyOn(ClassRepository, "findAllByDojoId");
-    });
-
+      let findAllByDojoIdSpy: MockInstance;
+      beforeEach(() => {
+          findAllByDojoIdSpy = vi.spyOn(ClassRepository, "findAllByDojoId");
+      })
     it("should return an array of classes", async () => {
-      const dojoId = "dojo-1";
-      const mockClasses = [
-        buildClassMock({ dojoId }),
-        buildClassMock({ dojoId, id: "class-2" }),
-      ];
+      const mockClasses = [buildClassMock(), buildClassMock({id: "class-2"})];
       findAllByDojoIdSpy.mockResolvedValue(mockClasses);
-
-      const result = await ClassService.getAllClassesByDojoId(dojoId);
-
+      const result = await ClassService.getAllClassesByDojoId(dojo.id);
       expect(result).toEqual(mockClasses);
-      expect(findAllByDojoIdSpy).toHaveBeenCalledWith(
-        dojoId,
-        dbServiceSpy.mockTx
-      );
+      expect(findAllByDojoIdSpy).toHaveBeenCalledWith(dojo.id, dbServiceSpy.mockTx);
     });
   });
 
   describe("updateClass", () => {
     it("should call ClassRepository.update with correct parameters", async () => {
-      updateClassRepoSpy = vi
-        .spyOn(ClassRepository, "update")
-        .mockResolvedValue();
-      const classId = "class-1";
-      const update = { name: "Updated Class Name" };
-
-      await ClassService.updateClass({ classId, update });
-
-      expect(updateClassRepoSpy).toHaveBeenCalledWith({
-        classId,
-        update,
-        tx: dbServiceSpy.mockTx,
-      });
+        const classId = "class-1";
+        const update: IUpdateClass = { name: "Updated Name" };
+        await ClassService.updateClass({ classId, update, txInstance: dbServiceSpy.mockTx });
+        expect(updateClassRepoSpy).toHaveBeenCalledWith({ classId, update, tx: dbServiceSpy.mockTx });
     });
   });
 });
