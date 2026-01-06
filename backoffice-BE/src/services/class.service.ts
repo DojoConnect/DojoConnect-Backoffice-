@@ -13,7 +13,10 @@ import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { nextDay } from "date-fns";
 import { ClassFrequency, ClassSubscriptionType } from "../constants/enums.js";
 import { mapWeekdayToDayNumber } from "../utils/date.utils.js";
-import { InstructorsRepository } from "../repositories/instructors.repository.js";
+import {
+  IDojoInstructor,
+  InstructorsRepository,
+} from "../repositories/instructors.repository.js";
 import { StripeService } from "./stripe.service.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
 import { NotificationService } from "./notifications.service.js";
@@ -36,6 +39,7 @@ export class ClassService {
   ): Promise<ClassDTO> => {
     const execute = async (tx: Transaction) => {
       const { schedules, ...classDetails } = dto;
+      let dojoInstructor: IDojoInstructor | null = null;
 
       if (dto.imagePublicId) {
         const asset = await CloudinaryService.fetchImageAsset(
@@ -56,13 +60,13 @@ export class ClassService {
       }
 
       if (dto.instructorId) {
-        const instructor = await InstructorsRepository.findOneByIdAndDojoId(
+        dojoInstructor = await InstructorsRepository.findOneByIdAndDojoId(
           dto.instructorId,
           dojo.id,
           tx
         );
 
-        if (!instructor) {
+        if (!dojoInstructor) {
           throw new NotFoundException(
             `Instructor with ID ${dto.instructorId} not found for Dojo`
           );
@@ -154,6 +158,22 @@ export class ClassService {
         className: classData.name,
         dojoOwner: dojoOwner,
       });
+
+      if (dto.instructorId && dojoInstructor) {
+        const instructorUserProfile = await UsersService.getOneUserByID({
+          userId: dojoInstructor.instructorUserId,
+          txInstance: tx,
+        });
+
+        if (!instructorUserProfile) {
+          throw new InternalServerErrorException("Dojo Instructor not found");
+        }
+
+        await NotificationService.notifyInstructorOfNewClassAssigned({
+          className: classData.name,
+          instructor: instructorUserProfile,
+        });
+      }
 
       return new ClassDTO(classWithSchedules!);
     };

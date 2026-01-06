@@ -136,4 +136,42 @@ export class NotificationService {
       data: {},
     });
   };
+
+  static notifyInstructorOfNewClassAssigned = async ({
+    instructor,
+    className,
+  }: {
+    instructor: IUser;
+    className: string;
+  }) => {
+    const title = "Class Assigned";
+    const body = `You have been assigned to the class "${className}".`;
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.ClassAssigned,
+      user: instructor,
+      title,
+      body,
+      data: {},
+    });
+  };
+
+  static notifyInstructorOfClassReassignment = async ({
+    instructor,
+    className,
+  }: {
+    instructor: IUser;
+    className: string;
+  }) => {
+    const title = "Class Reassigned";
+    const body = `Your class "${className}" has been reassigned.`;
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.ClassReassigned,
+      user: instructor,
+      title,
+      body,
+      data: {},
+    });
+  };
 }

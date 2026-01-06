@@ -54,7 +54,7 @@ export class InstructorsRepository {
     id: string,
     dojoId: string,
     tx: Transaction
-  ) => {
+  ): Promise<IDojoInstructor | null> => {
     return this.findOne({
       whereClause: and(
         eq(dojoInstructors.id, id),
