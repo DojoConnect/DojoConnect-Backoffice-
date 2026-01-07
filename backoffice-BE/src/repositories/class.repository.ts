@@ -24,14 +24,7 @@ export class ClassRepository {
       .values(classData)
       .$returningId();
 
-    const schedulesToInsert = schedulesData.map((schedule) => ({
-      ...schedule,
-      classId: insertResult.id,
-    }));
-
-    if (schedulesToInsert.length > 0) {
-      await tx.insert(classSchedules).values(schedulesToInsert);
-    }
+    await ClassRepository.createSchedules(schedulesData, insertResult.id, tx);
 
     return insertResult.id;
   }
@@ -86,4 +79,23 @@ export class ClassRepository {
   }) => {
     await tx.update(classes).set(update).where(eq(classes.id, classId));
   };
+
+  static async deleteSchedules(classId: string, tx: Transaction) {
+    await tx.delete(classSchedules).where(eq(classSchedules.classId, classId));
+  }
+
+  static async createSchedules(
+    schedulesData: INewClassSchedule[],
+    classId: string,
+    tx: Transaction
+  ) {
+    if (schedulesData.length === 0) return;
+
+    const schedulesToInsert = schedulesData.map((schedule) => ({
+      ...schedule,
+      classId,
+    }));
+
+    await tx.insert(classSchedules).values(schedulesToInsert);
+  }
 }

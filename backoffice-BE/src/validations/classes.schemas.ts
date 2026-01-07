@@ -40,21 +40,23 @@ const BaseStartEndTimeSchema = z.object({
   endTime: TimeSchema,
 });
 
-const WeeklyScheduleSchema = BaseStartEndTimeSchema.extend({
+export const WeeklyScheduleSchema = BaseStartEndTimeSchema.extend({
   type: z.literal(ClassFrequency.Weekly),
   weekday: z.enum(Weekday),
 }).refine((s) => timeToMinutes(s.startTime) < timeToMinutes(s.endTime), {
   message: "End time must be after start time",
   path: ["startTime"],
 });
+export type WeeklySchedule = z.infer<typeof WeeklyScheduleSchema>;
 
-const OneTimeScheduleSchema = BaseStartEndTimeSchema.extend({
+export const OneTimeScheduleSchema = BaseStartEndTimeSchema.extend({
   type: z.literal(ClassFrequency.OneTime),
   date: DateOnlySchema,
 }).refine((s) => timeToMinutes(s.startTime) < timeToMinutes(s.endTime), {
   message: "End time must be after start time",
   path: ["startTime"],
 });
+export type OneTimeSchedule = z.infer<typeof OneTimeScheduleSchema>;
 
 // -------------------
 // SHARED CLASS FIELDS
@@ -136,3 +138,29 @@ export const CreateClassSchema = z
     }
   });
 export type CreateClassDTO = z.infer<typeof CreateClassSchema>;
+
+export const UpdateClassSchema = BaseClassSchema.partial()
+  .extend({
+    schedules: z
+      .union([
+        z.array(WeeklyScheduleSchema).min(1),
+        z.tuple([OneTimeScheduleSchema]),
+      ])
+      .optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.minAge !== undefined && data.maxAge !== undefined) {
+        return data.minAge <= data.maxAge;
+      }
+      return true;
+    },
+    {
+      message: "Minimum age cannot be greater than maximum age.",
+      path: ["minAge"],
+    }
+  );
+
+export type UpdateClassDTO = z.infer<typeof UpdateClassSchema>;
+export type CreateClassScheduleDTO = z.infer<typeof CreateClassSchema>["schedules"];
+

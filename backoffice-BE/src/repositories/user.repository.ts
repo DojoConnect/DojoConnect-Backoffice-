@@ -1,5 +1,11 @@
-import { eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
-import { users } from "../db/schema.js";
+import {
+  eq,
+  getTableColumns,
+  InferInsertModel,
+  InferSelectModel,
+  SQL,
+} from "drizzle-orm";
+import { dojoInstructors, dojos, users } from "../db/schema.js";
 import { Transaction } from "../db/index.js";
 import { returnFirst } from "../utils/db.utils.js";
 
@@ -85,5 +91,42 @@ export class UserRepository {
     tx: Transaction;
   }) => {
     await tx.update(users).set(update).where(eq(users.id, userId));
+  };
+
+  static getUserProfileForInstructor = async (
+    instructorId: string,
+    tx: Transaction
+  ): Promise<IUser | null> => {
+    const user = returnFirst(
+      await tx
+        .select({ ...getTableColumns(users) })
+        .from(users)
+        .innerJoin(
+          dojoInstructors,
+          eq(dojoInstructors.instructorUserId, users.id)
+        )
+        .where(eq(dojoInstructors.id, instructorId))
+        .limit(1)
+        .execute()
+    );
+
+    return user;
+  };
+
+  static getUserProfileForDojoOwner = async (
+    dojoId: string,
+    tx: Transaction
+  ): Promise<IUser | null> => {
+    const user = returnFirst(
+      await tx
+        .select({ ...getTableColumns(users) })
+        .from(users)
+        .innerJoin(dojos, eq(dojos.ownerUserId, users.id))
+        .where(eq(dojos.id, dojoId))
+        .limit(1)
+        .execute()
+    );
+
+    return user;
   };
 }

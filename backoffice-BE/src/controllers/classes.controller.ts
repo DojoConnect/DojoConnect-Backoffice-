@@ -66,8 +66,30 @@ export class ClassesController {
 
     res
       .status(200)
-      .json(
-        formatApiResponse({ data: classDTO, message: "Class fetched." })
+      .json(formatApiResponse({ data: classDTO, message: "Class fetched." }));
+  }
+
+  static async updateClass(req: Request, res: Response) {
+    const { classId } = req.params;
+    const dojo = req.dojo;
+
+    if (!dojo) {
+      throw new InternalServerErrorException(
+        "Dojo not found on request object."
       );
+    }
+
+    const updatedClass = await ClassService.updateClass({
+      classId,
+      dojoId: dojo.id,
+      dto: req.body,
+    });
+
+    res.status(200).json(
+      formatApiResponse({
+        data: updatedClass,
+        message: "Class updated successfully.",
+      })
+    );
   }
 }
