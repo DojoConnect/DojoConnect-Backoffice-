@@ -80,6 +80,7 @@ describe("Class Service", () => {
   let updateClassRepoSpy: MockInstance;
   let deleteSchedulesRepoSpy: MockInstance;
   let createSchedulesRepoSpy: MockInstance;
+
   const mockedNextDay = vi.mocked(nextDay);
   const mockedMapWeekdayToDayNumber = vi.mocked(mapWeekdayToDayNumber);
 
@@ -122,7 +123,9 @@ describe("Class Service", () => {
     updateClassRepoSpy = vi.spyOn(ClassRepository, "update");
     deleteSchedulesRepoSpy = vi.spyOn(ClassRepository, "deleteSchedules");
     createSchedulesRepoSpy = vi.spyOn(ClassRepository, "createSchedules");
-    retrieveStripePriceSpy = vi.spyOn(StripeService, "retrievePrice").mockResolvedValue(buildStripePriceMock());
+    retrieveStripePriceSpy = vi
+      .spyOn(StripeService, "retrievePrice")
+      .mockResolvedValue(buildStripePriceMock());
 
     // Default happy path mocks
     getUserByIdSpy.mockImplementation(({ userId }) => {
@@ -464,6 +467,34 @@ describe("Class Service", () => {
           })
         );
       });
+    });
+  });
+
+  describe("updateClassInstructor", () => {
+    it("should call updateClass with the correct parameters", async () => {
+      const classId = "class-123";
+      const dojoId = dojo.id;
+      const instructorId = "instructor-456";
+
+      // Spy on the method we expect to be called
+      const updateClassSpy = vi
+        .spyOn(ClassService, "updateClass")
+        .mockResolvedValue({} as any); // Mock the return value
+
+      await ClassService.updateClassInstructor({
+        classId,
+        dojoId,
+        instructorId,
+      });
+
+      expect(updateClassSpy).toHaveBeenCalledWith(
+        {
+          classId,
+          dojoId,
+          dto: { instructorId },
+        },
+        undefined // expecting txInstance to be undefined when not passed
+      );
     });
   });
 

@@ -162,5 +162,10 @@ export const UpdateClassSchema = BaseClassSchema.partial()
   );
 
 export type UpdateClassDTO = z.infer<typeof UpdateClassSchema>;
+
+export const UpdateClassInstructorSchema = z.object({
+  instructorId: z.uuid().nullable(),
+});
+
 export type CreateClassScheduleDTO = z.infer<typeof CreateClassSchema>["schedules"];
 

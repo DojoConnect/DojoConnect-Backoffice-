@@ -6,6 +6,7 @@ import { Role } from "../constants/enums.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
 import {
   CreateClassSchema,
+  UpdateClassInstructorSchema,
   UpdateClassSchema,
 } from "../validations/classes.schemas.js";
 import { isDojoOwnerMiddleware } from "../middlewares/is-dojo-owner.middleware.js";
@@ -43,6 +44,15 @@ router.patch(
   isDojoOwnerMiddleware,
   validateReqBody(UpdateClassSchema),
   ClassesController.updateClass
+);
+
+router.patch(
+  "/:classId/instructor",
+  requireAuth,
+  requireRole(Role.DojoAdmin),
+  isDojoOwnerMiddleware,
+  validateReqBody(UpdateClassInstructorSchema),
+  ClassesController.updateClassInstructor
 );
 
 export default router;

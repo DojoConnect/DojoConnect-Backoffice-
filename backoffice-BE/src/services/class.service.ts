@@ -375,6 +375,28 @@ export class ClassService {
       : dbService.runInTransaction(execute);
   };
 
+  static updateClassInstructor = async (
+    {
+      classId,
+      dojoId,
+      instructorId,
+    }: {
+      classId: string;
+      dojoId: string;
+      instructorId: string | null;
+    },
+    txInstance?: dbService.Transaction
+  ): Promise<ClassDTO> => {
+    return await ClassService.updateClass(
+      {
+        classId,
+        dojoId,
+        dto: { instructorId },
+      },
+      txInstance
+    );
+  };
+
   static mapCreateClassScheduleDTOToINewClassSchedule = (
     schedules: CreateClassScheduleDTO
   ): INewClassSchedule[] => {

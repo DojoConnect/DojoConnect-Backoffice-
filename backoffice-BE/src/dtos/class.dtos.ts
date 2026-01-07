@@ -6,10 +6,14 @@ import {
 import { classes, classSchedules } from "../db/schema.js";
 import { InferSelectModel } from "drizzle-orm";
 import { CloudinaryService } from "../services/cloudinary.service.js";
+import { UpdateClassInstructorSchema } from "../validations/classes.schemas.js";
+import z from "zod";
 
 export type Class = InferSelectModel<typeof classes>;
 export type ClassSchedule = InferSelectModel<typeof classSchedules>;
 export type NewClassSchedule = InferSelectModel<typeof classSchedules>;
+
+export type UpdateClassInstructorDto = z.infer<typeof UpdateClassInstructorSchema>;
 
 export class ClassDTO {
   id: string;

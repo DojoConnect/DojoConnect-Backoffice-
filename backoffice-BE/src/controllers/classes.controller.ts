@@ -92,4 +92,29 @@ export class ClassesController {
       })
     );
   }
+
+  static async updateClassInstructor(req: Request, res: Response) {
+    const { classId } = req.params;
+    const dojo = req.dojo;
+    const { instructorId } = req.body;
+
+    if (!dojo) {
+      throw new InternalServerErrorException(
+        "Dojo not found on request object."
+      );
+    }
+
+    const updatedClass = await ClassService.updateClassInstructor({
+      classId,
+      dojoId: dojo.id,
+      instructorId,
+    });
+
+    res.status(200).json(
+      formatApiResponse({
+        data: updatedClass,
+        message: "Class instructor updated successfully.",
+      })
+    );
+  }
 }
