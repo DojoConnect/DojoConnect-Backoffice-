@@ -1,6 +1,7 @@
 import {
   eq,
   getTableColumns,
+  inArray,
   InferInsertModel,
   InferSelectModel,
   SQL,
@@ -12,6 +13,10 @@ import { returnFirst } from "../utils/db.utils.js";
 export type IUser = InferSelectModel<typeof users>;
 export type INewUser = InferInsertModel<typeof users>;
 export type IUpdateUser = Partial<Omit<INewUser, "id" | "createdAt">>;
+
+export type InstructorUserDetails = IUser & {
+  instructorId: string;
+};
 
 export class UserRepository {
   static getOne = async ({
@@ -91,6 +96,20 @@ export class UserRepository {
     tx: Transaction;
   }) => {
     await tx.update(users).set(update).where(eq(users.id, userId));
+  };
+
+  static getUserProfileByInstructorIds = async (
+    instructorIds: string[],
+    tx: Transaction
+  ): Promise<InstructorUserDetails[]> => {
+    return await tx
+      .select({ ...getTableColumns(users), instructorId: dojoInstructors.id })
+      .from(users)
+      .innerJoin(
+        dojoInstructors,
+        eq(dojoInstructors.instructorUserId, users.id)
+      )
+      .where(inArray(dojoInstructors.id, instructorIds));
   };
 
   static getUserProfileForInstructor = async (

@@ -2,10 +2,13 @@ import * as dbService from "../db/index.js";
 import type { Transaction } from "../db/index.js";
 import {
   ClassRepository,
+  ClassWithInstructor,
+  ClassWithSchedulesAndInstructor,
   IClass,
   IClassSchedule,
   INewClass,
   INewClassSchedule,
+  InstructorDetails,
   IUpdateClass,
 } from "../repositories/class.repository.js";
 import {
@@ -31,7 +34,10 @@ import { InternalServerErrorException } from "../core/errors/InternalServerError
 import { CloudinaryService } from "./cloudinary.service.js";
 import { CloudinaryResourceType, ImageType } from "../constants/cloudinary.js";
 import { ForbiddenException } from "../core/errors/ForbiddenException.js";
-import { UserRepository } from "../repositories/user.repository.js";
+import {
+  InstructorUserDetails,
+  UserRepository,
+} from "../repositories/user.repository.js";
 
 export class ClassService {
   static createClass = async (
@@ -85,7 +91,10 @@ export class ClassService {
         tx
       );
 
-      const classWithSchedules = await ClassRepository.findById(newClassId, tx);
+      const classWithSchedules = await ClassService.fetchClassAndSchedules(
+        newClassId,
+        tx
+      );
 
       if (
         classData.frequency === ClassFrequency.Weekly &&
@@ -147,7 +156,7 @@ export class ClassService {
         });
       }
 
-      return new ClassDTO(classWithSchedules!);
+      return new ClassDTO(await ClassService.getClassInfo(newClassId, tx));
     };
 
     return txInstance
@@ -155,16 +164,46 @@ export class ClassService {
       : dbService.runInTransaction(execute);
   };
 
-  static getOneClassById = async (
+  static getClassInfo = async (
     classId: string,
     txInstance?: Transaction
-  ): Promise<IClass & { schedules: IClassSchedule[] }> => {
+  ): Promise<ClassWithSchedulesAndInstructor> => {
     const execute = async (tx: Transaction) => {
-      const classData = await ClassRepository.findById(classId, tx);
-      if (!classData) {
+      const classAndSchedules = await ClassService.fetchClassAndSchedules(
+        classId,
+        tx
+      );
+      if (!classAndSchedules) {
         throw new NotFoundException(`Class with ID ${classId} not found.`);
       }
-      return classData;
+
+      let instructorDetails: InstructorDetails | null = null;
+
+      if (classAndSchedules.instructorId) {
+        const instructorUserProfile =
+          await UserRepository.getUserProfileForInstructor(
+            classAndSchedules.instructorId,
+            tx
+          );
+
+        if (!instructorUserProfile) {
+          throw new InternalServerErrorException(
+            `Instructor User account not found`
+          );
+        }
+
+        instructorDetails = {
+          id: classAndSchedules.instructorId,
+          firstName: instructorUserProfile.firstName,
+          lastName: instructorUserProfile.lastName,
+          avatar: instructorUserProfile.avatar,
+        };
+      }
+
+      return {
+        ...classAndSchedules,
+        instructor: instructorDetails,
+      };
     };
 
     return txInstance
@@ -175,15 +214,64 @@ export class ClassService {
   static getAllClassesByDojoId = async (
     dojoId: string,
     txInstance?: Transaction
-  ): Promise<IClass[]> => {
+  ): Promise<ClassWithInstructor[]> => {
     const execute = async (tx: Transaction) => {
-      return await ClassRepository.findAllByDojoId(dojoId, tx);
+      const classes = await ClassRepository.findAllByDojoId(dojoId, tx);
+
+      const instructorIds = classes
+        .map((c) => c.instructorId)
+        .filter((id): id is string => id !== null);
+
+      const instructorUserDetails =
+        await UserRepository.getUserProfileByInstructorIds(instructorIds, tx);
+
+      const instructorMap = new Map<string, InstructorUserDetails>();
+      instructorUserDetails.forEach((userDetails) => {
+        instructorMap.set(userDetails.instructorId, userDetails);
+      });
+
+      return classes.map((c) => {
+        let instructorUserDetails: InstructorDetails | null = null;
+
+        if (c.instructorId) {
+          instructorUserDetails = instructorMap.get(c.instructorId!) || null;
+        }
+
+        return {
+          ...c,
+          instructor: instructorUserDetails,
+        };
+      });
     };
 
     return txInstance
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
+
+  static async fetchClassAndSchedules(
+    classId: string,
+    txInstance?: Transaction
+  ): Promise<(IClass & { schedules: IClassSchedule[] }) | null> {
+    const execute = async (tx: Transaction) => {
+      const dojoClass = await ClassRepository.findById(classId, tx);
+
+      if (!dojoClass) {
+        return null;
+      }
+
+      const schedules = await ClassRepository.fetchClassSchedules(classId, tx);
+
+      return {
+        ...dojoClass,
+        schedules,
+      };
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  }
 
   static updateClass = async (
     {
@@ -366,7 +454,7 @@ export class ClassService {
         });
       }
 
-      const updatedClass = await ClassRepository.findById(classId, tx);
+      const updatedClass = await ClassService.getClassInfo(classId, tx);
       return new ClassDTO(updatedClass!);
     };
 

@@ -16,9 +16,7 @@ import {
   buildClassMock,
   buildCreateClassDTOMock,
 } from "../tests/factories/class.factory.js";
-import {
-  ClassRepository,
-} from "../repositories/class.repository.js";
+import { ClassRepository } from "../repositories/class.repository.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import {
   ClassFrequency,
@@ -245,7 +243,10 @@ describe("Class Service", () => {
         await ClassService.createClass({ dto, dojo });
 
         expect(createStripeProdSpy).toHaveBeenCalledWith(dto.name, dojo.id);
-        expect(createStripePriceSpy).toHaveBeenCalledWith("prod_123", dto.price);
+        expect(createStripePriceSpy).toHaveBeenCalledWith(
+          "prod_123",
+          dto.price
+        );
         expect(updateClassRepoSpy).toHaveBeenCalledWith({
           classId: newClassId,
           update: { stripePriceId: "price_123" },
@@ -307,7 +308,8 @@ describe("Class Service", () => {
       const dto = buildCreateClassDTOMock({ instructorId: instructor.id });
       getUserByIdSpy.mockImplementation(({ userId }) => {
         if (userId === dojo.ownerUserId) return Promise.resolve(owner);
-        if (userId === instructor.instructorUserId) return Promise.resolve(null);
+        if (userId === instructor.instructorUserId)
+          return Promise.resolve(null);
         return Promise.resolve(buildUserMock());
       });
       await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(
@@ -502,7 +504,7 @@ describe("Class Service", () => {
     it("should return a class object when found", async () => {
       const mockClass = buildClassMock();
       findClassByIdRepoSpy.mockResolvedValue(mockClass);
-      const result = await ClassService.getOneClassById(mockClass.id);
+      const result = await ClassService.getClassInfo(mockClass.id);
       expect(result).toEqual(mockClass);
       expect(findClassByIdRepoSpy).toHaveBeenCalledWith(
         mockClass.id,
@@ -513,7 +515,7 @@ describe("Class Service", () => {
     it("should throw NotFoundException when class is not found", async () => {
       findClassByIdRepoSpy.mockResolvedValue(null);
       await expect(
-        ClassService.getOneClassById("non-existent-id")
+        ClassService.getClassInfo("non-existent-id")
       ).rejects.toThrow(
         new NotFoundException("Class with ID non-existent-id not found.")
       );

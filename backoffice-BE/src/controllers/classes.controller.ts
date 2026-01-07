@@ -56,7 +56,7 @@ export class ClassesController {
       );
     }
 
-    const classData = await ClassService.getOneClassById(classId);
+    const classData = await ClassService.getClassInfo(classId);
 
     if (classData.dojoId !== dojo.id) {
       throw new ForbiddenException("Class does not belong to this dojo.");
