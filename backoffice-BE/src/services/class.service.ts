@@ -296,7 +296,7 @@ export class ClassService {
           const stripePrice = await StripeService.retrievePrice(
             existingClass.stripePriceId
           );
-          const stripeProd = stripePrice.product;
+          const stripeProd = stripePrice?.product;
 
           if (!stripeProd) {
             throw new InternalServerErrorException("Stripe product not found");
