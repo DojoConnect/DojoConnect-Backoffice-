@@ -30,4 +30,15 @@ export class InstructorController {
       message: "Invite declined successfully",
     });
   }
+
+  static async getInstructorClasses(req: Request, res: Response) {
+    const { instructorId } = req.params;
+
+    const classes = await InstructorService.getInstructorClasses(instructorId);
+
+    res.status(200).json({
+      data: classes,
+      message: 'Instructor classes fetched successfully',
+    });
+  }
 }

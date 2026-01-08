@@ -22,6 +22,11 @@ import { AuthService } from "./auth.service.js";
 import { UsersService } from "./users.service.js";
 import { MailerService } from "./mailer.service.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
+import { ClassRepository } from "../repositories/class.repository.js";
+import { UserRepository } from "../repositories/user.repository.js";
+import { ClassDTO } from "../dtos/class.dtos.js";
+import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
+import { buildClassMock } from "../tests/factories/class.factory.js";
 
 vi.mock("../utils/auth.utils.js", () => ({
   hashToken: (token) => `hashed-${token}`,
@@ -400,6 +405,66 @@ describe("InstructorService", () => {
       expect(markAsExpiredSpy).toHaveBeenCalledWith(
         mockDetails.id,
         dbServiceSpies.mockTx
+      );
+    });
+  });
+  
+  describe("getInstructorClasses", () => {
+    let findAllByInstructorIdSpy: MockInstance;
+    let getUserProfileForInstructorSpy: MockInstance;
+
+    beforeEach(() => {
+      findAllByInstructorIdSpy = vi
+        .spyOn(ClassRepository, "findAllByInstructorId")
+        .mockResolvedValue([]);
+      getUserProfileForInstructorSpy = vi
+        .spyOn(UserRepository, "getUserProfileForInstructor")
+        .mockResolvedValue(mockUser);
+    });
+
+    it("should return classes with instructor details successfully", async () => {
+      const mockClasses = [buildClassMock({ instructorId: mockUser.id })];
+      findAllByInstructorIdSpy.mockResolvedValue(mockClasses);
+
+      const result = await InstructorService.getInstructorClasses(mockUser.id);
+
+      expect(findAllByInstructorIdSpy).toHaveBeenCalledWith(
+        mockUser.id,
+        dbServiceSpies.mockTx
+      );
+      expect(getUserProfileForInstructorSpy).toHaveBeenCalledWith(
+        mockUser.id,
+        dbServiceSpies.mockTx
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBeInstanceOf(ClassDTO);
+      expect(result[0].instructor).toEqual(mockUser);
+    });
+
+    it("should throw InternalServerErrorException if classes do not belong to instructor", async () => {
+      const mockClasses = [
+        buildClassMock({ instructorId: "other-instructor" }),
+      ];
+      findAllByInstructorIdSpy.mockResolvedValue(mockClasses);
+
+      await expect(
+        InstructorService.getInstructorClasses(mockUser.id)
+      ).rejects.toThrow(
+        new InternalServerErrorException(
+          "Classes returned for instructor does not belong to instructor"
+        )
+      );
+    });
+
+    it("should throw InternalServerErrorException if instructor user profile is not found", async () => {
+      const mockClasses = [buildClassMock({ instructorId: mockUser.id })];
+      findAllByInstructorIdSpy.mockResolvedValue(mockClasses);
+      getUserProfileForInstructorSpy.mockResolvedValue(null);
+
+      await expect(
+        InstructorService.getInstructorClasses(mockUser.id)
+      ).rejects.toThrow(
+        new InternalServerErrorException("Instructor User account not found")
       );
     });
   });
