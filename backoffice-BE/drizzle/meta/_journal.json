@@ -8,6 +8,13 @@
       "when": 1767134248395,
       "tag": "0000_past_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1767802147713,
+      "tag": "0001_abnormal_firebird",
+      "breakpoints": true
     }
   ]
 }

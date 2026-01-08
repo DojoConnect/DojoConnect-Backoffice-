@@ -6,13 +6,24 @@ import {
 import { classes, classSchedules } from "../db/schema.js";
 import { InferSelectModel } from "drizzle-orm";
 import { CloudinaryService } from "../services/cloudinary.service.js";
+import { UpdateClassInstructorSchema } from "../validations/classes.schemas.js";
+import z from "zod";
+import {
+  InstructorDetails,
+  SchedulesAndInstructor,
+} from "../repositories/class.repository.js";
 
 export type Class = InferSelectModel<typeof classes>;
 export type ClassSchedule = InferSelectModel<typeof classSchedules>;
 export type NewClassSchedule = InferSelectModel<typeof classSchedules>;
 
+export type UpdateClassInstructorDto = z.infer<
+  typeof UpdateClassInstructorSchema
+>;
+
 export class ClassDTO {
   id: string;
+  dojoId: string;
   name: string;
   level: ClassLevel;
   minAge: number;
@@ -28,9 +39,11 @@ export class ClassDTO {
   instructorId: string | null;
   imagePublicId: string | null;
   schedules: ClassScheduleDTO[];
+  instructor: InstructorDetails | null;
 
-  constructor(data: Class & { schedules?: ClassSchedule[] }) {
+  constructor(data: Class & Partial<SchedulesAndInstructor>) {
     this.id = data.id;
+    this.dojoId = data.dojoId;
     this.name = data.name;
     this.level = data.level as ClassLevel;
     this.minAge = data.minAge;
@@ -48,11 +61,13 @@ export class ClassDTO {
     this.schedules = (data.schedules ?? []).map(
       (schedule) => new ClassScheduleDTO(schedule)
     );
+    this.instructor = data.instructor ?? null;
   }
 
   toJSON() {
     return {
       id: this.id,
+      dojoId: this.dojoId,
       name: this.name,
       level: this.level,
       minAge: this.minAge,
@@ -65,7 +80,16 @@ export class ClassDTO {
       frequency: this.frequency,
       subscriptionType: this.subscriptionType,
       price: this.price,
-      instructorId: this.instructorId,
+      instructor: this.instructor
+        ? {
+            id: this.instructor.id,
+            lastName: this.instructor.lastName,
+            firstName: this.instructor.firstName,
+            avatarUrl: this.instructor.avatar
+              ? CloudinaryService.getAssetUrl(this.instructor.avatar)
+              : null,
+          }
+        : null,
       imageUrl: this.imagePublicId
         ? CloudinaryService.getAssetUrl(this.imagePublicId)
         : null,

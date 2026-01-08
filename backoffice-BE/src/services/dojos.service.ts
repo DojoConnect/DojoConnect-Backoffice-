@@ -23,6 +23,7 @@ import { MailerService } from "./mailer.service.js";
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
 import { InstructorsRepository } from "../repositories/instructors.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
+import { ClassRepository } from "../repositories/class.repository.js";
 
 export class DojosService {
   static getOneDojo = async (
@@ -188,10 +189,7 @@ export class DojosService {
       }
 
       if (dto.classId) {
-        const existingClass = await ClassService.getOneClassById(
-          dto.classId,
-          tx
-        );
+        const existingClass = await ClassRepository.findById(dto.classId, tx);
 
         if (!existingClass) {
           throw new ConflictException(

@@ -1,4 +1,4 @@
-import { and, eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
+import { and, eq, inArray, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
 import { dojoInstructors, users } from "../db/schema.js";
 import { Transaction } from "../db/index.js";
 import { returnFirst } from "../utils/db.utils.js";
@@ -43,6 +43,14 @@ export class InstructorsRepository {
     });
   };
 
+  static findManyByIds = async (ids: string[], tx: Transaction) => {
+    return await tx
+      .select()
+      .from(dojoInstructors)
+      .where(inArray(dojoInstructors.id, ids))
+      .execute();
+  }
+
   static findOneByUserId = async (userId: string, tx: Transaction) => {
     return this.findOne({
       whereClause: eq(dojoInstructors.instructorUserId, userId),
@@ -54,7 +62,7 @@ export class InstructorsRepository {
     id: string,
     dojoId: string,
     tx: Transaction
-  ) => {
+  ): Promise<IDojoInstructor | null> => {
     return this.findOne({
       whereClause: and(
         eq(dojoInstructors.id, id),

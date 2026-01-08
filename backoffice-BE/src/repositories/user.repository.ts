@@ -1,11 +1,22 @@
-import { eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
-import { users } from "../db/schema.js";
+import {
+  eq,
+  getTableColumns,
+  inArray,
+  InferInsertModel,
+  InferSelectModel,
+  SQL,
+} from "drizzle-orm";
+import { dojoInstructors, dojos, users } from "../db/schema.js";
 import { Transaction } from "../db/index.js";
 import { returnFirst } from "../utils/db.utils.js";
 
 export type IUser = InferSelectModel<typeof users>;
 export type INewUser = InferInsertModel<typeof users>;
 export type IUpdateUser = Partial<Omit<INewUser, "id" | "createdAt">>;
+
+export type InstructorUserDetails = IUser & {
+  instructorId: string;
+};
 
 export class UserRepository {
   static getOne = async ({
@@ -85,5 +96,56 @@ export class UserRepository {
     tx: Transaction;
   }) => {
     await tx.update(users).set(update).where(eq(users.id, userId));
+  };
+
+  static getUserProfileByInstructorIds = async (
+    instructorIds: string[],
+    tx: Transaction
+  ): Promise<InstructorUserDetails[]> => {
+    return await tx
+      .select({ ...getTableColumns(users), instructorId: dojoInstructors.id })
+      .from(users)
+      .innerJoin(
+        dojoInstructors,
+        eq(dojoInstructors.instructorUserId, users.id)
+      )
+      .where(inArray(dojoInstructors.id, instructorIds));
+  };
+
+  static getUserProfileForInstructor = async (
+    instructorId: string,
+    tx: Transaction
+  ): Promise<IUser | null> => {
+    const user = returnFirst(
+      await tx
+        .select({ ...getTableColumns(users) })
+        .from(users)
+        .innerJoin(
+          dojoInstructors,
+          eq(dojoInstructors.instructorUserId, users.id)
+        )
+        .where(eq(dojoInstructors.id, instructorId))
+        .limit(1)
+        .execute()
+    );
+
+    return user;
+  };
+
+  static getUserProfileForDojoOwner = async (
+    dojoId: string,
+    tx: Transaction
+  ): Promise<IUser | null> => {
+    const user = returnFirst(
+      await tx
+        .select({ ...getTableColumns(users) })
+        .from(users)
+        .innerJoin(dojos, eq(dojos.ownerUserId, users.id))
+        .where(eq(dojos.id, dojoId))
+        .limit(1)
+        .execute()
+    );
+
+    return user;
   };
 }
