@@ -40,8 +40,12 @@ import {
   buildStripePriceMock,
   buildStripeProductMock,
 } from "../tests/factories/stripe.factory.js";
-import { UpdateClassDTO } from "../validations/classes.schemas.js";
+import {
+  CreateClassScheduleDTO,
+  UpdateClassDTO,
+} from "../validations/classes.schemas.js";
 import { ForbiddenException } from "../core/errors/ForbiddenException.js";
+import { UserRepository } from "../repositories/user.repository.js";
 
 vi.mock("date-fns");
 vi.mock("../utils/date.utils.js");
@@ -51,6 +55,7 @@ vi.mock("./stripe.service.js");
 vi.mock("./notifications.service.js");
 vi.mock("./users.service.js");
 vi.mock("./cloudinary.service.js");
+vi.mock("../repositories/user.repository.js");
 
 describe("Class Service", () => {
   let dbServiceSpy: DbServiceSpies;
@@ -78,6 +83,10 @@ describe("Class Service", () => {
   let updateClassRepoSpy: MockInstance;
   let deleteSchedulesRepoSpy: MockInstance;
   let createSchedulesRepoSpy: MockInstance;
+  let fetchClassSchedulesRepoSpy: MockInstance;
+  let userProfileForInstructorSpy: MockInstance;
+  let userProfileByInstructorIdsSpy: MockInstance;
+  let getClassInfoSpy: MockInstance;
 
   const mockedNextDay = vi.mocked(nextDay);
   const mockedMapWeekdayToDayNumber = vi.mocked(mapWeekdayToDayNumber);
@@ -121,9 +130,24 @@ describe("Class Service", () => {
     updateClassRepoSpy = vi.spyOn(ClassRepository, "update");
     deleteSchedulesRepoSpy = vi.spyOn(ClassRepository, "deleteSchedules");
     createSchedulesRepoSpy = vi.spyOn(ClassRepository, "createSchedules");
+    fetchClassSchedulesRepoSpy = vi.spyOn(
+      ClassRepository,
+      "fetchClassSchedules"
+    );
     retrieveStripePriceSpy = vi
       .spyOn(StripeService, "retrievePrice")
       .mockResolvedValue(buildStripePriceMock());
+    userProfileForInstructorSpy = vi.spyOn(
+      UserRepository,
+      "getUserProfileForInstructor"
+    );
+    userProfileByInstructorIdsSpy = vi.spyOn(
+      UserRepository,
+      "getUserProfileByInstructorIds"
+    );
+    getClassInfoSpy = vi
+      .spyOn(ClassService, "getClassInfo")
+      .mockResolvedValue({} as any);
 
     // Default happy path mocks
     getUserByIdSpy.mockImplementation(({ userId }) => {
@@ -235,11 +259,6 @@ describe("Class Service", () => {
           price: 50,
         });
 
-        const createdClass = buildClassMock({
-          dojoId: dojo.id,
-          id: newClassId,
-        });
-        findClassByIdRepoSpy.mockResolvedValue(createdClass);
         await ClassService.createClass({ dto, dojo });
 
         expect(createStripeProdSpy).toHaveBeenCalledWith(dto.name, dojo.id);
@@ -500,41 +519,322 @@ describe("Class Service", () => {
     });
   });
 
-  describe("getOneClassById", () => {
-    it("should return a class object when found", async () => {
-      const mockClass = buildClassMock();
-      findClassByIdRepoSpy.mockResolvedValue(mockClass);
-      const result = await ClassService.getClassInfo(mockClass.id);
-      expect(result).toEqual(mockClass);
-      expect(findClassByIdRepoSpy).toHaveBeenCalledWith(
-        mockClass.id,
-        dbServiceSpy.mockTx
-      );
-    });
-
-    it("should throw NotFoundException when class is not found", async () => {
-      findClassByIdRepoSpy.mockResolvedValue(null);
-      await expect(
-        ClassService.getClassInfo("non-existent-id")
-      ).rejects.toThrow(
-        new NotFoundException("Class with ID non-existent-id not found.")
-      );
-    });
-  });
-
   describe("getAllClassesByDojoId", () => {
     let findAllByDojoIdSpy: MockInstance;
     beforeEach(() => {
       findAllByDojoIdSpy = vi.spyOn(ClassRepository, "findAllByDojoId");
     });
-    it("should return an array of classes", async () => {
-      const mockClasses = [buildClassMock(), buildClassMock({ id: "class-2" })];
+    it("should return classes with merged instructor details", async () => {
+      const instructor2 = buildInstructorMock({ dojoId: dojo.id });
+      const instructorProfile2 = buildUserMock({
+        id: instructor2.instructorUserId,
+      });
+
+      const mockClasses = [
+        buildClassMock({ instructorId: instructor.id }),
+        buildClassMock({ id: "class-2", instructorId: instructor2.id }),
+        buildClassMock({ id: "class-3", instructorId: null }),
+      ];
+
+      const mockInstructorProfiles = [
+        { ...instructorProfile, instructorId: instructor.id },
+        { ...instructorProfile2, instructorId: instructor2.id },
+      ];
+
       findAllByDojoIdSpy.mockResolvedValue(mockClasses);
+      userProfileByInstructorIdsSpy.mockResolvedValue(mockInstructorProfiles);
+
       const result = await ClassService.getAllClassesByDojoId(dojo.id);
-      expect(result).toEqual(mockClasses);
+
       expect(findAllByDojoIdSpy).toHaveBeenCalledWith(
         dojo.id,
         dbServiceSpy.mockTx
+      );
+      expect(userProfileByInstructorIdsSpy).toHaveBeenCalledWith(
+        [instructor.id, instructor2.id],
+        dbServiceSpy.mockTx
+      );
+
+      expect(result.length).toBe(3);
+      expect(result[0].instructor).toBeDefined();
+      expect(result[0].instructor?.firstName).toEqual(
+        instructorProfile.firstName
+      );
+      expect(result[1].instructor).toBeDefined();
+      expect(result[1].instructor?.firstName).toEqual(
+        instructorProfile2.firstName
+      );
+      expect(result[2].instructor).toBeNull();
+    });
+  });
+
+  describe("fetchClassAndSchedules", () => {
+    const classId = "test-class-id";
+
+    it("should return null if the class is not found", async () => {
+      findClassByIdRepoSpy.mockResolvedValue(null);
+
+      const result = await ClassService.fetchClassAndSchedules(classId);
+
+      expect(result).toBeNull();
+      expect(findClassByIdRepoSpy).toHaveBeenCalledWith(
+        classId,
+        dbServiceSpy.mockTx
+      );
+      expect(fetchClassSchedulesRepoSpy).not.toHaveBeenCalled();
+    });
+
+    it("should return the class with its schedules if found", async () => {
+      const mockClass = buildClassMock({ id: classId });
+      const mockSchedules = [
+        {
+          id: "schedule-1",
+          classId,
+          weekday: Weekday.Monday,
+          startTime: "10:00",
+          endTime: "11:00",
+          initialClassDate: new Date(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+
+      findClassByIdRepoSpy.mockResolvedValue(mockClass);
+      fetchClassSchedulesRepoSpy.mockResolvedValue(mockSchedules);
+
+      const result = await ClassService.fetchClassAndSchedules(classId);
+
+      expect(result).toEqual({
+        ...mockClass,
+        schedules: mockSchedules,
+      });
+      expect(findClassByIdRepoSpy).toHaveBeenCalledWith(
+        classId,
+        dbServiceSpy.mockTx
+      );
+      expect(fetchClassSchedulesRepoSpy).toHaveBeenCalledWith(
+        classId,
+        dbServiceSpy.mockTx
+      );
+    });
+  });
+
+  describe("mapCreateClassScheduleDTOToINewClassSchedule", () => {
+    it("should correctly map a OneTime schedule", () => {
+      const scheduleDate = new Date("2025-01-01T12:00:00.000Z");
+      const dto: CreateClassScheduleDTO = [
+        {
+          type: ClassFrequency.OneTime,
+          date: scheduleDate,
+          startTime: "12:00",
+          endTime: "13:00",
+        },
+      ];
+
+      const result =
+        ClassService.mapCreateClassScheduleDTOToINewClassSchedule(dto);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        date: scheduleDate,
+        initialClassDate: scheduleDate,
+        startTime: "12:00",
+        endTime: "13:00",
+      });
+    });
+
+    it("should correctly map a Weekly schedule", () => {
+      const dto: CreateClassScheduleDTO = [
+        {
+          type: ClassFrequency.Weekly,
+          weekday: Weekday.Wednesday,
+          startTime: "18:00",
+          endTime: "19:00",
+        },
+      ];
+
+      const expectedDate = new Date("2023-01-04T10:00:00.000Z"); // Mocked nextDay will return this
+      mockedNextDay.mockReturnValue(expectedDate);
+      mockedMapWeekdayToDayNumber.mockReturnValue(3); // Wednesday
+
+      const result =
+        ClassService.mapCreateClassScheduleDTOToINewClassSchedule(dto);
+
+      expect(result).toHaveLength(1);
+      expect(mockedMapWeekdayToDayNumber).toHaveBeenCalledWith(Weekday.Wednesday);
+      expect(mockedNextDay).toHaveBeenCalledWith(expect.any(Date), 3);
+      expect(result[0]).toEqual({
+        initialClassDate: expectedDate,
+        weekday: Weekday.Wednesday,
+        startTime: "18:00",
+        endTime: "19:00",
+      });
+    });
+
+    it("should return an empty array if the input is empty", () => {
+      const result =
+        ClassService.mapCreateClassScheduleDTOToINewClassSchedule([]);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("assertValidClassImage", () => {
+    it("should not throw an error for a valid image", async () => {
+      fetchImageAssetSpy.mockResolvedValue({
+        resource_type: CloudinaryResourceType.IMAGE,
+      } as any);
+
+      await expect(
+        ClassService.assertValidClassImage("valid-image-id")
+      ).resolves.not.toThrow();
+    });
+
+    it("should throw NotFoundException if asset is not found", async () => {
+      fetchImageAssetSpy.mockResolvedValue(null);
+
+      await expect(
+        ClassService.assertValidClassImage("not-found-id")
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("should throw BadRequestException if asset is not an image", async () => {
+      fetchImageAssetSpy.mockResolvedValue({
+        resource_type: "video",
+      } as any);
+
+      await expect(
+        ClassService.assertValidClassImage("video-id")
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("assertInstructorExistInDojo", () => {
+    const instructorId = "test-instructor-id";
+    const dojoId = "test-dojo-id";
+
+    it("should return the instructor if they exist in the dojo", async () => {
+      const mockInstructor = buildInstructorMock({
+        id: instructorId,
+        dojoId: dojoId,
+      });
+      findInstructorSpy.mockResolvedValue(mockInstructor);
+
+      const result = await ClassService.assertInstructorExistInDojo(
+        instructorId,
+        dojoId,
+        dbServiceSpy.mockTx
+      );
+
+      expect(result).toEqual(mockInstructor);
+      expect(findInstructorSpy).toHaveBeenCalledWith(
+        instructorId,
+        dojoId,
+        dbServiceSpy.mockTx
+      );
+    });
+
+    it("should throw NotFoundException if instructor is not found in the dojo", async () => {
+      findInstructorSpy.mockResolvedValue(null);
+
+      await expect(
+        ClassService.assertInstructorExistInDojo(
+          instructorId,
+          dojoId,
+          dbServiceSpy.mockTx
+        )
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("getClassInfo", () => {
+    const classId = "test-class-id";
+
+    beforeEach(() => {
+      // Restore the original implementation of getClassInfo for this suite
+      if (getClassInfoSpy) {
+        getClassInfoSpy.mockRestore();
+      }
+    });
+
+    it("should throw NotFoundException if class is not found", async () => {
+      findClassByIdRepoSpy.mockResolvedValue(null);
+
+      await expect(ClassService.getClassInfo(classId)).rejects.toThrow(
+        new NotFoundException(`Class with ID ${classId} not found.`)
+      );
+      expect(findClassByIdRepoSpy).toHaveBeenCalledWith(
+        classId,
+        dbServiceSpy.mockTx
+      );
+    });
+
+    it("should return class info without instructor details if class has no instructor", async () => {
+      const mockClass = buildClassMock({ id: classId, instructorId: null });
+      findClassByIdRepoSpy.mockResolvedValue(mockClass);
+      fetchClassSchedulesRepoSpy.mockResolvedValue([]);
+
+      const result = await ClassService.getClassInfo(classId);
+
+      expect(result).toEqual({
+        ...mockClass,
+        schedules: [],
+        instructor: null,
+      });
+      expect(findClassByIdRepoSpy).toHaveBeenCalledWith(
+        classId,
+        dbServiceSpy.mockTx
+      );
+      expect(userProfileForInstructorSpy).not.toHaveBeenCalled();
+    });
+
+    it("should return class info with instructor details if class has an instructor", async () => {
+      const mockInstructorId = "instructor-123";
+      const mockClass = buildClassMock({
+        id: classId,
+        instructorId: mockInstructorId,
+      });
+      const mockInstructorProfile = {
+        firstName: "John",
+        lastName: "Doe",
+        avatar: "avatar-url",
+      };
+
+      findClassByIdRepoSpy.mockResolvedValue(mockClass);
+      fetchClassSchedulesRepoSpy.mockResolvedValue([]);
+      userProfileForInstructorSpy.mockResolvedValue(mockInstructorProfile);
+
+      const result = await ClassService.getClassInfo(classId);
+
+      expect(result).toEqual({
+        ...mockClass,
+        schedules: [],
+        instructor: {
+          id: mockInstructorId,
+          ...mockInstructorProfile,
+        },
+      });
+      expect(findClassByIdRepoSpy).toHaveBeenCalledWith(
+        classId,
+        dbServiceSpy.mockTx
+      );
+      expect(userProfileForInstructorSpy).toHaveBeenCalledWith(
+        mockInstructorId,
+        dbServiceSpy.mockTx
+      );
+    });
+
+    it("should throw InternalServerErrorException if instructor user profile is not found", async () => {
+      const mockInstructorId = "instructor-123";
+      const mockClass = buildClassMock({
+        id: classId,
+        instructorId: mockInstructorId,
+      });
+      findClassByIdRepoSpy.mockResolvedValue(mockClass);
+      fetchClassSchedulesRepoSpy.mockResolvedValue([]);
+      userProfileForInstructorSpy.mockResolvedValue(null);
+
+      await expect(ClassService.getClassInfo(classId)).rejects.toThrow(
+        new InternalServerErrorException("Instructor User account not found")
       );
     });
   });
