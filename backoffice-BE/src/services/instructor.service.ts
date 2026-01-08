@@ -22,10 +22,26 @@ import { ConflictException } from "../core/errors/ConflictException.js";
 import { UsersService } from "./users.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { AuthService } from "./auth.service.js";
-import { IUser } from "../repositories/user.repository.js";
+import { IUser, UserRepository } from "../repositories/user.repository.js";
 import { MailerService } from "./mailer.service.js";
+import { ClassRepository } from "../repositories/class.repository.js";
+import { ClassDTO } from "../dtos/class.dtos.js";
+import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 
 export class InstructorService {
+  static getOneById = async (
+    instructorId: string,
+    txInstance?: Transaction
+  ) => {
+    const execute = async (tx: Transaction) => {
+      return await InstructorsRepository.findOneById(instructorId, tx);
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
+
   static findInstructorByUserId = async (
     userId: string,
     txInstance?: Transaction
@@ -38,7 +54,6 @@ export class InstructorService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
-
 
   static getInviteDetails = async (
     token: string,
@@ -221,4 +236,47 @@ export class InstructorService {
       response,
     });
   };
+
+  static async getInstructorClasses(
+    instructorId: string,
+    txInstance?: Transaction
+  ): Promise<ClassDTO[]> {
+    const execute = async (tx: Transaction) => {
+      // TODO: Add pagination
+      const classes = await ClassRepository.findAllByInstructorId(
+        instructorId,
+        tx
+      );
+
+      const allBelongsToInstructor = classes
+        .map((c) => c.instructorId)
+        .every((id) => id === instructorId);
+
+      if (!allBelongsToInstructor) {
+        throw new InternalServerErrorException(
+          `Classes returned for instructor does not belong to instructor`
+        );
+      }
+
+      const instructorUserDetails =
+        await UserRepository.getUserProfileForInstructor(instructorId, tx);
+
+      if (!instructorUserDetails) {
+        throw new InternalServerErrorException(
+          "Instructor User account not found"
+        );
+      }
+
+      return classes.map((c) => {
+        return new ClassDTO({
+          ...c,
+          instructor: instructorUserDetails,
+        });
+      });
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  }
 }

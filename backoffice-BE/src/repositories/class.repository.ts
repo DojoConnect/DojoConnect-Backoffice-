@@ -1,10 +1,8 @@
 import { and, eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
-import {
-  classes,
-  classSchedules,
-} from "../db/schema.js";
+import { classes, classSchedules } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
 import { Transaction } from "../db/index.js";
+
 import { ClassStatus } from "../constants/enums.js";
 
 export type IClass = InferSelectModel<typeof classes>;
@@ -86,6 +84,21 @@ export class ClassRepository {
         and(eq(classes.dojoId, dojoId), eq(classes.status, ClassStatus.Active))
       );
   }
+
+  static findAllByInstructorId = async (
+    instructorId: string,
+    tx: Transaction
+  ): Promise<IClass[]> => {
+    return await tx
+      .select()
+      .from(classes)
+      .where(
+        and(
+          eq(classes.instructorId, instructorId),
+          eq(classes.status, ClassStatus.Active)
+        )
+      );
+  };
 
   static update = async ({
     classId,
