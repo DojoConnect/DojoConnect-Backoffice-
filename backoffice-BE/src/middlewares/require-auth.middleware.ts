@@ -8,6 +8,7 @@ import { UnauthorizedException } from "../core/errors/index.js";
 import { HttpException } from "../core/errors/index.js";
 import { IUser } from "../repositories/user.repository.js";
 import { IDojo } from "../repositories/dojo.repository.js";
+import { IDojoInstructor } from "../repositories/instructors.repository.js";
 
 // Now you can access TokenExpiredError from the imported jwt object
 const { TokenExpiredError } = jwt;
@@ -17,7 +18,8 @@ declare global {
   namespace Express {
     interface Request {
       user?: IUser;
-      dojo?: IDojo
+      dojo?: IDojo;
+      instructor?: IDojoInstructor;
     }
   }
 }

@@ -50,8 +50,8 @@ export class CloudinaryService {
     const signature = cloudinary.utils.api_sign_request(
       {
         allowed_formats: ALLOWED_FORMATS,
-        context,
         asset_folder,
+        context,
         timestamp,
         transformation,
         upload_preset,
