@@ -4,7 +4,11 @@ import { requireAuth } from "../middlewares/require-auth.middleware.js";
 import { requireRole } from "../middlewares/require-role.middleware.js";
 import { Role } from "../constants/enums.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
-import { CreateClassSchema } from "../validations/classes.schemas.js";
+import {
+  CreateClassSchema,
+  UpdateClassInstructorSchema,
+  UpdateClassSchema,
+} from "../validations/classes.schemas.js";
 import { isDojoOwnerMiddleware } from "../middlewares/is-dojo-owner.middleware.js";
 import { isDojoMemberMiddleware } from "../middlewares/is-dojo-member.middleware.js";
 
@@ -31,6 +35,24 @@ router.get(
   requireAuth,
   isDojoMemberMiddleware,
   ClassesController.getClassById
+);
+
+router.patch(
+  "/:classId",
+  requireAuth,
+  requireRole(Role.DojoAdmin),
+  isDojoOwnerMiddleware,
+  validateReqBody(UpdateClassSchema),
+  ClassesController.updateClass
+);
+
+router.patch(
+  "/:classId/instructor",
+  requireAuth,
+  requireRole(Role.DojoAdmin),
+  isDojoOwnerMiddleware,
+  validateReqBody(UpdateClassInstructorSchema),
+  ClassesController.updateClassInstructor
 );
 
 export default router;

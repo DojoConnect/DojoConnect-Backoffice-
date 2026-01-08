@@ -22,6 +22,7 @@ import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
 import { InstructorsRepository } from "../repositories/instructors.repository.js";
 import { DojoRepository } from "../repositories/dojo.repository.js";
 import { buildClassMock } from "../tests/factories/class.factory.js";
+import { ClassRepository } from "../repositories/class.repository.js";
 
 describe("Dojo Service", () => {
   let mockExecute: Mock;
@@ -141,7 +142,7 @@ describe("Dojo Service", () => {
         .mockResolvedValue(null);
 
       getOneClassByIdSpy = vi
-        .spyOn(ClassService, "getOneClassById")
+        .spyOn(ClassRepository, "findById")
         .mockResolvedValue(buildClassMock());
     });
 
@@ -276,7 +277,7 @@ describe("Dojo Service", () => {
 
     it("should successfully invite an instructor with a valid classId", async () => {
       const dtoWithClass = { ...dto, classId: "valid-class-id" };
-      vi.mocked(ClassService.getOneClassById).mockResolvedValue({
+      vi.mocked(ClassRepository.findById).mockResolvedValue({
         id: dtoWithClass.classId,
         dojoId: dojo.id,
       } as any);
@@ -413,7 +414,10 @@ describe("Dojo Service", () => {
 
       const result = await DojosService.fetchUserDojo({ user });
 
-      expect(getDojoForOwnerSpy).toHaveBeenCalledWith(user.id, expect.anything());
+      expect(getDojoForOwnerSpy).toHaveBeenCalledWith(
+        user.id,
+        expect.anything()
+      );
       expect(getDojoForInstructorSpy).not.toHaveBeenCalled();
       expect(result).toEqual(dojo);
     });

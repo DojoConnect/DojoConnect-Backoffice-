@@ -20,6 +20,8 @@ export enum NotificationType {
   ClassCreated = "class_created",
   ClassUpdated = "class_updated",
   ClassDeleted = "class_deleted",
+  ClassAssigned = "class_assigned",
+  ClassReassigned = "class_reassigned",
   InvitationCreated = "invitation_created",
   InvitationResponse = "invitation_response",
   InvitationAccepted = "invitation_accepted",

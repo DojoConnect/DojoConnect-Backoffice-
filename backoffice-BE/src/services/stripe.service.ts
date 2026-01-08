@@ -103,4 +103,15 @@ export class StripeService {
       product: stripeProductId,
     });
   };
+
+  static retrievePrice = async (priceId: string) => {
+    return await StripeService.getStripeInstance().prices.retrieve(priceId);
+  };
+
+
+  static archivePrice = async (priceId: string) => {
+    return await StripeService.getStripeInstance().prices.update(priceId, {
+      active: false,
+    });
+  };
 }
