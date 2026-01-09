@@ -43,6 +43,7 @@ import {
 import {
   CreateClassScheduleDTO,
   UpdateClassDTO,
+  UpdateClassSchema,
 } from "../validations/classes.schemas.js";
 import { ForbiddenException } from "../core/errors/ForbiddenException.js";
 import { UserRepository } from "../repositories/user.repository.js";
@@ -408,6 +409,36 @@ describe("Class Service", () => {
     });
 
 
+  });
+
+
+
+  describe("schema validation", () => {
+    it("should throw validation error if subscriptionType is provided", () => {
+      const dto = {
+        subscriptionType: "Paid",
+      };
+      const result = UpdateClassSchema.safeParse(dto);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe(
+          "Subscription type cannot be updated."
+        );
+      }
+    });
+
+    it("should throw validation error if price is provided", () => {
+      const dto = {
+        price: 100,
+      };
+      const result = UpdateClassSchema.safeParse(dto);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe(
+          "Price cannot be updated."
+        );
+      }
+    });
   });
 
   describe("updateClassInstructor", () => {
