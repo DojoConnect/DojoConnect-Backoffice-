@@ -139,7 +139,17 @@ export const CreateClassSchema = z
   });
 export type CreateClassDTO = z.infer<typeof CreateClassSchema>;
 
-export const UpdateClassSchema = BaseClassSchema.partial()
+export const UpdateClassSchema = BaseClassSchema.omit({
+  subscriptionType: true,
+  price: true,
+})
+  .extend({
+    subscriptionType: z.undefined({
+      message: "Subscription type cannot be updated.",
+    }),
+    price: z.undefined({ message: "Price cannot be updated." }),
+  })
+  .partial()
   .extend({
     schedules: z
       .union([

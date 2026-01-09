@@ -43,6 +43,7 @@ import {
 import {
   CreateClassScheduleDTO,
   UpdateClassDTO,
+  UpdateClassSchema,
 } from "../validations/classes.schemas.js";
 import { ForbiddenException } from "../core/errors/ForbiddenException.js";
 import { UserRepository } from "../repositories/user.repository.js";
@@ -407,87 +408,36 @@ describe("Class Service", () => {
       expect(createSchedulesRepoSpy).toHaveBeenCalled();
     });
 
-    describe("price and subscription updates", () => {
-      it("should transition a class from Free to Paid", async () => {
-        const existingClass = buildClassMock({
-          id: classId,
-          dojoId: dojo.id,
-          subscriptionType: ClassSubscriptionType.Free,
-          price: "0",
-        });
-        findClassByIdRepoSpy.mockResolvedValue(existingClass);
 
-        const dto: UpdateClassDTO = {
-          subscriptionType: ClassSubscriptionType.Paid,
-          price: 100,
-        };
+  });
 
-        await ClassService.updateClass({ classId, dojoId: dojo.id, dto });
 
-        expect(createStripeProdSpy).toHaveBeenCalledWith(
-          existingClass.name,
-          dojo.id
+
+  describe("schema validation", () => {
+    it("should throw validation error if subscriptionType is provided", () => {
+      const dto = {
+        subscriptionType: "Paid",
+      };
+      const result = UpdateClassSchema.safeParse(dto);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe(
+          "Subscription type cannot be updated."
         );
-        expect(createStripePriceSpy).toHaveBeenCalledWith("prod_123", 100);
-        expect(updateClassRepoSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            update: expect.objectContaining({ stripePriceId: "price_123" }),
-          })
+      }
+    });
+
+    it("should throw validation error if price is provided", () => {
+      const dto = {
+        price: 100,
+      };
+      const result = UpdateClassSchema.safeParse(dto);
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error.issues[0].message).toBe(
+          "Price cannot be updated."
         );
-      });
-
-      it("should transition a class from Paid to Free", async () => {
-        const existingClass = buildClassMock({
-          id: classId,
-          dojoId: dojo.id,
-          subscriptionType: ClassSubscriptionType.Paid,
-          price: "100",
-          stripePriceId: "price_to_archive",
-        });
-        findClassByIdRepoSpy.mockResolvedValue(existingClass);
-
-        const dto: UpdateClassDTO = {
-          subscriptionType: ClassSubscriptionType.Free,
-        };
-
-        await ClassService.updateClass({ classId, dojoId: dojo.id, dto });
-
-        expect(archiveStripePriceSpy).toHaveBeenCalledWith("price_to_archive");
-        expect(updateClassRepoSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            update: expect.objectContaining({
-              stripePriceId: null,
-              price: "0",
-            }),
-          })
-        );
-      });
-
-      it("should change the price for a Paid class", async () => {
-        const existingClass = buildClassMock({
-          id: classId,
-          dojoId: dojo.id,
-          subscriptionType: ClassSubscriptionType.Paid,
-          price: "100",
-          stripePriceId: "price_to_archive",
-        });
-        findClassByIdRepoSpy.mockResolvedValue(existingClass);
-        createStripePriceSpy.mockResolvedValue(
-          buildStripePriceMock({ id: "price_456" })
-        );
-
-        const dto: UpdateClassDTO = { price: 150 };
-
-        await ClassService.updateClass({ classId, dojoId: dojo.id, dto });
-
-        expect(archiveStripePriceSpy).toHaveBeenCalledWith("price_to_archive");
-        expect(createStripePriceSpy).toHaveBeenCalledWith("prod_123", 150);
-        expect(updateClassRepoSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            update: expect.objectContaining({ stripePriceId: "price_456" }),
-          })
-        );
-      });
+      }
     });
   });
 

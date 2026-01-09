@@ -205,7 +205,7 @@ export const classes = mysqlTable(
     check("capacity_check", sql`${t.capacity} > 0`),
     check(
       "subscription_price_check",
-      sql`(${t.subscriptionType} = ${SubTypeFreeSQL} AND (${t.price} IS NULL OR ${t.price} = 0)) OR (${t.subscriptionType} = ${SubTypePaidSQL} AND ${t.price} > 0)`
+      sql`(${t.subscriptionType} = ${SubTypeFreeSQL} AND (${t.price} IS NULL OR ${t.price} = 0)) OR (${t.subscriptionType} = ${SubTypePaidSQL} AND (${t.price} IS NOT NULL AND ${t.price} > 0))`
     ),
   ]
 );
