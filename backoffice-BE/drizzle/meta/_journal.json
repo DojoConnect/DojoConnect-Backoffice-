@@ -15,6 +15,13 @@
       "when": 1767802147713,
       "tag": "0001_abnormal_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1767971215143,
+      "tag": "0002_dear_wolfsbane",
+      "breakpoints": true
     }
   ]
 }
