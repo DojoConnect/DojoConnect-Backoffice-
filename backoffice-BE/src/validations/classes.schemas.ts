@@ -139,7 +139,10 @@ export const CreateClassSchema = z
   });
 export type CreateClassDTO = z.infer<typeof CreateClassSchema>;
 
-export const UpdateClassSchema = BaseClassSchema.partial()
+export const UpdateClassSchema = BaseClassSchema.omit({
+  subscriptionType: true,
+  price: true,
+}).partial()
   .extend({
     schedules: z
       .union([

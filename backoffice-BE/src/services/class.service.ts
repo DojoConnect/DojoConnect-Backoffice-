@@ -299,7 +299,6 @@ export class ClassService {
       const { schedules, ...classDetails } = dto;
       const updatePayload: IUpdateClass = {
         ...classDetails,
-        price: classDetails.price?.toString() || null,
       };
 
       if (dto.instructorId) {
@@ -315,10 +314,6 @@ export class ClassService {
         await ClassService.assertValidClassImage(dto.imagePublicId);
       }
 
-      if (dto.price) {
-        updatePayload.price = dto.price.toString();
-      }
-
       // Handle schedule updates
       if (schedules && schedules.length > 0) {
         await ClassRepository.deleteSchedules(classId, tx);
@@ -331,76 +326,6 @@ export class ClassService {
           existingClass.id,
           tx
         );
-      }
-
-      if (
-        dto.subscriptionType &&
-        dto.subscriptionType !== existingClass.subscriptionType
-      ) {
-        if (dto.subscriptionType === ClassSubscriptionType.Paid) {
-          // Becoming a paid class
-          const price = dto.price || Number(existingClass.price);
-          if (!price || price <= 0) {
-            throw new BadRequestException(
-              "Price must be greater than 0 for paid classes."
-            );
-          }
-
-          const stripeProd = await StripeService.createClassProduct(
-            existingClass.name,
-            dojoId
-          );
-          const prodPrice = await StripeService.createClassPrice(
-            stripeProd.id,
-            price
-          );
-          updatePayload.stripePriceId = prodPrice.id;
-        } else {
-          // Becoming a free class
-          if (existingClass.stripePriceId) {
-            await StripeService.archivePrice(existingClass.stripePriceId);
-          }
-          updatePayload.stripePriceId = null;
-          updatePayload.price = "0";
-        }
-      } else if (
-        dto.price &&
-        existingClass.subscriptionType === ClassSubscriptionType.Paid
-      ) {
-        // Price changed for a paid class
-        let stripeProdId: string | null = null;
-
-        if (!existingClass.stripePriceId) {
-          // This is an error state, There should not be a paid class with no stripe price id
-          console.error(`[Error State]: Paid class with no stripe price id`);
-
-          const stripeProd = await StripeService.createClassProduct(
-            existingClass.name,
-            dojoId
-          );
-
-          stripeProdId = stripeProd.id;
-        } else {
-          const stripePrice = await StripeService.retrievePrice(
-            existingClass.stripePriceId
-          );
-          const stripeProd = stripePrice?.product;
-
-          if (!stripeProd) {
-            throw new InternalServerErrorException("Stripe product not found");
-          }
-
-          stripeProdId =
-            typeof stripeProd === "string" ? stripeProd : stripeProd.id;
-
-          await StripeService.archivePrice(existingClass.stripePriceId);
-        }
-
-        const newPrice = await StripeService.createClassPrice(
-          stripeProdId,
-          dto.price
-        );
-        updatePayload.stripePriceId = newPrice.id;
       }
 
       if (Object.keys(updatePayload).length > 0) {
