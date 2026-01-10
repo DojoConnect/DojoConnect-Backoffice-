@@ -438,7 +438,10 @@ describe("InstructorService", () => {
       );
       expect(result).toHaveLength(1);
       expect(result[0]).toBeInstanceOf(ClassDTO);
-      expect(result[0].instructor).toEqual(mockUser);
+      expect(result[0].instructor).toEqual({
+        ...mockUser,
+        instructorId: mockUser.id,
+      });
     });
 
     it("should throw InternalServerErrorException if classes do not belong to instructor", async () => {
