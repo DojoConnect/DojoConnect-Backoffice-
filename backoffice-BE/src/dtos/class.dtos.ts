@@ -9,9 +9,9 @@ import { CloudinaryService } from "../services/cloudinary.service.js";
 import { UpdateClassInstructorSchema } from "../validations/classes.schemas.js";
 import z from "zod";
 import {
-  InstructorDetails,
   SchedulesAndInstructor,
 } from "../repositories/class.repository.js";
+import { InstructorUserDetails } from "../repositories/user.repository.js";
 
 export type Class = InferSelectModel<typeof classes>;
 export type ClassSchedule = InferSelectModel<typeof classSchedules>;
@@ -39,7 +39,7 @@ export class ClassDTO {
   instructorId: string | null;
   imagePublicId: string | null;
   schedules: ClassScheduleDTO[];
-  instructor: InstructorDetails | null;
+  instructor: InstructorUserDetails | null;
 
   constructor(data: Class & Partial<SchedulesAndInstructor>) {
     this.id = data.id;
@@ -82,7 +82,7 @@ export class ClassDTO {
       price: this.price,
       instructor: this.instructor
         ? {
-            id: this.instructor.id,
+            id: this.instructor.instructorId,
             lastName: this.instructor.lastName,
             firstName: this.instructor.firstName,
             avatarUrl: this.instructor.avatar

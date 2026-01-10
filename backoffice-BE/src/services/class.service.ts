@@ -8,7 +8,6 @@ import {
   IClassSchedule,
   INewClass,
   INewClassSchedule,
-  InstructorDetails,
   IUpdateClass,
 } from "../repositories/class.repository.js";
 import {
@@ -177,7 +176,7 @@ export class ClassService {
         throw new NotFoundException(`Class with ID ${classId} not found.`);
       }
 
-      let instructorDetails: InstructorDetails | null = null;
+      let instructorDetails: InstructorUserDetails | null = null;
 
       if (classAndSchedules.instructorId) {
         const instructorUserProfile =
@@ -193,10 +192,8 @@ export class ClassService {
         }
 
         instructorDetails = {
-          id: classAndSchedules.instructorId,
-          firstName: instructorUserProfile.firstName,
-          lastName: instructorUserProfile.lastName,
-          avatar: instructorUserProfile.avatar,
+          ...instructorUserProfile,
+          instructorId: classAndSchedules.instructorId,
         };
       }
 
@@ -231,7 +228,7 @@ export class ClassService {
       });
 
       return classes.map((c) => {
-        let instructorUserDetails: InstructorDetails | null = null;
+        let instructorUserDetails: InstructorUserDetails | null = null;
 
         if (c.instructorId) {
           instructorUserDetails = instructorMap.get(c.instructorId!) || null;

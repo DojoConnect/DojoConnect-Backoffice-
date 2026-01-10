@@ -270,7 +270,10 @@ export class InstructorService {
       return classes.map((c) => {
         return new ClassDTO({
           ...c,
-          instructor: instructorUserDetails,
+          instructor: {
+            ...instructorUserDetails,
+            instructorId: instructorId,
+          },
         });
       });
     };

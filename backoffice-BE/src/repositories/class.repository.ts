@@ -4,6 +4,7 @@ import { returnFirst } from "../utils/db.utils.js";
 import { Transaction } from "../db/index.js";
 
 import { ClassStatus } from "../constants/enums.js";
+import { InstructorUserDetails } from "./user.repository.js";
 
 export type IClass = InferSelectModel<typeof classes>;
 export type INewClass = InferInsertModel<typeof classes>;
@@ -12,20 +13,13 @@ export type INewClassSchedule = InferInsertModel<typeof classSchedules>;
 
 export type IUpdateClass = Partial<Omit<INewClass, "id" | "createdAt">>;
 
-export type InstructorDetails = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  avatar: string | null;
-};
-
 export type ClassWithInstructor = IClass & {
-  instructor: InstructorDetails | null;
+  instructor: InstructorUserDetails | null;
 };
 
 export type SchedulesAndInstructor = {
   schedules: IClassSchedule[];
-  instructor: InstructorDetails | null;
+  instructor: InstructorUserDetails | null;
 };
 
 export type ClassWithSchedulesAndInstructor = IClass & SchedulesAndInstructor;
