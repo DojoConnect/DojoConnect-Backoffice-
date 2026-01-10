@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
 import {
   ClassFrequency,
-  ClassLevel,
+  ExperienceLevel,
   ClassSubscriptionType,
   ClassStatus,
   Weekday,
@@ -43,7 +43,7 @@ export const buildClassMock = (
     instructorId: "instructor-1",
     name: "Karate 101",
     description: "Beginner's karate class.",
-    level: ClassLevel.Beginner,
+    level: ExperienceLevel.Beginner,
     minAge: 6,
     maxAge: 10,
     capacity: 20,
@@ -87,7 +87,7 @@ export function buildCreateClassDTOMock(
     const oneTimeData: OneTimeDTO = {
       frequency: ClassFrequency.OneTime,
       name: "Mock One-Time Class",
-      level: ClassLevel.Beginner,
+      level: ExperienceLevel.Beginner,
       minAge: 10,
       maxAge: 99,
       capacity: 50,
@@ -115,7 +115,7 @@ export function buildCreateClassDTOMock(
   const weeklyData: WeeklyDTO = {
     frequency: ClassFrequency.Weekly,
     name: "Mock Weekly Class",
-    level: ClassLevel.Beginner,
+    level: ExperienceLevel.Beginner,
     minAge: 5,
     maxAge: 10,
     capacity: 15,

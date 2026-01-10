@@ -94,7 +94,7 @@ export enum InstructorInviteStatus {
   Expired = "expired",
 }
 
-export enum ClassLevel {
+export enum ExperienceLevel {
   Beginner = "beginner",
   Intermediate = "intermediate",
   Advanced = "advanced",

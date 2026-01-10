@@ -2,7 +2,7 @@ import { z } from "zod";
 import { parseISO, isValid } from "date-fns";
 import {
   ClassFrequency,
-  ClassLevel,
+  ExperienceLevel,
   ClassSubscriptionType,
   GradingNotificationUnit,
   Weekday,
@@ -64,7 +64,7 @@ export type OneTimeSchedule = z.infer<typeof OneTimeScheduleSchema>;
 // Extract common fields to avoid repetition
 const BaseClassSchema = z.object({
   name: z.string().trim().min(1),
-  level: z.enum(ClassLevel),
+  level: z.enum(ExperienceLevel),
   minAge: z.number().int().positive(),
   maxAge: z.number().int().positive(),
   description: z.string().trim().max(150).optional(),
