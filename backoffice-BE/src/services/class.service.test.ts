@@ -759,8 +759,8 @@ describe("Class Service", () => {
         ...mockClass,
         schedules: [],
         instructor: {
-          id: mockInstructorId,
           ...mockInstructorProfile,
+          instructorId: mockInstructorId,
         },
       });
       expect(findClassByIdRepoSpy).toHaveBeenCalledWith(
