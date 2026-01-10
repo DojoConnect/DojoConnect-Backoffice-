@@ -432,7 +432,7 @@ export const dojoInstructors = mysqlTable("dojo_instructors", {
   createdAt: timestamp("created_at")
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
-});
+}, (table) => [index("dojo_id").on(table.dojoId), index("instructor_user_id").on(table.instructorUserId), uniqueIndex("unique_dojo_instructor").on(table.dojoId, table.instructorUserId)]);
 
 export const messages = mysqlTable(
   "messages",
