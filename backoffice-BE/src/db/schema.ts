@@ -46,6 +46,12 @@ const activeBillingStatusesSql = sql.join(
 const SubTypeFreeSQL = sql.raw(`'${ClassSubscriptionType.Free}'`);
 const SubTypePaidSQL = sql.raw(`'${ClassSubscriptionType.Paid}'`);
 
+const UUID_LENGTH = 36;
+
+const uuidPrimaryKey = () => varchar("id", { length: UUID_LENGTH })
+    .primaryKey()
+    .$defaultFn(() => uuidv7())
+
 export const admin = mysqlTable(
   "admin",
   {
@@ -162,13 +168,11 @@ export const childrenSubscription = mysqlTable("children_subscription", {
 export const classes = mysqlTable(
   "classes",
   {
-    id: varchar("id", { length: 36 })
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
-    dojoId: varchar("dojo_id", { length: 36 })
+    id: uuidPrimaryKey(),
+    dojoId: varchar("dojo_id", { length: UUID_LENGTH })
       .notNull()
       .references(() => dojos.id, { onDelete: "cascade" }),
-    instructorId: varchar("instructor_id", { length: 36 }).references(
+    instructorId: varchar("instructor_id", { length: UUID_LENGTH }).references(
       () => dojoInstructors.id,
       { onDelete: "set null" }
     ),
@@ -215,10 +219,8 @@ export const classes = mysqlTable(
 export const classSchedules = mysqlTable(
   "class_schedules",
   {
-    id: varchar("id", { length: 36 })
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
-    classId: varchar("class_id", { length: 36 })
+    id: uuidPrimaryKey(),
+    classId: varchar("class_id", { length: UUID_LENGTH })
       .notNull()
       .references(() => classes.id, { onDelete: "cascade" }),
     weekday: mysqlEnum("weekday", Weekday),
@@ -234,13 +236,11 @@ export const classSchedules = mysqlTable(
 
 // Concrete class sessions
 export const classOccurrences = mysqlTable("class_occurrences", {
-  id: varchar("id", { length: 36 })
-    .primaryKey()
-    .$defaultFn(() => uuidv7()),
-  scheduleId: varchar("schedule_id", { length: 36 })
+  id: uuidPrimaryKey(),
+  scheduleId: varchar("schedule_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => classSchedules.id),
-  classId: varchar("class_id", { length: 36 })
+  classId: varchar("class_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => classes.id), // denormalized for faster queries
 
@@ -271,10 +271,8 @@ export const deletionRequests = mysqlTable("deletion_requests", {
 export const dojos = mysqlTable(
   "dojos",
   {
-    id: varchar("id", { length: 36 })
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
-    ownerUserId: varchar("owner_user_id", { length: 36 })
+    id: uuidPrimaryKey(),
+    ownerUserId: varchar("owner_user_id", { length: UUID_LENGTH })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 255 }).notNull(),
@@ -296,10 +294,8 @@ export const dojos = mysqlTable(
 export const dojoSubscriptions = mysqlTable(
   "dojo_subscriptions",
   {
-    id: varchar("id", { length: 36 })
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
-    dojoId: varchar("dojo_id", { length: 36 })
+    id: uuidPrimaryKey(),
+    dojoId: varchar("dojo_id", { length: UUID_LENGTH })
       .notNull()
       .references(() => dojos.id, { onDelete: "cascade" }),
     billingStatus: mysqlEnum("billing_status", BillingStatus).notNull(),
@@ -314,7 +310,7 @@ export const dojoSubscriptions = mysqlTable(
     /**
      * 👇 Generated column for "one active subscription per dojo"
      */
-    activeDojoId: varchar("active_dojo_id", { length: 36 }).generatedAlwaysAs(
+    activeDojoId: varchar("active_dojo_id", { length: UUID_LENGTH }).generatedAlwaysAs(
       sql`
         CASE
           WHEN billing_status IN (${activeBillingStatusesSql})
@@ -395,23 +391,21 @@ export const feedback = mysqlTable("feedback", {
 });
 
 export const instructorInvites = mysqlTable("instructor_invites", {
-  id: varchar("id", { length: 36 })
-    .primaryKey()
-    .$defaultFn(() => uuidv7()),
+  id: uuidPrimaryKey(),
   firstName: varchar({ length: 100 }).notNull(),
   lastName: varchar({ length: 100 }).notNull(),
   email: varchar({ length: 150 }).notNull(),
-  dojoId: varchar("dojo_id", { length: 36 })
+  dojoId: varchar("dojo_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => dojos.id, { onDelete: "cascade" }),
-  classId: varchar("class_id", { length: 36 }).references(() => classes.id, {
+  classId: varchar("class_id", { length: UUID_LENGTH }).references(() => classes.id, {
     onDelete: "cascade",
   }),
   tokenHash: varchar("token_hash", { length: 64 }).notNull().unique(), // secure random token
   status: mysqlEnum(InstructorInviteStatus)
     .default(InstructorInviteStatus.Pending)
     .notNull(),
-  invitedBy: varchar("invited_by", { length: 36 })
+  invitedBy: varchar("invited_by", { length: UUID_LENGTH })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   expiresAt: timestamp("expires_at").notNull(),
@@ -422,14 +416,12 @@ export const instructorInvites = mysqlTable("instructor_invites", {
 });
 
 export const dojoInstructors = mysqlTable("dojo_instructors", {
-  id: varchar("id", { length: 36 })
-    .primaryKey()
-    .$defaultFn(() => uuidv7()),
-  instructorUserId: varchar("instructor_user_id", { length: 36 })
+  id: uuidPrimaryKey(),
+  instructorUserId: varchar("instructor_user_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
-  dojoId: varchar("dojo_id", { length: 36 })
+  dojoId: varchar("dojo_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => dojos.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at")
@@ -455,10 +447,8 @@ export const messages = mysqlTable(
 );
 
 export const notifications = mysqlTable("notifications", {
-  id: varchar("id", { length: 36 })
-    .primaryKey()
-    .$defaultFn(() => uuidv7()),
-  userId: varchar("user_id", { length: 36 })
+  id: uuidPrimaryKey(),
+  userId: varchar("user_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   title: varchar({ length: 255 }),
@@ -476,10 +466,8 @@ export const notifications = mysqlTable("notifications", {
 export const userOAuthAccounts = mysqlTable(
   "user_oauth_accounts",
   {
-    id: varchar("id", { length: 36 })
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
-    userId: varchar("user_id", { length: 36 })
+    id: uuidPrimaryKey(),
+    userId: varchar("user_id", { length: UUID_LENGTH })
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     provider: mysqlEnum(SupportedOAuthProviders).notNull(),
@@ -516,10 +504,8 @@ export const parents = mysqlTable(
 );
 
 export const passwordResetOTPs = mysqlTable("password_reset_otps", {
-  id: varchar("id", { length: 36 })
-    .primaryKey()
-    .$defaultFn(() => uuidv7()),
-  userId: varchar("user_id", { length: 36 })
+  id: uuidPrimaryKey(),
+  userId: varchar("user_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   hashedOTP: varchar("hashed_otp", { length: 255 }).notNull(),
@@ -547,10 +533,8 @@ export const sessions = mysqlTable(
 
 // We store refresh tokens to allow revocation (banning a user/device)
 export const refreshTokens = mysqlTable("refresh_tokens", {
-  id: varchar("id", { length: 36 })
-    .primaryKey()
-    .$defaultFn(() => uuidv7()),
-  userId: varchar("user_id", { length: 36 })
+  id: uuidPrimaryKey(),
+  userId: varchar("user_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   hashedToken: varchar("hashed_token", { length: 255 }).notNull(), // Never store raw tokens
@@ -617,9 +601,7 @@ export const transactions = mysqlTable("transactions", {
 export const users = mysqlTable(
   "users",
   {
-    id: varchar("id", { length: 36 })
-      .primaryKey()
-      .$defaultFn(() => uuidv7()),
+    id: uuidPrimaryKey(),
     firstName: varchar({ length: 100 }).notNull(),
     lastName: varchar({ length: 100 }).notNull(),
     email: varchar({ length: 150 }).unique().notNull(),
@@ -644,10 +626,8 @@ export const users = mysqlTable(
 );
 
 export const userCards = mysqlTable("user_cards", {
-  id: varchar("id", { length: 36 })
-    .primaryKey()
-    .$defaultFn(() => uuidv7()),
-  userId: varchar("user_id", { length: 36 })
+  id: uuidPrimaryKey(),
+  userId: varchar("user_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   paymentMethodId: varchar("payment_method_id", { length: 255 }),
