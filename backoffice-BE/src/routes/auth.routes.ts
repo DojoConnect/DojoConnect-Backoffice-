@@ -88,13 +88,13 @@ const router = Router();
 
 router.post(
   "/login",
-  // authLimiter,
+  authLimiter,
   validateReqBody(LoginSchema),
   loginUser
 );
 router.post(
   "/register/dojo-admin",
-  // authLimiter,
+  authLimiter,
   validateReqBody(RegisterDojoAdminSchema),
   handleRegisterDojoAdmin
 );
