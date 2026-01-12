@@ -39,6 +39,7 @@ export const buildRegisterParentDTOMock = (overrides: Partial<RegisterParentDTO>
   return {
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
+    username: faker.internet.username(),
     email: "john.doe@example.com",
     password: "Password123!",
     fcmToken: "fcm-token",

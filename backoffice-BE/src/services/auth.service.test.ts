@@ -1020,6 +1020,7 @@ describe("Auth Service", () => {
   describe("registerParent", () => {
     const parentDto = buildRegisterParentDTOMock({
       email: "parent@test.com",
+      username: "parentuser",
       password: "Password123!",
       firstName: "Parent",
       lastName: "User",
@@ -1061,13 +1062,16 @@ describe("Auth Service", () => {
       });
 
       // Username check logic
-      expect(getOneUserByUsernameSpy).toHaveBeenCalled(); // Generates username
+      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
+        username: parentDto.username,
+        txInstance: dbSpies.mockTx,
+      });
       
       expect(saveUserSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           email: parentDto.email,
           role: Role.Parent,
-          username: "parent", // parent@test.com -> parent
+          username: parentDto.username,
         }),
         dbSpies.mockTx
       );
@@ -1090,21 +1094,11 @@ describe("Auth Service", () => {
       );
     });
 
-    it("should handle username collision by suffixing", async () => {
-       // First check returns existing user (collision)
-       // Second check returns null (available)
-       getOneUserByUsernameSpy
-         .mockResolvedValueOnce(mockSavedUser) 
-         .mockResolvedValueOnce(null);
+    it("should throw ConflictException if username is taken", async () => {
+       getOneUserByUsernameSpy.mockResolvedValue(mockSavedUser);
 
-       await AuthService.registerParent({ dto: parentDto });
-
-       expect(saveUserSpy).toHaveBeenCalledWith(
-         expect.objectContaining({
-            // username should be parent{RANDOM}
-            username: expect.stringMatching(/^parent\d{4}$/)
-         }),
-         dbSpies.mockTx
+       await expect(AuthService.registerParent({ dto: parentDto })).rejects.toThrow(
+         ConflictException
        );
     });
   });
