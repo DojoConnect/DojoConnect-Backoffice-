@@ -437,14 +437,6 @@ describe("Dojo Service", () => {
       expect(result).toEqual(dojo);
     });
 
-    it("should throw InternalServerErrorException for other roles", async () => {
-      const user = buildUserMock({ role: Role.Parent });
-
-      await expect(DojosService.fetchUserDojo({ user })).rejects.toThrow(
-        "Code Path not implemented"
-      );
-    });
-
     it("should return null if no dojo is found for DojoAdmin", async () => {
       const user = buildUserMock({ role: Role.DojoAdmin });
       getDojoForOwnerSpy.mockResolvedValue(null);

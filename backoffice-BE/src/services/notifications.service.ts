@@ -60,11 +60,27 @@ export class NotificationService {
     }
   };
 
-  static sendSignUpNotification = async (user: IUser) => {
+  static sendDojoAdminSignUpNotification = async (user: IUser) => {
     const title = "Welcome to Dojo Connect!";
     const body = "Your Dojo Admin account has been created successfully.";
     const data: SignUpSuccessfulNotificationData = {
       screen: "complete_profile",
+    };
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.SignUp,
+      user,
+      title,
+      body,
+      data,
+    });
+  };
+
+  static sendParentSignUpNotification = async (user: IUser) => {
+    const title = "Welcome to Dojo Connect!";
+    const body = "Your Parent account has been created successfully.";
+    const data: SignUpSuccessfulNotificationData = {
+      screen: "home",
     };
 
     await this.sendAndSaveNotification({

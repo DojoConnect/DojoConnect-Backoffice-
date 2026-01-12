@@ -298,6 +298,9 @@ export class DojosService {
           break;
         case Role.Parent:
         case Role.Child:
+          // Parents and Children may not have a dojo directly associated in this context yet
+          dojo = null;
+          break;
         default:
           throw new InternalServerErrorException("Code Path not implemented");
       }

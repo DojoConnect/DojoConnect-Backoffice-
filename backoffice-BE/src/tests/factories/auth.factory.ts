@@ -13,10 +13,11 @@ import {
   LoginDTO,
   RefreshTokenDTO,
   RegisterDojoAdminDTO,
+  RegisterParentDTO,
 } from "../../validations/auth.schemas.js";
 import { buildUserDtoMock } from "./user.factory.js";
 
-export const buildRegisterUserDTOMock = (
+export const buildRegisterDojoAdminDTOMock = (
   overrides?: Partial<RegisterDojoAdminDTO>
 ): RegisterDojoAdminDTO => {
   return {
@@ -33,6 +34,17 @@ export const buildRegisterUserDTOMock = (
     ...overrides, // Allows overriding specific fields for different test scenarios
   };
 };
+
+export const buildRegisterParentDTOMock = (overrides: Partial<RegisterParentDTO>): RegisterParentDTO => {
+  return {
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
+    email: "john.doe@example.com",
+    password: "Password123!",
+    fcmToken: "fcm-token",
+    ...overrides
+  }
+}
 
 export const buildNewRefreshTokenMock = (
   overrides: Partial<INewRefreshToken>

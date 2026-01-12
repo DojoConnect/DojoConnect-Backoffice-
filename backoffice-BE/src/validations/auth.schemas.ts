@@ -28,7 +28,6 @@ export const CreateUserBaseSchema = z.object({
   lastName: z.string().trim().nonempty(),
   email: z.email().trim(),
   password: PasswordSchema,
-  username: z.string().trim().nonempty(),
   fcmToken: z.string().trim().optional().nullable(),
 });
 
@@ -37,10 +36,14 @@ export const RegisterDojoAdminSchema = CreateUserBaseSchema.extend({
   referredBy: z.string().trim().optional().default(""),
 
   plan: z.enum(StripePlans),
+  username: z.string().trim().nonempty(),
   dojoName: z.string().trim().nonempty(),
   dojoTag: z.string().trim().nonempty(),
   dojoTagline: z.string().trim().nonempty(),
 });
+
+// RegisterParentSchema uses CreateUserBaseSchema which matches requirements (no username)
+export const RegisterParentSchema = CreateUserBaseSchema;
 
 export const FirebaseSignInSchema = z.object({
   idToken: z.string().trim().nonempty(),
@@ -64,7 +67,10 @@ export const ResetPasswordSchema = z.object({
   newPassword: PasswordSchema,
 });
 
-export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema>;
+export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> & {
+  username: string;
+};
+export type RegisterParentDTO = z.infer<typeof RegisterParentSchema>;
 export type RegisterDojoAdminDTO = z.infer<typeof RegisterDojoAdminSchema>;
 export type LoginDTO = z.infer<typeof LoginSchema>;
 export type RefreshTokenDTO = z.infer<typeof RefreshTokenSchema>;

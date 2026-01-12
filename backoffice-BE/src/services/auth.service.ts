@@ -35,6 +35,7 @@ import {
   RegisterDojoAdminDTO,
   ResetPasswordDTO,
   VerifyOtpDTO,
+  RegisterParentDTO,
 } from "../validations/auth.schemas.js";
 import type { Transaction } from "../db/index.js";
 import { DojoStatus, Role } from "../constants/enums.js";
@@ -42,7 +43,6 @@ import {
   AuthResponseDTO,
   RegisterDojoAdminResponseDTO,
 } from "../dtos/auth.dtos.js";
-import { formatDateForMySQL } from "../utils/date.utils.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
 import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
@@ -389,13 +389,13 @@ export class AuthService {
         }
 
         try {
-          await MailerService.sendWelcomeEmail(
+          await MailerService.sendDojoAdminWelcomeEmail(
             dto.email,
             dto.firstName,
             Role.DojoAdmin
           );
 
-          await NotificationService.sendSignUpNotification(newUser);
+          await NotificationService.sendDojoAdminSignUpNotification(newUser);
         } catch (err) {
           console.log(
             "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
@@ -412,6 +412,88 @@ export class AuthService {
         console.log(`An error occurred while trying to register user: ${err}`);
         throw err;
       }
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
+
+  static registerParent = async (
+    {
+      dto,
+      userIp,
+      userAgent,
+    }: {
+      dto: RegisterParentDTO;
+      userIp?: string;
+      userAgent?: string;
+    },
+    txInstance?: dbService.Transaction
+  ): Promise<AuthResponseDTO> => {
+    const execute = async (tx: dbService.Transaction) => {
+      // Check email
+      const existingUser = await UsersService.getOneUserByEmail({
+        email: dto.email,
+        txInstance: tx,
+      });
+
+      if (existingUser) {
+        throw new ConflictException("Email already registered");
+      }
+
+      // Generate Username
+      let username = dto.email.split("@")[0];
+      let isAvailable = await AuthService.isUsernameAvailable({
+        username,
+        txInstance: tx,
+      });
+
+      if (!isAvailable) {
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        username = `${username}${randomSuffix}`;
+        const isAvailableRetry = await AuthService.isUsernameAvailable({
+          username,
+          txInstance: tx,
+        });
+        if (!isAvailableRetry) {
+          throw new ConflictException(
+            "Could not generate a unique username. Please try a different email."
+          );
+        }
+      }
+
+      const newUser = await AuthService.createUser({
+        dto: {
+          ...dto,
+          username,
+        },
+        role: Role.Parent,
+        tx,
+      });
+
+      // Send Welcome
+      try {
+        await MailerService.sendParentWelcomeEmail(
+          newUser.email,
+          newUser.firstName
+        );
+        await NotificationService.sendParentSignUpNotification(newUser);
+      } catch (err) {
+        console.log("Error sending welcome email/notification", err);
+      }
+
+      const authTokens = await AuthService.generateAuthTokens({
+        user: newUser,
+        userIp,
+        userAgent,
+        txInstance: tx,
+      });
+
+      return new AuthResponseDTO({
+        ...authTokens,
+        user: new UserDTO({ ...newUser, dojo: undefined }),
+      });
     };
 
     return txInstance

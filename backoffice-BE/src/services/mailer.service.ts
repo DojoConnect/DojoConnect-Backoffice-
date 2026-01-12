@@ -403,7 +403,7 @@ export class MailerService {
     }
   };
 
-  static sendWelcomeEmail = async (dest: string, name: string, role: Role) => {
+  static sendDojoAdminWelcomeEmail = async (dest: string, name: string, role: Role) => {
     try {
       let subject, body;
 
@@ -432,6 +432,29 @@ export class MailerService {
       await MailerService.getTransporter().sendMail(mailOptions);
     } catch (error: any) {
       console.error(`Welcome email failed to ${dest}: ${error.message}`);
+    }
+  };
+
+  static sendParentWelcomeEmail = async (dest: string, name: string) => {
+    try {
+      const subject = "Welcome to Dojo Connect";
+      const body = `<p>Hi <strong>${name}</strong>,</p>
+                    <p>Welcome to Dojo Connect! Your parent account has been successfully created.</p>
+                    <p>You can now explore dojos and enroll your children in classes.</p>
+                    <p>Detailed verification instructions or next steps can be added here.</p>
+                    <p>Warm regards,<br>The Dojo Connect Team</p>`;
+
+      const mailOptions = {
+        from: '"Dojo Connect" <support@dojoconnect.app>',
+        to: dest,
+        subject: subject,
+        html: body,
+        charset: "UTF-8",
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(`Parent welcome email failed to ${dest}: ${error.message}`);
     }
   };
 
