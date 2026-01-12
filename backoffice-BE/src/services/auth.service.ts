@@ -540,7 +540,7 @@ export class AuthService {
           oAuthAcctId: oAuthAcct.id,
           tx,
           update: {
-            updatedAt: formatDateForMySQL(new Date()),
+            updatedAt: new Date(),
             profileData: {
               name: firebaseUser.name,
               picture: firebaseUser.picture,

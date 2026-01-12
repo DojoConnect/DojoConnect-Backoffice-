@@ -149,12 +149,13 @@ export const childrenSubscription = mysqlTable("children_subscription", {
   stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
   stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).notNull(),
   status: mysqlEnum(["active", "cancelled", "paused"]).default("active"),
-  createdAt: timestamp("created_at", { mode: "string" })
+  createdAt: timestamp("created_at")
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
-  updatedAt: timestamp("updated_at", { mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
+  updatedAt: timestamp("updated_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
   stripeSessionId: varchar("stripe_session_id", { length: 255 }),
 });
 
@@ -196,7 +197,8 @@ export const classes = mysqlTable(
       .notNull(),
     updatedAt: timestamp("updated_at")
       .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
   },
   (t) => [
     index("instructor_idx").on(t.instructorId),
@@ -367,17 +369,18 @@ export const events = mysqlTable("events", {
   notificationUnit: varchar("notification_unit", { length: 20 }),
   location: varchar({ length: 255 }),
   link: varchar({ length: 255 }).notNull(),
+  notificationSent: tinyint("notification_sent").default(0),
+  responseStatus: varchar("response_status", { length: 121 })
+    .default("pending")
+    .notNull(),
   createdBy: varchar("created_by", { length: 255 }).notNull(),
   createdAt: timestamp("created_at", { mode: "string" })
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
   updatedAt: timestamp("updated_at", { mode: "string" })
     .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  notificationSent: tinyint("notification_sent").default(0),
-  responseStatus: varchar("response_status", { length: 121 })
-    .default("pending")
-    .notNull(),
+    .notNull()
+    .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
 });
 
 export const feedback = mysqlTable("feedback", {
@@ -482,12 +485,13 @@ export const userOAuthAccounts = mysqlTable(
     provider: mysqlEnum(SupportedOAuthProviders).notNull(),
     providerUserId: varchar("provider_user_id", { length: 255 }).notNull(),
     profileData: json("profile_data"),
-    createdAt: timestamp("created_at", { mode: "string" })
+    createdAt: timestamp("created_at",)
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
-    updatedAt: timestamp("updated_at", { mode: "string" })
+    updatedAt: timestamp("updated_at",)
       .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
+      .notNull()
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
   },
   (table) => [
     unique("provider_user_unique").on(table.provider, table.providerUserId),
@@ -582,16 +586,19 @@ export const tasks = mysqlTable("tasks", {
   dueDate: datetime("due_date", { mode: "string" }),
   notificationValue: varchar("notification_value", { length: 10 }),
   notificationUnit: varchar("notification_unit", { length: 10 }),
-  createdAt: timestamp("created_at", { mode: "string" })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
   status: mysqlEnum([
     "pending",
     "in_progress",
     "completed",
     "declined",
   ]).default("pending"),
-  updatedAt: timestamp("updated_at", { mode: "string" }),
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
 });
 
 export const transactions = mysqlTable("transactions", {

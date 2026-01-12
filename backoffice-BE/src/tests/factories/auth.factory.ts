@@ -113,8 +113,8 @@ export const buildOAuthAcctMock = (
     provider: SupportedOAuthProviders.Google,
     providerUserId: "oauth-user-1",
     profileData: {},
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
     ...overrides,
   };
 };
