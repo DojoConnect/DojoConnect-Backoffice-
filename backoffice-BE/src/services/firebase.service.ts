@@ -1,4 +1,5 @@
-import * as firebaseAdmin from "firebase-admin";
+import { initializeApp, cert, App } from 'firebase-admin/app';
+import { getAuth } from "firebase-admin/auth";
 import * as firebaseMessaging from "firebase-admin/messaging";
 import AppConfig from "../config/AppConfig.js";
 import { HttpException, UnauthorizedException } from "../core/errors/index.js";
@@ -15,7 +16,7 @@ export interface IFirebaseUser {
 }
 
 /// set up firebase
-let firebaseApp: firebaseAdmin.app.App | null = null;
+let firebaseApp: App | null = null;
 
 let firebaseMessagingInstance: firebaseMessaging.Messaging | null = null;
 
@@ -24,9 +25,8 @@ export class FirebaseService {
     if (firebaseApp) {
       return firebaseApp;
     }
-
-    firebaseApp = firebaseAdmin.initializeApp({
-      credential: firebaseAdmin.credential.cert(
+    firebaseApp = initializeApp({
+      credential: cert(
         AppConfig.FIREBASE_CRED_FILE_PATH
       ),
     });
@@ -47,7 +47,7 @@ export class FirebaseService {
   };
 
   static getFirebaseAuth = () => {
-    return FirebaseService.getFirebaseApp().auth();
+    return getAuth(FirebaseService.getFirebaseApp());
   };
 
   static verifyFirebaseToken = async (
