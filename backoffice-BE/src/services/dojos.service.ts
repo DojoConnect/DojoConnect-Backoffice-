@@ -101,11 +101,11 @@ export class DojosService {
     const execute = async (tx: Transaction) => {
       const newDojoID = await DojoRepository.create(newDojoDTO, tx);
 
-      await InstructorsRepository.attachInstructorToDojo(
-        newDojoDTO.ownerUserId,
-        newDojoID,
-        tx
-      );
+      // await InstructorsRepository.attachInstructorToDojo(
+      //   newDojoDTO.ownerUserId,
+      //   newDojoID,
+      //   tx
+      // );
 
       return (await DojosService.getOneDojoByID(newDojoID, tx))!;
     };
