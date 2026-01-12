@@ -330,7 +330,7 @@ export class AuthService {
         });
 
         // Generate Referral Code and Hash Password
-        const referral_code = UsersService.generateReferralCode();
+        const referral_code = DojosService.generateReferralCode();
 
         let trialEndsAt: Date | null = addDays(new Date(), 14);
 

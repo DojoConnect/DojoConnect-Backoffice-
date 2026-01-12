@@ -309,4 +309,8 @@ export class DojosService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
+
+
+  static generateReferralCode = () =>
+    "DOJ" + Math.floor(1000 + Math.random() * 9000); // rand(1000, 9999)
 }
