@@ -26,6 +26,7 @@ export const PasswordSchema = z
 export const CreateUserBaseSchema = z.object({
   firstName: z.string().trim().nonempty(),
   lastName: z.string().trim().nonempty(),
+  username: z.string().trim().nonempty(),
   email: z.email().trim(),
   password: PasswordSchema,
   fcmToken: z.string().trim().optional().nullable(),
@@ -34,9 +35,7 @@ export const CreateUserBaseSchema = z.object({
 
 export const RegisterDojoAdminSchema = CreateUserBaseSchema.extend({
   referredBy: z.string().trim().optional().default(""),
-
   plan: z.enum(StripePlans),
-  username: z.string().trim().nonempty(),
   dojoName: z.string().trim().nonempty(),
   dojoTag: z.string().trim().nonempty(),
   dojoTagline: z.string().trim().nonempty(),
@@ -67,9 +66,7 @@ export const ResetPasswordSchema = z.object({
   newPassword: PasswordSchema,
 });
 
-export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> & {
-  username: string;
-};
+export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> 
 export type RegisterParentDTO = z.infer<typeof RegisterParentSchema>;
 export type RegisterDojoAdminDTO = z.infer<typeof RegisterDojoAdminSchema>;
 export type LoginDTO = z.infer<typeof LoginSchema>;

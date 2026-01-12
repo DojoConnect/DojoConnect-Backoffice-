@@ -432,42 +432,32 @@ export class AuthService {
     txInstance?: dbService.Transaction
   ): Promise<AuthResponseDTO> => {
     const execute = async (tx: dbService.Transaction) => {
-      // Check email
-      const existingUser = await UsersService.getOneUserByEmail({
-        email: dto.email,
-        txInstance: tx,
-      });
 
-      if (existingUser) {
-        throw new ConflictException("Email already registered");
-      }
+      // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
+        const [
+          existingUserWithEmail,
+          existingUserWithUsername
+        ] = await Promise.all([
+          UsersService.getOneUserByEmail({
+            email: dto.email,
+            txInstance: tx,
+          }),
+          UsersService.getOneUserByUserName({
+            username: dto.username,
+            txInstance: tx,
+          }),
+        ]);
 
-      // Generate Username
-      let username = dto.email.split("@")[0];
-      let isAvailable = await AuthService.isUsernameAvailable({
-        username,
-        txInstance: tx,
-      });
-
-      if (!isAvailable) {
-        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-        username = `${username}${randomSuffix}`;
-        const isAvailableRetry = await AuthService.isUsernameAvailable({
-          username,
-          txInstance: tx,
-        });
-        if (!isAvailableRetry) {
-          throw new ConflictException(
-            "Could not generate a unique username. Please try a different email."
-          );
+        if (existingUserWithEmail) {
+          throw new ConflictException("Email already registered");
         }
-      }
+
+        if (existingUserWithUsername) {
+          throw new ConflictException("Username already taken");
+        }
 
       const newUser = await AuthService.createUser({
-        dto: {
-          ...dto,
-          username,
-        },
+        dto,
         role: Role.Parent,
         tx,
       });
@@ -811,6 +801,43 @@ export class AuthService {
 
       // Security: Kill all sessions (Log out all devices)
       await RefreshTokenRepository.deleteByUserId(decoded.userId, tx);
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
+
+  static generateUsername = async ({
+    email,
+    txInstance,
+  }: {
+    email: string;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+            // Generate Username
+      let username = email.split("@")[0];
+      let isAvailable = await AuthService.isUsernameAvailable({
+        username,
+        txInstance: tx,
+      });
+
+      if (!isAvailable) {
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        username = `${username}${randomSuffix}`;
+        const isAvailableRetry = await AuthService.isUsernameAvailable({
+          username,
+          txInstance: tx,
+        });
+        if (!isAvailableRetry) {
+          throw new ConflictException(
+            "Could not generate a unique username. Please try a different email."
+          );
+        }
+      }
+
+      return username;
     };
 
     return txInstance
