@@ -3,7 +3,7 @@ import { z } from "zod";
 import { StripePlans } from "../constants/enums.js";
 
 export const LoginSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.email().trim(),
   password: z.string().trim().nonempty(),
   fcmToken: z.string().trim().optional().nullable(),
 });
@@ -26,7 +26,7 @@ export const PasswordSchema = z
 export const CreateUserBaseSchema = z.object({
   firstName: z.string().trim().nonempty(),
   lastName: z.string().trim().nonempty(),
-  email: z.string().trim().email(),
+  email: z.email().trim(),
   password: PasswordSchema,
   username: z.string().trim().nonempty(),
   fcmToken: z.string().trim().optional().nullable(),
@@ -34,14 +34,9 @@ export const CreateUserBaseSchema = z.object({
 
 
 export const RegisterDojoAdminSchema = CreateUserBaseSchema.extend({
-  /**
-   * @deprecated rely on firstName and lastName instead.
-   */
-  fullName: z.string().trim().nonempty(),
-
   referredBy: z.string().trim().optional().default(""),
 
-  plan: z.nativeEnum(StripePlans),
+  plan: z.enum(StripePlans),
   dojoName: z.string().trim().nonempty(),
   dojoTag: z.string().trim().nonempty(),
   dojoTagline: z.string().trim().nonempty(),
@@ -53,11 +48,11 @@ export const FirebaseSignInSchema = z.object({
 });
 
 export const ForgotPasswordSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.email().trim(),
 });
 
 export const VerifyOtpSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.email().trim(),
   otp: z
     .string()
     .trim()

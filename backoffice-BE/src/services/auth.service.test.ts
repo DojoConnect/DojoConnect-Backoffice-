@@ -380,7 +380,6 @@ describe("Auth Service", () => {
       email: "new@user.com",
       username: "newuser",
       password: "password123",
-      fullName: "New User",
       plan: StripePlans.Monthly,
       dojoName: mockDojo.name,
       dojoTag: mockDojo.tag,

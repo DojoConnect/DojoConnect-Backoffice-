@@ -317,9 +317,8 @@ export class AuthService {
 
         const newUser = await AuthService.createUser({
           dto: {
-            firstName: dto.firstName || dto.fullName.split(" ")[0],
-            lastName:
-              dto.lastName || dto.fullName.split(" ").slice(1).join(" "),
+            firstName: dto.firstName,
+            lastName: dto.lastName,
             username: dto.username,
             email: dto.email,
             password: dto.password,
@@ -392,7 +391,7 @@ export class AuthService {
         try {
           await MailerService.sendWelcomeEmail(
             dto.email,
-            dto.fullName,
+            dto.firstName,
             Role.DojoAdmin
           );
 
