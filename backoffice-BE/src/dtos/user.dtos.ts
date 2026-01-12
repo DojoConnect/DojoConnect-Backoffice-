@@ -1,4 +1,5 @@
 import { Role } from "../constants/enums.js";
+import { IDojo } from "../repositories/dojo.repository.js";
 import { BaseDojoDTO } from "./dojo.dtos.js";
 
 export interface UserDTOParams {
@@ -15,7 +16,7 @@ export interface UserDTOParams {
   city: string | null;
   street: string | null;
   createdAt: Date;
-  dojo?: BaseDojoDTO;
+  dojo?: IDojo|null;
 }
 
 export class UserDTO implements UserDTOParams {

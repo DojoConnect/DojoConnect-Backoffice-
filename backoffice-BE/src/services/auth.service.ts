@@ -147,13 +147,13 @@ export class AuthService {
         }),
       ]);
 
-      if (!dojo) {
-        throw new NotFoundException("Dojo not found for user");
+    if (!dojo && (user.role === Role.DojoAdmin || user.role === Role.Instructor)) {
+        throw new NotFoundException("Dojo not found for DojoAdmin or Instructor");
       }
 
       return new AuthResponseDTO({
         ...authTokens,
-        user: new UserDTO({ ...user, dojo: new BaseDojoDTO(dojo) }),
+        user: new UserDTO({ ...user, dojo }),
       });
     };
 
