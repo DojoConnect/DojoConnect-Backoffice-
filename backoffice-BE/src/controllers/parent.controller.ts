@@ -2,7 +2,9 @@ import { NextFunction, Request, Response } from "express";
 import { ParentService } from "../services/parent.service.js";
 import { formatApiResponse } from "../utils/api.utils.js";
 
-export const handleAddChild = async (
+export class ParentController {
+
+static handleAddChild = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -24,7 +26,7 @@ export const handleAddChild = async (
   }
 };
 
-export const handleGetChildren = async (
+static handleGetChildren = async (
   req: Request,
   res: Response,
   next: NextFunction
@@ -43,3 +45,4 @@ export const handleGetChildren = async (
     next(error);
   }
 };
+}
