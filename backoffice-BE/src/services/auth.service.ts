@@ -389,18 +389,21 @@ export class AuthService {
           throw new NotFoundException("Dojo not found for user");
         }
 
-        try {
-          await MailerService.sendDojoAdminWelcomeEmail(
-            dto.email,
-            dto.firstName,
-            Role.DojoAdmin
-          );
 
-          await NotificationService.sendDojoAdminSignUpNotification(newUser);
-        } catch (err) {
+          const results = await Promise.allSettled([
+            MailerService.sendDojoAdminWelcomeEmail(
+              dto.email,
+              dto.firstName,
+              Role.DojoAdmin
+          ),
+
+          NotificationService.sendDojoAdminSignUpNotification(newUser)
+        ]);
+
+        if (results.some((result) => result.status === "rejected")) {
           console.log(
             "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
-            err
+            results.find((result) => result.status === "rejected")?.reason
           );
         }
 
@@ -464,15 +467,19 @@ export class AuthService {
       });
 
       // Send Welcome
-      try {
-        await MailerService.sendParentWelcomeEmail(
+        const results = await Promise.allSettled([
+        MailerService.sendParentWelcomeEmail(
           newUser.email,
           newUser.firstName
-        );
-        await NotificationService.sendParentSignUpNotification(newUser);
-      } catch (err) {
-        console.log("Error sending welcome email/notification", err);
-      }
+        ),
+        NotificationService.sendParentSignUpNotification(newUser)]);
+
+        if (results.some((result) => result.status === "rejected")) {
+          console.log(
+            "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
+            results.find((result) => result.status === "rejected")?.reason
+          );
+        }
 
       const authTokens = await AuthService.generateAuthTokens({
         user: newUser,
