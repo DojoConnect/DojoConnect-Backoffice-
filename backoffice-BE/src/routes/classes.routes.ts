@@ -14,6 +14,12 @@ const router = Router({ mergeParams: true });
 
 router.get(
   "/:classId",
+  requireAuth,
+  ClassesController.getClassById
+);
+
+router.get(
+  "/:classId/view",
   ClassesController.getClassById
 );
 

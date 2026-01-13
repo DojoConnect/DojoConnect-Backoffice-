@@ -8,7 +8,19 @@ export class ClassesController {
   static async getClassById(req: Request, res: Response) {
     const { classId } = req.params;
 
-    const classData = await ClassService.getClassInfo(classId);
+    const classData = await ClassService.getClassSchedulesAndInstructor(classId);
+
+    const classDTO = new ClassDTO(classData);
+
+    res
+      .status(200)
+      .json(formatApiResponse({ data: classDTO, message: "Class fetched." }));
+  }
+
+  static async handleViewClassByUnAuthenticatedUser(req: Request, res: Response) {
+    const { classId } = req.params;
+
+    const classData = await ClassService.getClassSchedulesAndInstructor(classId);
 
     const classDTO = new ClassDTO(classData);
 

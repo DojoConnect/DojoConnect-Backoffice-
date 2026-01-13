@@ -155,7 +155,7 @@ export class ClassService {
         });
       }
 
-      return new ClassDTO(await ClassService.getClassInfo(newClassId, tx));
+      return new ClassDTO(await ClassService.getClassSchedulesAndInstructor(newClassId, tx));
     };
 
     return txInstance
@@ -163,7 +163,7 @@ export class ClassService {
       : dbService.runInTransaction(execute);
   };
 
-  static getClassInfo = async (
+  static getClassSchedulesAndInstructor = async (
     classId: string,
     txInstance?: Transaction
   ): Promise<ClassWithSchedulesAndInstructor> => {
@@ -389,7 +389,7 @@ export class ClassService {
         });
       }
 
-      const updatedClass = await ClassService.getClassInfo(classId, tx);
+      const updatedClass = await ClassService.getClassSchedulesAndInstructor(classId, tx);
       return new ClassDTO(updatedClass!);
     };
 
