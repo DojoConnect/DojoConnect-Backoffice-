@@ -458,6 +458,67 @@ export class MailerService {
     }
   };
 
+  static sendChildAddedEmailToParent = async (
+    parentEmail: string,
+    parentName: string,
+    childName: string,
+    childEmail: string
+  ) => {
+    try {
+      const subject = "Child Account Created - Dojo Connect";
+      const body = `<p>Hi <strong>${parentName}</strong>,</p>
+                    <p>You have successfully added a child account for <strong>${childName}</strong>.</p>
+                    <p>The child's default login email is: <strong>${childEmail}</strong></p>
+                    <p>The default password is your first name: <strong>${parentName.toLowerCase()}</strong></p>
+                    <p>Please ensure they change their password upon first login.</p>
+                    <p>Warm regards,<br>The Dojo Connect Team</p>`;
+
+      const mailOptions = {
+        from: '"Dojo Connect" <support@dojoconnect.app>',
+        to: parentEmail,
+        subject: subject,
+        html: body,
+        charset: "UTF-8",
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(
+        `Child added email to parent failed to ${parentEmail}: ${error.message}`
+      );
+    }
+  };
+
+  static sendChildWelcomeEmail = async (
+    childEmail: string,
+    childName: string,
+    parentName: string
+  ) => {
+    try {
+      const subject = "Welcome to Dojo Connect!";
+      const body = `<p>Hi <strong>${childName}</strong>,</p>
+                    <p>Welcome to Dojo Connect! Your parent <strong>${parentName}</strong> has created an account for you.</p>
+                    <p>Your login email is: <strong>${childEmail}</strong></p>
+                    <p>Your default password is: <strong>${parentName.toLowerCase()}</strong></p>
+                    <p>Have fun training!</p>
+                    <p>Warm regards,<br>The Dojo Connect Team</p>`;
+
+      const mailOptions = {
+        from: '"Dojo Connect" <support@dojoconnect.app>',
+        to: childEmail,
+        subject: subject,
+        html: body,
+        charset: "UTF-8",
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(
+        `Child welcome email failed to ${childEmail}: ${error.message}`
+      );
+    }
+  };
+
   static sendPasswordResetMail = async ({
     dest,
     name,

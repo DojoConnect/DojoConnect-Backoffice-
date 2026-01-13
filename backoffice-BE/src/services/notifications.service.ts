@@ -190,4 +190,36 @@ export class NotificationService {
       data: {},
     });
   };
+
+  static sendChildAddedNotification = async (user: IUser, childName: string) => {
+    const title = "Child Account Added";
+    const body = `You have successfully added a child account for ${childName}.`;
+    const data: SignUpSuccessfulNotificationData = {
+      screen: "home",
+    };
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.ChildAdded,
+      user,
+      title,
+      body,
+      data,
+    });
+  };
+
+  static sendWelcomeNotificationToChild = async (user: IUser) => {
+    const title = "Welcome to Dojo Connect!";
+    const body = "Your account has been created successfully.";
+    const data: SignUpSuccessfulNotificationData = {
+      screen: "home",
+    };
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.SignUp,
+      user,
+      title,
+      body,
+      data,
+    });
+  };
 }

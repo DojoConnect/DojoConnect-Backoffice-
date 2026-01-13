@@ -17,6 +17,7 @@ export enum AppointmentType {
 
 export enum NotificationType {
   Event = "event",
+  ChildAdded = "child_added",
   ClassCreated = "class_created",
   ClassUpdated = "class_updated",
   ClassDeleted = "class_deleted",

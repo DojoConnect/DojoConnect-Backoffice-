@@ -11,7 +11,7 @@ export interface UserDTOParams {
   avatar: string | null;
   role: Role;
   balance: string;
-  dob: string | null;
+  dob: Date | null;
   gender: string | null;
   city: string | null;
   street: string | null;
@@ -28,7 +28,7 @@ export class UserDTO implements UserDTOParams {
   avatar: string | null;
   role: Role;
   balance: string;
-  dob: string | null;
+  dob: Date | null;
   gender: string | null;
   city: string | null;
   street: string | null;

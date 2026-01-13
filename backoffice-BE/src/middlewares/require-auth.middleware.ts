@@ -10,6 +10,10 @@ import { IUser } from "../repositories/user.repository.js";
 import { IDojo } from "../repositories/dojo.repository.js";
 import { IDojoInstructor } from "../repositories/instructors.repository.js";
 
+export interface AuthenticatedRequest extends Request {
+  user: IUser;
+}
+
 // Now you can access TokenExpiredError from the imported jwt object
 const { TokenExpiredError } = jwt;
 

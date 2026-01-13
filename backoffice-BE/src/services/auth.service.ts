@@ -267,6 +267,7 @@ export class AuthService {
         username: dto.username,
         role,
         fcmToken: dto.fcmToken || null,
+        dob: dto.dob || null,
       },
       tx
     );

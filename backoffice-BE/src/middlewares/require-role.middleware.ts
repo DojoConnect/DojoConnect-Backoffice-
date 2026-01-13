@@ -12,7 +12,7 @@ export const requireRole =
       }
 
       if (!allowedRoles.includes(req.user.role)) {
-        throw new ForbiddenException("Forbidden: insufficient permissions");
+        throw new ForbiddenException(`Forbidden: insufficient permissions. Required role: ${allowedRoles.join(", ")}. User role: ${req.user.role}`);
       }
 
       next();

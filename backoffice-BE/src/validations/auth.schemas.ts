@@ -1,6 +1,7 @@
 // Use zod for schema validation
 import { z } from "zod";
 import { StripePlans } from "../constants/enums.js";
+import { DateOnlySchema } from "./helpers.schemas.js";
 
 export const LoginSchema = z.object({
   email: z.email().trim(),
@@ -66,7 +67,9 @@ export const ResetPasswordSchema = z.object({
   newPassword: PasswordSchema,
 });
 
-export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> 
+export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> & {
+  dob?: z.infer<typeof DateOnlySchema>;
+}
 export type RegisterParentDTO = z.infer<typeof RegisterParentSchema>;
 export type RegisterDojoAdminDTO = z.infer<typeof RegisterDojoAdminSchema>;
 export type LoginDTO = z.infer<typeof LoginSchema>;

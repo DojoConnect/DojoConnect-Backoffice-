@@ -30,7 +30,7 @@ import {
   ACTIVE_BILLING_STATUSES,
   StripeSubscriptionStatus,
   InstructorInviteStatus,
-  ClassLevel,
+  ExperienceLevel,
   ClassStatus,
   ClassFrequency,
   ClassSubscriptionType,
@@ -178,7 +178,7 @@ export const classes = mysqlTable(
     ),
     name: varchar({ length: 150 }).notNull(),
     description: varchar({ length: 150 }),
-    level: mysqlEnum(ClassLevel).notNull(),
+    level: mysqlEnum(ExperienceLevel).notNull(),
     minAge: tinyint("min_age", { unsigned: true }).notNull(),
     maxAge: tinyint("max_age", { unsigned: true }).notNull(),
     capacity: smallint({ unsigned: true }).notNull(),
@@ -256,6 +256,25 @@ export const classOccurrences = mysqlTable("class_occurrences", {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
 });
+
+export const classEnrollments = mysqlTable(
+  "class_enrollments",
+  {
+    id: uuidPrimaryKey(),
+    studentId: varchar("student_id", { length: UUID_LENGTH }).notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+    classId: varchar("class_id", { length: UUID_LENGTH }).notNull()
+    .references(() => classes.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [uniqueIndex("student_class_unique").on(table.studentId, table.classId)]
+);
 
 export const deletionRequests = mysqlTable("deletion_requests", {
   id: int().autoincrement().primaryKey(),
@@ -549,16 +568,20 @@ export const refreshTokens = mysqlTable("refresh_tokens", {
 export const students = mysqlTable(
   "students",
   {
-    id: int().autoincrement().primaryKey(),
-    fullName: varchar("full_name", { length: 255 }),
-    email: varchar({ length: 255 }),
-    classId: varchar("class_id", { length: 255 }),
-    addedBy: varchar("added_by", { length: 255 }),
+    id: uuidPrimaryKey(),
+    studentUserId: varchar("student_user_id", { length: UUID_LENGTH })
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentUserId: varchar("parent_user_id", { length: UUID_LENGTH })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    experienceLevel: mysqlEnum("experience_level", ExperienceLevel).notNull(),
     createdAt: timestamp("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
-  (table) => [unique("email").on(table.email)]
+  (table) => [uniqueIndex("unique_student_parent").on(table.studentUserId, table.parentUserId)]
 );
 
 export const tasks = mysqlTable("tasks", {
@@ -612,7 +635,7 @@ export const users = mysqlTable(
     role: mysqlEnum(Role).notNull(),
     balance: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
     stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
-    dob: varchar({ length: 20 }),
+    dob: date("dob"),
     gender: varchar({ length: 10 }),
     city: varchar({ length: 50 }),
     street: varchar({ length: 100 }),
