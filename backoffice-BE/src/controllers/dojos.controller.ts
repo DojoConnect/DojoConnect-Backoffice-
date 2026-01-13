@@ -6,6 +6,8 @@ import {
 } from "../core/errors/index.js";
 import { formatApiResponse } from "../utils/api.utils.js";
 import { NotFoundException } from "../core/errors/index.js";
+import { ClassService } from "../services/class.service.js";
+import { ClassDTO } from "../dtos/class.dtos.js";
 
 export class DojosController {
   static async handleFetchDojoByTag(req: Request, res: Response) {
@@ -74,4 +76,43 @@ export class DojosController {
       })
     );
   }
+
+  static async createClass(req: Request, res: Response) {
+      const dojo = req.dojo;
+      if (!dojo) {
+        throw new InternalServerErrorException(
+          "Dojo not found on request object."
+        );
+      }
+  
+      const newClass = await ClassService.createClass({
+        dto: req.body,
+        dojo: dojo,
+      });
+  
+      res.status(201).json(
+        formatApiResponse({
+          data: newClass,
+          message: "Class created successfully.",
+        })
+      );
+    }
+  
+    static async getClasses(req: Request, res: Response) {
+      const dojo = req.dojo;
+      if (!dojo) {
+        throw new InternalServerErrorException(
+          "Dojo not found on request object."
+        );
+      }
+  
+      const classes = await ClassService.getAllClassesByDojoId(dojo.id);
+      const classDTOs = classes.map((c) => new ClassDTO(c));
+  
+      res
+        .status(200)
+        .json(
+          formatApiResponse({ data: classDTOs, message: "Classes fetched." })
+        );
+    }
 }
