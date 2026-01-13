@@ -1,1 +1,0 @@
-ALTER TABLE `notifications` MODIFY COLUMN `type` enum('event','class_created','class_updated','class_deleted','class_assigned','class_reassigned','invitation_created','invitation_response','invitation_accepted','message','signup');

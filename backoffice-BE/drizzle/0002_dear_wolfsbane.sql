@@ -1,2 +1,0 @@
-ALTER TABLE `classes` DROP CONSTRAINT `subscription_price_check`;--> statement-breakpoint
-ALTER TABLE `classes` ADD CONSTRAINT `subscription_price_check` CHECK ((`classes`.`subscription_type` = 'free' AND (`classes`.`price` IS NULL OR `classes`.`price` = 0)) OR (`classes`.`subscription_type` = 'paid' AND (`classes`.`price` IS NOT NULL AND `classes`.`price` > 0)));
