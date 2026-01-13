@@ -1,14 +1,15 @@
+// src/middlewares/require-role.ts
 import { Request, Response, NextFunction } from "express";
-import { DojosService } from "../services/dojos.service.js";
+import {DojosService} from "../../services/dojos.service.js";
 import {
   BadRequestException,
   ForbiddenException,
   HttpException,
   NotFoundException,
   UnauthorizedException,
-} from "../core/errors/index.js";
+} from "../../core/errors/index.js";
 
-export const isDojoMemberMiddleware = async (
+export const isDojoOwnerMiddleware = async (
   req: Request,
   _: Response,
   next: NextFunction
@@ -18,30 +19,28 @@ export const isDojoMemberMiddleware = async (
       throw new UnauthorizedException("Unauthenticated");
     }
 
-    const dojoId = req.params.dojoId || req.query.dojoId || req.body.dojoId;
-
-    if (!dojoId) {
+    if (!req.params.dojoId) {
       throw new BadRequestException("Missing dojoId");
     }
 
-    const userDojo = await DojosService.fetchUserDojo({ user: req.user });
+    const dojo = await DojosService.getOneDojoByID(req.params.dojoId);
 
-    if (!userDojo) {
+    if (!dojo) {
       throw new NotFoundException("Dojo not found");
     }
 
-    if (userDojo.id !== dojoId) {
+    if (dojo.ownerUserId !== req.user.id) {
       throw new ForbiddenException("Access Denied");
     }
 
-    req.dojo = userDojo;
+    req.dojo = dojo;
 
     next();
   } catch (error) {
     if (error instanceof HttpException) {
-      next(error);
-    } else {
-      next(new ForbiddenException("Forbidden: Access Denied"));
+      throw error;
     }
+
+    throw new ForbiddenException("Forbidden: Access Denied");
   }
 };

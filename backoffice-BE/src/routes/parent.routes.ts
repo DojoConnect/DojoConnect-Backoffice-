@@ -4,7 +4,7 @@ import { Role } from "../constants/enums.js";
 import { AddChildSchema } from "../validations/parent.schemas.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
 import { requireAuth } from "../middlewares/require-auth.middleware.js";
-import { requireRole } from "../middlewares/require-role.middleware.js";
+import { requireRole } from "../middlewares/authorization/require-role.middleware.js";
 
 const router = Router();
 
