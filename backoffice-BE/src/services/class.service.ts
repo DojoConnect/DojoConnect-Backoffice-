@@ -208,6 +208,25 @@ export class ClassService {
       : dbService.runInTransaction(execute);
   };
 
+  static getClassById = async (
+    classId: string,
+    txInstance?: Transaction
+  ): Promise<IClass> => {
+    const execute = async (tx: Transaction) => {
+      const dojoClass = await ClassRepository.findById(classId, tx);
+
+      if (!dojoClass) {
+        throw new NotFoundException(`Class with ID ${classId} not found.`);
+      }
+
+      return dojoClass;
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
+
   static getAllClassesByDojoId = async (
     dojoId: string,
     txInstance?: Transaction
@@ -273,11 +292,9 @@ export class ClassService {
   static updateClass = async (
     {
       classId,
-      dojoId,
       dto,
     }: {
       classId: string;
-      dojoId: string;
       dto: UpdateClassDTO;
     },
     txInstance?: dbService.Transaction
@@ -289,10 +306,6 @@ export class ClassService {
         throw new NotFoundException(`Class with ID ${classId} not found.`);
       }
 
-      if (existingClass.dojoId !== dojoId) {
-        throw new ForbiddenException("Class does not belong to this dojo.");
-      }
-
       const { schedules, ...classDetails } = dto;
       const updatePayload: IUpdateClass = {
         ...classDetails,
@@ -301,7 +314,7 @@ export class ClassService {
       if (dto.instructorId) {
         await ClassService.assertInstructorExistInDojo(
           dto.instructorId,
-          dojoId,
+          existingClass.dojoId,
           tx
         );
         updatePayload.instructorId = dto.instructorId;
@@ -388,11 +401,9 @@ export class ClassService {
   static updateClassInstructor = async (
     {
       classId,
-      dojoId,
       instructorId,
     }: {
       classId: string;
-      dojoId: string;
       instructorId: string | null;
     },
     txInstance?: dbService.Transaction
@@ -400,7 +411,6 @@ export class ClassService {
     return await ClassService.updateClass(
       {
         classId,
-        dojoId,
         dto: { instructorId },
       },
       txInstance

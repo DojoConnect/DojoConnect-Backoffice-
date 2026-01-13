@@ -7,6 +7,7 @@ import billingRouter from "./billing.routes.js";
 import instructorsRouter from "./instructors.routes.js";
 import uploadRouter from "./upload.routes.js";
 import parentsRouter from "./parent.routes.js";
+import classesRouter from "./classes.routes.js";
 
 const router = Router();
 
@@ -16,6 +17,7 @@ router.get("/", (_req, res) => {
 
 router.use("/auth", authRouter);
 router.use("/dojos", dojosRouter);
+router.use("/classes", classesRouter);
 router.use("/appointments", appointmentsRouter);
 router.use("/billing", billingRouter);
 router.use("/instructors", instructorsRouter);

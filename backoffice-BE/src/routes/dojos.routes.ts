@@ -6,7 +6,8 @@ import { requireRole } from "../middlewares/authorization/require-role.middlewar
 import { Role } from "../constants/enums.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
 import { InviteInstructorSchema } from "../validations/instructors.schemas.js";
-import classesRouter from "./classes.routes.js";
+import { CreateClassSchema } from "../validations/classes.schemas.js";
+import { isDojoMemberMiddleware } from "../middlewares/authorization/is-dojo-member.middleware.js";
 
 const router = Router();
 
@@ -37,6 +38,21 @@ router.post(
   DojosController.handleInviteInstructor
 );
 
-router.use("/:dojoId/classes", classesRouter);
+router.post(
+  "/:dojoId/classes",
+  requireAuth,
+  requireRole(Role.DojoAdmin),
+  isDojoOwnerMiddleware,
+  validateReqBody(CreateClassSchema),
+  DojosController.createClass
+);
+
+router.get(
+  "/:dojoId/classes",
+  requireAuth,
+  isDojoMemberMiddleware,
+  DojosController.getClasses
+);
+
 
 export default router;

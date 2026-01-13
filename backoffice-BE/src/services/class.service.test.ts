@@ -346,21 +346,8 @@ describe("Class Service", () => {
       const dto: UpdateClassDTO = { name: "New Name" };
 
       await expect(
-        ClassService.updateClass({ classId, dojoId: dojo.id, dto })
+        ClassService.updateClass({ classId, dto })
       ).rejects.toThrow(NotFoundException);
-    });
-
-    it("should throw ForbiddenException if class does not belong to the dojo", async () => {
-      const existingClass = buildClassMock({
-        id: classId,
-        dojoId: "another-dojo",
-      });
-      findClassByIdRepoSpy.mockResolvedValue(existingClass);
-      const dto: UpdateClassDTO = { name: "New Name" };
-
-      await expect(
-        ClassService.updateClass({ classId, dojoId: dojo.id, dto })
-      ).rejects.toThrow(ForbiddenException);
     });
 
     it("should update basic class details", async () => {
@@ -368,7 +355,7 @@ describe("Class Service", () => {
       findClassByIdRepoSpy.mockResolvedValue(existingClass);
       const dto: UpdateClassDTO = { name: "Updated Class Name", capacity: 30 };
 
-      await ClassService.updateClass({ classId, dojoId: dojo.id, dto });
+      await ClassService.updateClass({ classId, dto });
 
       expect(updateClassRepoSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -399,7 +386,7 @@ describe("Class Service", () => {
         ],
       };
 
-      await ClassService.updateClass({ classId, dojoId: dojo.id, dto });
+      await ClassService.updateClass({ classId, dto });
 
       expect(deleteSchedulesRepoSpy).toHaveBeenCalledWith(
         classId,
@@ -454,14 +441,12 @@ describe("Class Service", () => {
 
       await ClassService.updateClassInstructor({
         classId,
-        dojoId,
         instructorId,
       });
 
       expect(updateClassSpy).toHaveBeenCalledWith(
         {
           classId,
-          dojoId,
           dto: { instructorId },
         },
         undefined // expecting txInstance to be undefined when not passed
