@@ -60,11 +60,27 @@ export class NotificationService {
     }
   };
 
-  static sendSignUpNotification = async (user: IUser) => {
+  static sendDojoAdminSignUpNotification = async (user: IUser) => {
     const title = "Welcome to Dojo Connect!";
     const body = "Your Dojo Admin account has been created successfully.";
     const data: SignUpSuccessfulNotificationData = {
       screen: "complete_profile",
+    };
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.SignUp,
+      user,
+      title,
+      body,
+      data,
+    });
+  };
+
+  static sendParentSignUpNotification = async (user: IUser) => {
+    const title = "Welcome to Dojo Connect!";
+    const body = "Your Parent account has been created successfully.";
+    const data: SignUpSuccessfulNotificationData = {
+      screen: "home",
     };
 
     await this.sendAndSaveNotification({
@@ -172,6 +188,38 @@ export class NotificationService {
       title,
       body,
       data: {},
+    });
+  };
+
+  static sendChildAddedNotification = async (user: IUser, childName: string) => {
+    const title = "Child Account Added";
+    const body = `You have successfully added a child account for ${childName}.`;
+    const data: SignUpSuccessfulNotificationData = {
+      screen: "home",
+    };
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.ChildAdded,
+      user,
+      title,
+      body,
+      data,
+    });
+  };
+
+  static sendWelcomeNotificationToChild = async (user: IUser) => {
+    const title = "Welcome to Dojo Connect!";
+    const body = "Your account has been created successfully.";
+    const data: SignUpSuccessfulNotificationData = {
+      screen: "home",
+    };
+
+    await this.sendAndSaveNotification({
+      type: NotificationType.SignUp,
+      user,
+      title,
+      body,
+      data,
     });
   };
 }

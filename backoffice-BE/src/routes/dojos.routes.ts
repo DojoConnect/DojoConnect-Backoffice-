@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { DojosController } from "../controllers/dojos.controller.js";
 import { requireAuth } from "../middlewares/require-auth.middleware.js";
-import { isDojoOwnerMiddleware } from "../middlewares/is-dojo-owner.middleware.js";
-import { requireRole } from "../middlewares/require-role.middleware.js";
+import { isDojoOwnerMiddleware } from "../middlewares/authorization/is-dojo-owner.middleware.js";
+import { requireRole } from "../middlewares/authorization/require-role.middleware.js";
 import { Role } from "../constants/enums.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
 import { InviteInstructorSchema } from "../validations/instructors.schemas.js";

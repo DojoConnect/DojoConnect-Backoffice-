@@ -1,6 +1,6 @@
 import {
   ClassFrequency,
-  ClassLevel,
+  ExperienceLevel,
   ClassSubscriptionType,
 } from "../constants/enums.js";
 import { classes, classSchedules } from "../db/schema.js";
@@ -25,7 +25,7 @@ export class ClassDTO {
   id: string;
   dojoId: string;
   name: string;
-  level: ClassLevel;
+  level: ExperienceLevel;
   minAge: number;
   maxAge: number;
   description: string | null;
@@ -45,7 +45,7 @@ export class ClassDTO {
     this.id = data.id;
     this.dojoId = data.dojoId;
     this.name = data.name;
-    this.level = data.level as ClassLevel;
+    this.level = data.level as ExperienceLevel;
     this.minAge = data.minAge;
     this.maxAge = data.maxAge;
     this.description = data.description;

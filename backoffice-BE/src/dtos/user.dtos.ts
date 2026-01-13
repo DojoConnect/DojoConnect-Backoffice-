@@ -1,4 +1,5 @@
 import { Role } from "../constants/enums.js";
+import { IDojo } from "../repositories/dojo.repository.js";
 import { BaseDojoDTO } from "./dojo.dtos.js";
 
 export interface UserDTOParams {
@@ -10,12 +11,12 @@ export interface UserDTOParams {
   avatar: string | null;
   role: Role;
   balance: string;
-  dob: string | null;
+  dob: Date | null;
   gender: string | null;
   city: string | null;
   street: string | null;
   createdAt: Date;
-  dojo: BaseDojoDTO;
+  dojo?: IDojo|null;
 }
 
 export class UserDTO implements UserDTOParams {
@@ -27,12 +28,12 @@ export class UserDTO implements UserDTOParams {
   avatar: string | null;
   role: Role;
   balance: string;
-  dob: string | null;
+  dob: Date | null;
   gender: string | null;
   city: string | null;
   street: string | null;
   createdAt: Date;
-  dojo: BaseDojoDTO;
+  dojo?: BaseDojoDTO;
 
 
   constructor(params: UserDTOParams) {
@@ -49,7 +50,9 @@ export class UserDTO implements UserDTOParams {
     this.city = params.city;
     this.street = params.street;
     this.createdAt = params.createdAt;
-    this.dojo = new BaseDojoDTO(params.dojo);
+    if (params.dojo) {
+      this.dojo = new BaseDojoDTO(params.dojo);
+    }
   }
 
   toJSON() {
@@ -57,10 +60,6 @@ export class UserDTO implements UserDTOParams {
       id: this.id,
       firstName: this.firstName,
       lastName: this.lastName,
-      /**
-       * @deprecated rely on firstName and lastName instead.
-       */
-      name: `${this.firstName} ${this.lastName || ""}`.trim(),
       email: this.email,
       username: this.username,
       avatar: this.avatar,
@@ -71,7 +70,7 @@ export class UserDTO implements UserDTOParams {
       city: this.city,
       street: this.street,
       createdAt: this.createdAt,
-      dojo: this.dojo.toJSON(),
+      dojo: this.dojo ? this.dojo.toJSON() : undefined,
     };
   }
 }

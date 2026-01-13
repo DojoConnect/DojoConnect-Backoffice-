@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { parseISO, isValid } from "date-fns";
 import {
   ClassFrequency,
-  ClassLevel,
+  ExperienceLevel,
   ClassSubscriptionType,
   GradingNotificationUnit,
   Weekday,
 } from "../constants/enums.js";
+import { DateOnlySchema, isoDateSchema } from "./helpers.schemas.js";
 
 // -------------------
 // TIME SCHEMA
@@ -22,15 +22,6 @@ export const timeToMinutes = (time: string) => {
   const [h, m] = time.split(":").map(Number);
   return h * 60 + m;
 };
-
-// -------------------
-// DATE-ONLY SCHEMA
-// -------------------
-export const DateOnlySchema = z.iso.date().transform((v) => {
-  const date = parseISO(v);
-  if (!isValid(date)) throw new Error("Invalid calendar date");
-  return date;
-});
 
 // -------------------
 // BASE START/END TIME SCHEMA
@@ -64,18 +55,14 @@ export type OneTimeSchedule = z.infer<typeof OneTimeScheduleSchema>;
 // Extract common fields to avoid repetition
 const BaseClassSchema = z.object({
   name: z.string().trim().min(1),
-  level: z.enum(ClassLevel),
+  level: z.enum(ExperienceLevel),
   minAge: z.number().int().positive(),
   maxAge: z.number().int().positive(),
   description: z.string().trim().max(150).optional(),
   capacity: z.number().int().positive(),
   streetAddress: z.string().trim().min(1),
   city: z.string().trim().min(1),
-  gradingDate: z.iso
-    .date()
-    .optional()
-    .nullable()
-    .transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  gradingDate: isoDateSchema.optional().nullable(),
   gradingNotification: z
     .object({
       unit: z.enum(GradingNotificationUnit),

@@ -81,6 +81,16 @@ CREATE TABLE `children_subscription` (
 	CONSTRAINT `children_subscription_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `class_enrollments` (
+	`id` varchar(36) NOT NULL,
+	`student_id` varchar(36) NOT NULL,
+	`class_id` varchar(36) NOT NULL,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT `class_enrollments_id` PRIMARY KEY(`id`),
+	CONSTRAINT `student_class_unique` UNIQUE(`student_id`,`class_id`)
+);
+--> statement-breakpoint
 CREATE TABLE `class_occurrences` (
 	`id` varchar(36) NOT NULL,
 	`schedule_id` varchar(36) NOT NULL,
@@ -129,7 +139,7 @@ CREATE TABLE `classes` (
 	CONSTRAINT `classes_id` PRIMARY KEY(`id`),
 	CONSTRAINT `age_range_check` CHECK(`classes`.`min_age` <= `classes`.`max_age`),
 	CONSTRAINT `capacity_check` CHECK(`classes`.`capacity` > 0),
-	CONSTRAINT `subscription_price_check` CHECK((`classes`.`subscription_type` = 'free' AND (`classes`.`price` IS NULL OR `classes`.`price` = 0)) OR (`classes`.`subscription_type` = 'paid' AND `classes`.`price` > 0))
+	CONSTRAINT `subscription_price_check` CHECK((`classes`.`subscription_type` = 'free' AND (`classes`.`price` IS NULL OR `classes`.`price` = 0)) OR (`classes`.`subscription_type` = 'paid' AND (`classes`.`price` IS NOT NULL AND `classes`.`price` > 0)))
 );
 --> statement-breakpoint
 CREATE TABLE `deletion_requests` (
@@ -148,7 +158,8 @@ CREATE TABLE `dojo_instructors` (
 	`dojo_id` varchar(36) NOT NULL,
 	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `dojo_instructors_id` PRIMARY KEY(`id`),
-	CONSTRAINT `dojo_instructors_instructor_user_id_unique` UNIQUE(`instructor_user_id`)
+	CONSTRAINT `dojo_instructors_instructor_user_id_unique` UNIQUE(`instructor_user_id`),
+	CONSTRAINT `unique_dojo_instructor` UNIQUE(`dojo_id`,`instructor_user_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `dojo_subscriptions` (
@@ -220,11 +231,11 @@ CREATE TABLE `events` (
 	`notification_unit` varchar(20),
 	`location` varchar(255),
 	`link` varchar(255) NOT NULL,
+	`notification_sent` tinyint DEFAULT 0,
+	`response_status` varchar(121) NOT NULL DEFAULT 'pending',
 	`created_by` varchar(255) NOT NULL,
 	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`notification_sent` tinyint DEFAULT 0,
-	`response_status` varchar(121) NOT NULL DEFAULT 'pending',
 	CONSTRAINT `events_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -271,7 +282,7 @@ CREATE TABLE `notifications` (
 	`message` text,
 	`is_read` boolean DEFAULT false,
 	`created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-	`type` enum('event','class_created','class_updated','class_deleted','invitation_created','invitation_response','invitation_accepted','message','signup'),
+	`type` enum('event','child_added','class_created','class_updated','class_deleted','class_assigned','class_reassigned','invitation_created','invitation_response','invitation_accepted','message','signup'),
 	`event_id` varchar(121),
 	`accept_decline` varchar(20),
 	`status` varchar(20) DEFAULT 'pending',
@@ -322,14 +333,14 @@ CREATE TABLE `sessions` (
 );
 --> statement-breakpoint
 CREATE TABLE `students` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`full_name` varchar(255),
-	`email` varchar(255),
-	`class_id` varchar(255),
-	`added_by` varchar(255),
+	`id` varchar(36) NOT NULL,
+	`student_user_id` varchar(36) NOT NULL,
+	`parent_user_id` varchar(36) NOT NULL,
+	`experience_level` enum('beginner','intermediate','advanced') NOT NULL,
 	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `students_id` PRIMARY KEY(`id`),
-	CONSTRAINT `email` UNIQUE(`email`)
+	CONSTRAINT `students_student_user_id_unique` UNIQUE(`student_user_id`),
+	CONSTRAINT `unique_student_parent` UNIQUE(`student_user_id`,`parent_user_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `tasks` (
@@ -341,9 +352,9 @@ CREATE TABLE `tasks` (
 	`due_date` datetime,
 	`notification_value` varchar(10),
 	`notification_unit` varchar(10),
-	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`status` enum('pending','in_progress','completed','declined') DEFAULT 'pending',
-	`updated_at` timestamp,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `tasks_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -396,7 +407,7 @@ CREATE TABLE `users` (
 	`role` enum('dojo-admin','instructor','parent','child') NOT NULL,
 	`balance` decimal(10,2) NOT NULL DEFAULT '0.00',
 	`stripe_customer_id` varchar(255),
-	`dob` varchar(20),
+	`dob` date,
 	`gender` varchar(10),
 	`city` varchar(50),
 	`street` varchar(100),
@@ -417,6 +428,8 @@ CREATE TABLE `waitlist` (
 	CONSTRAINT `email` UNIQUE(`email`)
 );
 --> statement-breakpoint
+ALTER TABLE `class_enrollments` ADD CONSTRAINT `class_enrollments_student_id_students_id_fk` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `class_enrollments` ADD CONSTRAINT `class_enrollments_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `class_occurrences` ADD CONSTRAINT `class_occurrences_schedule_id_class_schedules_id_fk` FOREIGN KEY (`schedule_id`) REFERENCES `class_schedules`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `class_occurrences` ADD CONSTRAINT `class_occurrences_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `class_schedules` ADD CONSTRAINT `class_schedules_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -432,6 +445,8 @@ ALTER TABLE `instructor_invites` ADD CONSTRAINT `instructor_invites_invited_by_u
 ALTER TABLE `notifications` ADD CONSTRAINT `notifications_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `password_reset_otps` ADD CONSTRAINT `password_reset_otps_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `refresh_tokens` ADD CONSTRAINT `refresh_tokens_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `students` ADD CONSTRAINT `students_student_user_id_users_id_fk` FOREIGN KEY (`student_user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `students` ADD CONSTRAINT `students_parent_user_id_users_id_fk` FOREIGN KEY (`parent_user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `user_cards` ADD CONSTRAINT `user_cards_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `user_oauth_accounts` ADD CONSTRAINT `user_oauth_accounts_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX `announcement_id` ON `announcement_recipients` (`announcement_id`);--> statement-breakpoint
@@ -443,6 +458,8 @@ CREATE INDEX `created_by` ON `chats` (`created_by`);--> statement-breakpoint
 CREATE INDEX `class_idx` ON `class_schedules` (`class_id`);--> statement-breakpoint
 CREATE INDEX `instructor_idx` ON `classes` (`instructor_id`);--> statement-breakpoint
 CREATE INDEX `dojo_idx` ON `classes` (`dojo_id`);--> statement-breakpoint
+CREATE INDEX `dojo_id` ON `dojo_instructors` (`dojo_id`);--> statement-breakpoint
+CREATE INDEX `instructor_user_id` ON `dojo_instructors` (`instructor_user_id`);--> statement-breakpoint
 CREATE INDEX `enrollment_id` ON `enrolled_children` (`enrollment_id`);--> statement-breakpoint
 CREATE INDEX `idx_messages_chat_id` ON `messages` (`chat_id`);--> statement-breakpoint
 CREATE INDEX `idx_messages_sender_id` ON `messages` (`sender_id`);--> statement-breakpoint

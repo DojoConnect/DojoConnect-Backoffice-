@@ -437,14 +437,6 @@ describe("Dojo Service", () => {
       expect(result).toEqual(dojo);
     });
 
-    it("should throw InternalServerErrorException for other roles", async () => {
-      const user = buildUserMock({ role: Role.Parent });
-
-      await expect(DojosService.fetchUserDojo({ user })).rejects.toThrow(
-        "Code Path not implemented"
-      );
-    });
-
     it("should return null if no dojo is found for DojoAdmin", async () => {
       const user = buildUserMock({ role: Role.DojoAdmin });
       getDojoForOwnerSpy.mockResolvedValue(null);
@@ -461,6 +453,25 @@ describe("Dojo Service", () => {
       const result = await DojosService.fetchUserDojo({ user });
 
       expect(result).toBeNull();
+    });
+  });
+
+  describe("generateReferralCode", () => {
+    it("should return a string starting with 'DOJ'", () => {
+      const code = DojosService.generateReferralCode();
+      expect(typeof code).toBe("string");
+      expect(code.startsWith("DOJ")).toBe(true);
+    });
+
+    it("should return a string of length 7", () => {
+      const code = DojosService.generateReferralCode();
+      expect(code.length).toBe(7);
+    });
+
+    it("should generate different codes on subsequent calls", () => {
+      const code1 = DojosService.generateReferralCode();
+      const code2 = DojosService.generateReferralCode();
+      expect(code1).not.toEqual(code2);
     });
   });
 });

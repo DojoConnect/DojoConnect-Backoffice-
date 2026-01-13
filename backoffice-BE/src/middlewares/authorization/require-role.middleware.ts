@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { Role } from "../constants/enums.js";
-import { HttpException, UnauthorizedException } from "../core/errors/index.js";
-import { ForbiddenException } from "../core/errors/index.js";
+import { Role } from "../../constants/enums.js";
+import { HttpException, UnauthorizedException } from "../../core/errors/index.js";
+import { ForbiddenException } from "../../core/errors/index.js";
 
 export const requireRole =
   (...allowedRoles: readonly Role[]) =>
@@ -12,7 +12,7 @@ export const requireRole =
       }
 
       if (!allowedRoles.includes(req.user.role)) {
-        throw new ForbiddenException("Forbidden: insufficient permissions");
+        throw new ForbiddenException(`Forbidden: insufficient permissions. Required role: ${allowedRoles.join(", ")}. User role: ${req.user.role}`);
       }
 
       next();

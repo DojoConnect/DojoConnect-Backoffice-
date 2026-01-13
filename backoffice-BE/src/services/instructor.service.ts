@@ -155,28 +155,25 @@ export class InstructorService {
         tx,
       });
 
-      await this.addInstructorToDojo(newUser, invite.dojoId, tx);
-
-      await InvitesRepository.markInviteAsResponded(
+      await Promise.all([ this.addInstructorToDojo(newUser, invite.dojoId, tx),
+      InvitesRepository.markInviteAsResponded(
         invite.id,
         InstructorInviteStatus.Accepted,
         tx
-      );
+      )]);
 
       // Notify the inviter about the acceptance
-      await this.notifyDojoOwnerOfResponse({
+      Promise.allSettled([ this.notifyDojoOwnerOfResponse({
         tx,
         invite,
         response: InstructorInviteStatus.Accepted,
-      });
-
+      }),
       // Notify Instructor
-      await NotificationService.sendInviteAcceptedNotification(newUser, invite);
-
-      await MailerService.sendInviteAcceptedEmail({
+      this.notifyInstructorOfInviteAcceptance({
         instructor: newUser,
-        inviteDetails: invite,
-      });
+        invite,
+      })
+    ]);
     };
 
     return txInstance
@@ -224,18 +221,29 @@ export class InstructorService {
       throw new NotFoundException("Dojo owner not found");
     }
 
-    await NotificationService.notifyDojoOwnerOfInviteResponse({
-      user: dojoOwner,
-      inviteDetails: invite,
-      status: response,
-    });
-
-    await MailerService.sendInviteResponseEmail({
-      dojoOwner,
-      inviteDetails: invite,
-      response,
-    });
+    await Promise.allSettled([
+      NotificationService.notifyDojoOwnerOfInviteResponse({
+        user: dojoOwner,
+        inviteDetails: invite,
+        status: response,
+      }),
+      MailerService.sendInviteResponseEmail({
+        dojoOwner,
+        inviteDetails: invite,
+        response,
+      }),
+    ]);
   };
+
+  static notifyInstructorOfInviteAcceptance = async ({instructor, invite}:{instructor: IUser, invite: InstructorInviteDetails}) => {
+    await Promise.allSettled([
+        NotificationService.sendInviteAcceptedNotification(instructor, invite),
+      MailerService.sendInviteAcceptedEmail({
+        instructor,
+        inviteDetails: invite,
+      })
+    ]);
+  } 
 
   static async getInstructorClasses(
     instructorId: string,

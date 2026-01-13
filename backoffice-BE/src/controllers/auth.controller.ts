@@ -22,6 +22,24 @@ export const handleRegisterDojoAdmin = async (req: Request, res: Response) => {
   );
 };
 
+export const handleRegisterParent = async (req: Request, res: Response) => {
+  const userIp = req.ip;
+  const userAgent = req.headers["user-agent"];
+
+  const result = await AuthService.registerParent({
+    dto: req.body,
+    userIp,
+    userAgent,
+  });
+
+  res.status(201).json(
+    formatApiResponse({
+      data: result,
+      message: "Parent registered successfully",
+    })
+  );
+};
+
 export const loginUser = async (req: Request, res: Response) => {
   const userIp = req.ip;
   const userAgent = req.headers["user-agent"];
