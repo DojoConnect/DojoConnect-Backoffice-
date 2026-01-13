@@ -26,6 +26,12 @@ const app: Express = express();
 app.use(cors(corsOptions));
 app.use(helmet());
 
+// Set because we are deployed on Cpanel
+// On cPanel, a Node app is always behind a proxy (Apache + often LiteSpeed). 
+// cPanel injects X-Forwarded-For automatically, so Express must trust the proxy.
+// We use 1 instead of true to prevent spoofed headers
+app.set("trust proxy", 1);
+
 app.use(express.json()); // bodyParser not needed
 
 /* ------------------ Backoffice Utilities (from combine.js) ------------------ */

@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "f09bfbdd-5d92-46dc-8837-53c7bb7ba2d3",
+  "id": "48c7b6e4-f715-4d68-af97-77ce425b829b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "admin": {
@@ -541,6 +541,96 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
+    "class_enrollments": {
+      "name": "class_enrollments",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "class_id": {
+          "name": "class_id",
+          "type": "varchar(36)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "student_class_unique": {
+          "name": "student_class_unique",
+          "columns": [
+            "student_id",
+            "class_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "class_enrollments_student_id_students_id_fk": {
+          "name": "class_enrollments_student_id_students_id_fk",
+          "tableFrom": "class_enrollments",
+          "tableTo": "students",
+          "columnsFrom": [
+            "student_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "class_enrollments_class_id_classes_id_fk": {
+          "name": "class_enrollments_class_id_classes_id_fk",
+          "tableFrom": "class_enrollments",
+          "tableTo": "classes",
+          "columnsFrom": [
+            "class_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "class_enrollments_id": {
+          "name": "class_enrollments_id",
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraint": {}
+    },
     "class_occurrences": {
       "name": "class_occurrences",
       "columns": {
@@ -947,7 +1037,7 @@
         },
         "subscription_price_check": {
           "name": "subscription_price_check",
-          "value": "(`classes`.`subscription_type` = 'free' AND (`classes`.`price` IS NULL OR `classes`.`price` = 0)) OR (`classes`.`subscription_type` = 'paid' AND `classes`.`price` > 0)"
+          "value": "(`classes`.`subscription_type` = 'free' AND (`classes`.`price` IS NULL OR `classes`.`price` = 0)) OR (`classes`.`subscription_type` = 'paid' AND (`classes`.`price` IS NOT NULL AND `classes`.`price` > 0))"
         }
       }
     },
@@ -1045,7 +1135,30 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "dojo_id": {
+          "name": "dojo_id",
+          "columns": [
+            "dojo_id"
+          ],
+          "isUnique": false
+        },
+        "instructor_user_id": {
+          "name": "instructor_user_id",
+          "columns": [
+            "instructor_user_id"
+          ],
+          "isUnique": false
+        },
+        "unique_dojo_instructor": {
+          "name": "unique_dojo_instructor",
+          "columns": [
+            "dojo_id",
+            "instructor_user_id"
+          ],
+          "isUnique": true
+        }
+      },
       "foreignKeys": {
         "dojo_instructors_instructor_user_id_users_id_fk": {
           "name": "dojo_instructors_instructor_user_id_users_id_fk",
@@ -1531,6 +1644,22 @@
           "notNull": true,
           "autoincrement": false
         },
+        "notification_sent": {
+          "name": "notification_sent",
+          "type": "tinyint",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "response_status": {
+          "name": "response_status",
+          "type": "varchar(121)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
         "created_by": {
           "name": "created_by",
           "type": "varchar(255)",
@@ -1553,22 +1682,6 @@
           "notNull": true,
           "autoincrement": false,
           "default": "CURRENT_TIMESTAMP"
-        },
-        "notification_sent": {
-          "name": "notification_sent",
-          "type": "tinyint",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false,
-          "default": 0
-        },
-        "response_status": {
-          "name": "response_status",
-          "type": "varchar(121)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'pending'"
         }
       },
       "indexes": {},
@@ -1911,7 +2024,7 @@
         },
         "type": {
           "name": "type",
-          "type": "enum('event','class_created','class_updated','class_deleted','invitation_created','invitation_response','invitation_accepted','message','signup')",
+          "type": "enum('event','child_added','class_created','class_updated','class_deleted','class_assigned','class_reassigned','invitation_created','invitation_response','invitation_accepted','message','signup')",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -2274,37 +2387,30 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "int",
+          "type": "varchar(36)",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": true
-        },
-        "full_name": {
-          "name": "full_name",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": false,
           "autoincrement": false
         },
-        "email": {
-          "name": "email",
-          "type": "varchar(255)",
+        "student_user_id": {
+          "name": "student_user_id",
+          "type": "varchar(36)",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
-        "class_id": {
-          "name": "class_id",
-          "type": "varchar(255)",
+        "parent_user_id": {
+          "name": "parent_user_id",
+          "type": "varchar(36)",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
-        "added_by": {
-          "name": "added_by",
-          "type": "varchar(255)",
+        "experience_level": {
+          "name": "experience_level",
+          "type": "enum('beginner','intermediate','advanced')",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "autoincrement": false
         },
         "created_at": {
@@ -2316,8 +2422,44 @@
           "default": "CURRENT_TIMESTAMP"
         }
       },
-      "indexes": {},
-      "foreignKeys": {},
+      "indexes": {
+        "unique_student_parent": {
+          "name": "unique_student_parent",
+          "columns": [
+            "student_user_id",
+            "parent_user_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "students_student_user_id_users_id_fk": {
+          "name": "students_student_user_id_users_id_fk",
+          "tableFrom": "students",
+          "tableTo": "users",
+          "columnsFrom": [
+            "student_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "students_parent_user_id_users_id_fk": {
+          "name": "students_parent_user_id_users_id_fk",
+          "tableFrom": "students",
+          "tableTo": "users",
+          "columnsFrom": [
+            "parent_user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "students_id": {
           "name": "students_id",
@@ -2327,10 +2469,10 @@
         }
       },
       "uniqueConstraints": {
-        "email": {
-          "name": "email",
+        "students_student_user_id_unique": {
+          "name": "students_student_user_id_unique",
           "columns": [
-            "email"
+            "student_user_id"
           ]
         }
       },
@@ -2395,14 +2537,6 @@
           "notNull": false,
           "autoincrement": false
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
-        },
         "status": {
           "name": "status",
           "type": "enum('pending','in_progress','completed','declined')",
@@ -2411,12 +2545,21 @@
           "autoincrement": false,
           "default": "'pending'"
         },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
         }
       },
       "indexes": {},
@@ -2778,7 +2921,7 @@
         },
         "dob": {
           "name": "dob",
-          "type": "varchar(20)",
+          "type": "date",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

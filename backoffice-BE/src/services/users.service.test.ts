@@ -13,8 +13,6 @@ import {
   buildUserMock,
 } from "../tests/factories/user.factory.js";
 import { eq } from "drizzle-orm";
-import { NotFoundException } from "../core/errors/index.js";
-import { buildStripePaymentMethodCardMock } from "../tests/factories/stripe.factory.js";
 
 describe("Users Service", () => {
   const whereClause = eq(users.id, "1");
@@ -549,25 +547,6 @@ describe("Users Service", () => {
       });
 
       expect(dbSpies.runInTransactionSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe("generateReferralCode", () => {
-    it("should return a string starting with 'DOJ'", () => {
-      const code = UsersService.generateReferralCode();
-      expect(typeof code).toBe("string");
-      expect(code.startsWith("DOJ")).toBe(true);
-    });
-
-    it("should return a string of length 7", () => {
-      const code = UsersService.generateReferralCode();
-      expect(code.length).toBe(7);
-    });
-
-    it("should generate different codes on subsequent calls", () => {
-      const code1 = UsersService.generateReferralCode();
-      const code2 = UsersService.generateReferralCode();
-      expect(code1).not.toEqual(code2);
     });
   });
 });

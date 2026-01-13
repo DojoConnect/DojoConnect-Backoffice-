@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "5",
-      "when": 1767134248395,
-      "tag": "0000_past_monster_badoon",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1767802147713,
-      "tag": "0001_abnormal_firebird",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1767971215143,
-      "tag": "0002_dear_wolfsbane",
+      "when": 1768249515531,
+      "tag": "0000_loving_silk_fever",
       "breakpoints": true
     }
   ]

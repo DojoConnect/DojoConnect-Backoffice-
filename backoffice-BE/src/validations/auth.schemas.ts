@@ -1,9 +1,10 @@
 // Use zod for schema validation
 import { z } from "zod";
 import { StripePlans } from "../constants/enums.js";
+import { DateOnlySchema } from "./helpers.schemas.js";
 
 export const LoginSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.email().trim(),
   password: z.string().trim().nonempty(),
   fcmToken: z.string().trim().optional().nullable(),
 });
@@ -26,26 +27,23 @@ export const PasswordSchema = z
 export const CreateUserBaseSchema = z.object({
   firstName: z.string().trim().nonempty(),
   lastName: z.string().trim().nonempty(),
-  email: z.string().trim().email(),
-  password: PasswordSchema,
   username: z.string().trim().nonempty(),
+  email: z.email().trim(),
+  password: PasswordSchema,
   fcmToken: z.string().trim().optional().nullable(),
 });
 
 
 export const RegisterDojoAdminSchema = CreateUserBaseSchema.extend({
-  /**
-   * @deprecated rely on firstName and lastName instead.
-   */
-  fullName: z.string().trim().nonempty(),
-
   referredBy: z.string().trim().optional().default(""),
-
-  plan: z.nativeEnum(StripePlans),
+  plan: z.enum(StripePlans),
   dojoName: z.string().trim().nonempty(),
   dojoTag: z.string().trim().nonempty(),
   dojoTagline: z.string().trim().nonempty(),
 });
+
+// RegisterParentSchema uses CreateUserBaseSchema which matches requirements (no username)
+export const RegisterParentSchema = CreateUserBaseSchema;
 
 export const FirebaseSignInSchema = z.object({
   idToken: z.string().trim().nonempty(),
@@ -53,11 +51,11 @@ export const FirebaseSignInSchema = z.object({
 });
 
 export const ForgotPasswordSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.email().trim(),
 });
 
 export const VerifyOtpSchema = z.object({
-  email: z.string().trim().email(),
+  email: z.email().trim(),
   otp: z
     .string()
     .trim()
@@ -69,7 +67,10 @@ export const ResetPasswordSchema = z.object({
   newPassword: PasswordSchema,
 });
 
-export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema>;
+export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> & {
+  dob?: z.infer<typeof DateOnlySchema>;
+}
+export type RegisterParentDTO = z.infer<typeof RegisterParentSchema>;
 export type RegisterDojoAdminDTO = z.infer<typeof RegisterDojoAdminSchema>;
 export type LoginDTO = z.infer<typeof LoginSchema>;
 export type RefreshTokenDTO = z.infer<typeof RefreshTokenSchema>;

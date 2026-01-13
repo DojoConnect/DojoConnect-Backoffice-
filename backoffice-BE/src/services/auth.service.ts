@@ -35,6 +35,7 @@ import {
   RegisterDojoAdminDTO,
   ResetPasswordDTO,
   VerifyOtpDTO,
+  RegisterParentDTO,
 } from "../validations/auth.schemas.js";
 import type { Transaction } from "../db/index.js";
 import { DojoStatus, Role } from "../constants/enums.js";
@@ -42,7 +43,6 @@ import {
   AuthResponseDTO,
   RegisterDojoAdminResponseDTO,
 } from "../dtos/auth.dtos.js";
-import { formatDateForMySQL } from "../utils/date.utils.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
 import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
@@ -147,13 +147,13 @@ export class AuthService {
         }),
       ]);
 
-      if (!dojo) {
-        throw new NotFoundException("Dojo not found for user");
+    if (!dojo && (user.role === Role.DojoAdmin || user.role === Role.Instructor)) {
+        throw new NotFoundException("Dojo not found for DojoAdmin or Instructor");
       }
 
       return new AuthResponseDTO({
         ...authTokens,
-        user: new UserDTO({ ...user, dojo: new BaseDojoDTO(dojo) }),
+        user: new UserDTO({ ...user, dojo }),
       });
     };
 
@@ -267,6 +267,7 @@ export class AuthService {
         username: dto.username,
         role,
         fcmToken: dto.fcmToken || null,
+        dob: dto.dob || null,
       },
       tx
     );
@@ -317,9 +318,8 @@ export class AuthService {
 
         const newUser = await AuthService.createUser({
           dto: {
-            firstName: dto.firstName || dto.fullName.split(" ")[0],
-            lastName:
-              dto.lastName || dto.fullName.split(" ").slice(1).join(" "),
+            firstName: dto.firstName,
+            lastName: dto.lastName,
             username: dto.username,
             email: dto.email,
             password: dto.password,
@@ -330,7 +330,7 @@ export class AuthService {
         });
 
         // Generate Referral Code and Hash Password
-        const referral_code = UsersService.generateReferralCode();
+        const referral_code = DojosService.generateReferralCode();
 
         let trialEndsAt: Date | null = addDays(new Date(), 14);
 
@@ -389,18 +389,21 @@ export class AuthService {
           throw new NotFoundException("Dojo not found for user");
         }
 
-        try {
-          await MailerService.sendWelcomeEmail(
-            dto.email,
-            dto.fullName,
-            Role.DojoAdmin
-          );
 
-          await NotificationService.sendSignUpNotification(newUser);
-        } catch (err) {
+          const results = await Promise.allSettled([
+            MailerService.sendDojoAdminWelcomeEmail(
+              dto.email,
+              dto.firstName,
+              Role.DojoAdmin
+          ),
+
+          NotificationService.sendDojoAdminSignUpNotification(newUser)
+        ]);
+
+        if (results.some((result) => result.status === "rejected")) {
           console.log(
             "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
-            err
+            results.find((result) => result.status === "rejected")?.reason
           );
         }
 
@@ -413,6 +416,82 @@ export class AuthService {
         console.log(`An error occurred while trying to register user: ${err}`);
         throw err;
       }
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
+
+  static registerParent = async (
+    {
+      dto,
+      userIp,
+      userAgent,
+    }: {
+      dto: RegisterParentDTO;
+      userIp?: string;
+      userAgent?: string;
+    },
+    txInstance?: dbService.Transaction
+  ): Promise<AuthResponseDTO> => {
+    const execute = async (tx: dbService.Transaction) => {
+
+      // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
+        const [
+          existingUserWithEmail,
+          existingUserWithUsername
+        ] = await Promise.all([
+          UsersService.getOneUserByEmail({
+            email: dto.email,
+            txInstance: tx,
+          }),
+          UsersService.getOneUserByUserName({
+            username: dto.username,
+            txInstance: tx,
+          }),
+        ]);
+
+        if (existingUserWithEmail) {
+          throw new ConflictException("Email already registered");
+        }
+
+        if (existingUserWithUsername) {
+          throw new ConflictException("Username already taken");
+        }
+
+      const newUser = await AuthService.createUser({
+        dto,
+        role: Role.Parent,
+        tx,
+      });
+
+      // Send Welcome
+        const results = await Promise.allSettled([
+        MailerService.sendParentWelcomeEmail(
+          newUser.email,
+          newUser.firstName
+        ),
+        NotificationService.sendParentSignUpNotification(newUser)]);
+
+        if (results.some((result) => result.status === "rejected")) {
+          console.log(
+            "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
+            results.find((result) => result.status === "rejected")?.reason
+          );
+        }
+
+      const authTokens = await AuthService.generateAuthTokens({
+        user: newUser,
+        userIp,
+        userAgent,
+        txInstance: tx,
+      });
+
+      return new AuthResponseDTO({
+        ...authTokens,
+        user: new UserDTO({ ...newUser, dojo: undefined }),
+      });
     };
 
     return txInstance
@@ -540,7 +619,7 @@ export class AuthService {
           oAuthAcctId: oAuthAcct.id,
           tx,
           update: {
-            updatedAt: formatDateForMySQL(new Date()),
+            updatedAt: new Date(),
             profileData: {
               name: firebaseUser.name,
               picture: firebaseUser.picture,
@@ -730,6 +809,43 @@ export class AuthService {
 
       // Security: Kill all sessions (Log out all devices)
       await RefreshTokenRepository.deleteByUserId(decoded.userId, tx);
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
+
+  static generateUsername = async ({
+    email,
+    txInstance,
+  }: {
+    email: string;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+            // Generate Username
+      let username = email.split("@")[0];
+      let isAvailable = await AuthService.isUsernameAvailable({
+        username,
+        txInstance: tx,
+      });
+
+      if (!isAvailable) {
+        const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+        username = `${username}${randomSuffix}`;
+        const isAvailableRetry = await AuthService.isUsernameAvailable({
+          username,
+          txInstance: tx,
+        });
+        if (!isAvailableRetry) {
+          throw new ConflictException(
+            "Could not generate a unique username. Please try a different email."
+          );
+        }
+      }
+
+      return username;
     };
 
     return txInstance

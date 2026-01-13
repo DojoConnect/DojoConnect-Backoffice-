@@ -8,6 +8,7 @@ import {
   logoutUser,
   refreshUserToken,
   handleRegisterDojoAdmin,
+  handleRegisterParent,
   handleFirebaseLogin,
   handleInitForgetPassword,
   handleVerifyOtp,
@@ -21,6 +22,7 @@ import {
   LoginSchema,
   RefreshTokenSchema,
   RegisterDojoAdminSchema,
+  RegisterParentSchema,
   ResetPasswordSchema,
   VerifyOtpSchema,
 } from "../validations/auth.schemas.js";
@@ -97,6 +99,13 @@ router.post(
   authLimiter,
   validateReqBody(RegisterDojoAdminSchema),
   handleRegisterDojoAdmin
+);
+
+router.post(
+  "/register/parent",
+  authLimiter,
+  validateReqBody(RegisterParentSchema),
+  handleRegisterParent
 );
 router.post("/refresh", validateReqBody(RefreshTokenSchema), refreshUserToken);
 router.post("/logout", validateReqBody(RefreshTokenSchema), logoutUser);

@@ -6,7 +6,7 @@ import {
   DeclineInviteSchema,
 } from "../validations/instructors.schemas.js";
 import { requireAuth } from "../middlewares/require-auth.middleware.js";
-import { requireRole } from "../middlewares/require-role.middleware.js";
+import { requireRole } from "../middlewares/authorization/require-role.middleware.js";
 import { Role } from "../constants/enums.js";
 import { isMemberOfInstructorDojoMiddleware } from "../middlewares/authorization/is-member-of-instructor-dojo.middleware.js";
 

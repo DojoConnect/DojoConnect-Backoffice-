@@ -101,11 +101,11 @@ export class DojosService {
     const execute = async (tx: Transaction) => {
       const newDojoID = await DojoRepository.create(newDojoDTO, tx);
 
-      await InstructorsRepository.attachInstructorToDojo(
-        newDojoDTO.ownerUserId,
-        newDojoID,
-        tx
-      );
+      // await InstructorsRepository.attachInstructorToDojo(
+      //   newDojoDTO.ownerUserId,
+      //   newDojoID,
+      //   tx
+      // );
 
       return (await DojosService.getOneDojoByID(newDojoID, tx))!;
     };
@@ -298,6 +298,9 @@ export class DojosService {
           break;
         case Role.Parent:
         case Role.Child:
+          // Parents and Children may not have a dojo directly associated in this context yet
+          dojo = null;
+          break;
         default:
           throw new InternalServerErrorException("Code Path not implemented");
       }
@@ -309,4 +312,8 @@ export class DojosService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
+
+
+  static generateReferralCode = () =>
+    "DOJ" + Math.floor(1000 + Math.random() * 9000); // rand(1000, 9999)
 }

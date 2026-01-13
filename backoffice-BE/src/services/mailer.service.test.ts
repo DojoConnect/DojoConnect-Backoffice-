@@ -35,7 +35,7 @@ describe("Mailer Service", () => {
       const name = "Admin User";
       const role = Role.DojoAdmin;
 
-      await MailerService.sendWelcomeEmail(dest, name, role);
+      await MailerService.sendDojoAdminWelcomeEmail(dest, name, role);
 
       expect(sendMailMock).toHaveBeenCalledTimes(1);
       const mailOptions = sendMailMock.mock.calls[0][0];
@@ -56,7 +56,7 @@ describe("Mailer Service", () => {
       // but assuming it works based on typical usage.
       const role = "Parent" as Role;
 
-      await MailerService.sendWelcomeEmail(dest, name, role);
+      await MailerService.sendDojoAdminWelcomeEmail(dest, name, role);
 
       expect(sendMailMock).toHaveBeenCalledTimes(1);
       const mailOptions = sendMailMock.mock.calls[0][0];
@@ -76,7 +76,7 @@ describe("Mailer Service", () => {
         .mockImplementation(() => {});
       sendMailMock.mockRejectedValueOnce(new Error("SMTP Error"));
 
-      await MailerService.sendWelcomeEmail(
+      await MailerService.sendDojoAdminWelcomeEmail(
         "fail@example.com",
         "Fail User",
         Role.DojoAdmin

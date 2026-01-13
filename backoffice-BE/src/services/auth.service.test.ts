@@ -38,7 +38,8 @@ import {
   buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
   buildRefreshTokenMock,
-  buildRegisterUserDTOMock as buildRegisterDojoAdminDTOMock,
+  buildRegisterDojoAdminDTOMock as buildRegisterDojoAdminDTOMock,
+  buildRegisterParentDTOMock,
 } from "../tests/factories/auth.factory.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { UserDTO } from "../dtos/user.dtos.js";
@@ -380,7 +381,6 @@ describe("Auth Service", () => {
       email: "new@user.com",
       username: "newuser",
       password: "password123",
-      fullName: "New User",
       plan: StripePlans.Monthly,
       dojoName: mockDojo.name,
       dojoTag: mockDojo.tag,
@@ -427,10 +427,10 @@ describe("Auth Service", () => {
         .spyOn(DojosService, "createDojo")
         .mockResolvedValue(mockDojo);
       sendWelcomeEmailSpy = vi
-        .spyOn(MailerService, "sendWelcomeEmail")
+        .spyOn(MailerService, "sendDojoAdminWelcomeEmail")
         .mockResolvedValue();
       sendSignUpNotificationSpy = vi
-        .spyOn(NotificationService, "sendSignUpNotification")
+        .spyOn(NotificationService, "sendDojoAdminSignUpNotification")
         .mockResolvedValue();
 
       generateAuthTokensSpy = vi
@@ -1014,6 +1014,92 @@ describe("Auth Service", () => {
           attempts: exhaustedOtp.attempts + 1,
         },
       });
+    });
+  });
+
+  describe("registerParent", () => {
+    const parentDto = buildRegisterParentDTOMock({
+      email: "parent@test.com",
+      username: "parentuser",
+      password: "Password123!",
+      firstName: "Parent",
+      lastName: "User",
+      fcmToken: "token",
+    })
+
+    let sendParentWelcomeEmailSpy: MockInstance;
+    let sendParentSignUpNotificationSpy: MockInstance;
+    
+    // Define mockSavedUser locally
+    const mockSavedUser = buildUserMock({
+        ...parentDto,
+        id: "user-id",
+        role: Role.Parent, 
+        passwordHash: "hashed",
+    });
+
+    beforeEach(() => {
+        sendParentWelcomeEmailSpy = vi
+        .spyOn(MailerService, "sendParentWelcomeEmail")
+        .mockResolvedValue();
+
+        sendParentSignUpNotificationSpy = vi
+        .spyOn(NotificationService, "sendParentSignUpNotification")
+        .mockResolvedValue();
+        
+        // Reset specific spies
+        getOneUserByEmailSpy.mockResolvedValue(null);
+        getOneUserByUsernameSpy.mockResolvedValue(null);
+        saveUserSpy.mockResolvedValue({ ...mockSavedUser, role: Role.Parent });
+    });
+
+    it("should successfully register a parent", async () => {
+      const result = await AuthService.registerParent({ dto: parentDto });
+
+      expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
+        email: parentDto.email,
+        txInstance: dbSpies.mockTx,
+      });
+
+      // Username check logic
+      expect(getOneUserByUsernameSpy).toHaveBeenCalledWith({
+        username: parentDto.username,
+        txInstance: dbSpies.mockTx,
+      });
+      
+      expect(saveUserSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: parentDto.email,
+          role: Role.Parent,
+          username: parentDto.username,
+        }),
+        dbSpies.mockTx
+      );
+
+      expect(sendParentWelcomeEmailSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String)
+      );
+      expect(sendParentSignUpNotificationSpy).toHaveBeenCalled();
+
+      expect(result.user.role).toBe(Role.Parent);
+      expect(result.user.dojo).toBeUndefined();
+    });
+
+    it("should throw ConflictException if email exists", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(mockSavedUser);
+
+      await expect(AuthService.registerParent({ dto: parentDto })).rejects.toThrow(
+        ConflictException
+      );
+    });
+
+    it("should throw ConflictException if username is taken", async () => {
+       getOneUserByUsernameSpy.mockResolvedValue(mockSavedUser);
+
+       await expect(AuthService.registerParent({ dto: parentDto })).rejects.toThrow(
+         ConflictException
+       );
     });
   });
 });
