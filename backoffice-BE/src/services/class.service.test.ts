@@ -87,7 +87,7 @@ describe("Class Service", () => {
   let fetchClassSchedulesRepoSpy: MockInstance;
   let userProfileForInstructorSpy: MockInstance;
   let userProfileByInstructorIdsSpy: MockInstance;
-  let getClassInfoSpy: MockInstance;
+  let getClassSchedulesAndInstructorSpy: MockInstance;
 
   const mockedNextDay = vi.mocked(nextDay);
   const mockedMapWeekdayToDayNumber = vi.mocked(mapWeekdayToDayNumber);
@@ -146,8 +146,8 @@ describe("Class Service", () => {
       UserRepository,
       "getUserProfileByInstructorIds"
     );
-    getClassInfoSpy = vi
-      .spyOn(ClassService, "getClassInfo")
+    getClassSchedulesAndInstructorSpy = vi
+      .spyOn(ClassService, "getClassSchedulesAndInstructor")
       .mockResolvedValue({} as any);
 
     // Default happy path mocks
@@ -346,21 +346,8 @@ describe("Class Service", () => {
       const dto: UpdateClassDTO = { name: "New Name" };
 
       await expect(
-        ClassService.updateClass({ classId, dojoId: dojo.id, dto })
+        ClassService.updateClass({ classId, dto })
       ).rejects.toThrow(NotFoundException);
-    });
-
-    it("should throw ForbiddenException if class does not belong to the dojo", async () => {
-      const existingClass = buildClassMock({
-        id: classId,
-        dojoId: "another-dojo",
-      });
-      findClassByIdRepoSpy.mockResolvedValue(existingClass);
-      const dto: UpdateClassDTO = { name: "New Name" };
-
-      await expect(
-        ClassService.updateClass({ classId, dojoId: dojo.id, dto })
-      ).rejects.toThrow(ForbiddenException);
     });
 
     it("should update basic class details", async () => {
@@ -368,7 +355,7 @@ describe("Class Service", () => {
       findClassByIdRepoSpy.mockResolvedValue(existingClass);
       const dto: UpdateClassDTO = { name: "Updated Class Name", capacity: 30 };
 
-      await ClassService.updateClass({ classId, dojoId: dojo.id, dto });
+      await ClassService.updateClass({ classId, dto });
 
       expect(updateClassRepoSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -399,7 +386,7 @@ describe("Class Service", () => {
         ],
       };
 
-      await ClassService.updateClass({ classId, dojoId: dojo.id, dto });
+      await ClassService.updateClass({ classId, dto });
 
       expect(deleteSchedulesRepoSpy).toHaveBeenCalledWith(
         classId,
@@ -454,14 +441,12 @@ describe("Class Service", () => {
 
       await ClassService.updateClassInstructor({
         classId,
-        dojoId,
         instructorId,
       });
 
       expect(updateClassSpy).toHaveBeenCalledWith(
         {
           classId,
-          dojoId,
           dto: { instructorId },
         },
         undefined // expecting txInstance to be undefined when not passed
@@ -701,15 +686,15 @@ describe("Class Service", () => {
 
     beforeEach(() => {
       // Restore the original implementation of getClassInfo for this suite
-      if (getClassInfoSpy) {
-        getClassInfoSpy.mockRestore();
+      if (getClassSchedulesAndInstructorSpy) {
+        getClassSchedulesAndInstructorSpy.mockRestore();
       }
     });
 
     it("should throw NotFoundException if class is not found", async () => {
       findClassByIdRepoSpy.mockResolvedValue(null);
 
-      await expect(ClassService.getClassInfo(classId)).rejects.toThrow(
+      await expect(ClassService.getClassSchedulesAndInstructor(classId)).rejects.toThrow(
         new NotFoundException(`Class with ID ${classId} not found.`)
       );
       expect(findClassByIdRepoSpy).toHaveBeenCalledWith(
@@ -723,7 +708,7 @@ describe("Class Service", () => {
       findClassByIdRepoSpy.mockResolvedValue(mockClass);
       fetchClassSchedulesRepoSpy.mockResolvedValue([]);
 
-      const result = await ClassService.getClassInfo(classId);
+      const result = await ClassService.getClassSchedulesAndInstructor(classId);
 
       expect(result).toEqual({
         ...mockClass,
@@ -753,7 +738,7 @@ describe("Class Service", () => {
       fetchClassSchedulesRepoSpy.mockResolvedValue([]);
       userProfileForInstructorSpy.mockResolvedValue(mockInstructorProfile);
 
-      const result = await ClassService.getClassInfo(classId);
+      const result = await ClassService.getClassSchedulesAndInstructor(classId);
 
       expect(result).toEqual({
         ...mockClass,
@@ -783,7 +768,7 @@ describe("Class Service", () => {
       fetchClassSchedulesRepoSpy.mockResolvedValue([]);
       userProfileForInstructorSpy.mockResolvedValue(null);
 
-      await expect(ClassService.getClassInfo(classId)).rejects.toThrow(
+      await expect(ClassService.getClassSchedulesAndInstructor(classId)).rejects.toThrow(
         new InternalServerErrorException("Instructor User account not found")
       );
     });
