@@ -19,10 +19,17 @@ import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import routes from "./routes/index.js";
 
 const corsOptions = {
-  origin: "https://www.dojoconnect.app",
+  origin: [
+    "https://www.dojoconnect.app",
+    "https://dojoconnect.app",
+    "http://localhost:3000", // React dev server
+    "http://localhost:5173", // Vite dev server
+  ],
 };
 
 const app: Express = express();
+app.set("trust proxy", 1);
+
 app.use(cors(corsOptions));
 app.use(helmet());
 
@@ -30,7 +37,7 @@ app.use(helmet());
 // On cPanel, a Node app is always behind a proxy (Apache + often LiteSpeed). 
 // cPanel injects X-Forwarded-For automatically, so Express must trust the proxy.
 // We use 1 instead of true to prevent spoofed headers
-app.set("trust proxy", 1);
+
 
 app.use(express.json()); // bodyParser not needed
 
