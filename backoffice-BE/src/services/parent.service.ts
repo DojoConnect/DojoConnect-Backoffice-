@@ -1,6 +1,5 @@
 import {
   ConflictException,
-  InternalServerErrorException,
 } from "../core/errors/index.js";
 import { Transaction } from "../db/index.js";
 import * as dbService from "../db/index.js";
@@ -13,6 +12,7 @@ import { MailerService } from "./mailer.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { UsersService } from "./users.service.js";
 import { nanoid } from "nanoid";
+import { StudentUserDTO } from "../dtos/student,dtos.js";
 
 export class ParentService {
   static addChild = async ({
@@ -59,7 +59,7 @@ export class ParentService {
       });
 
       // Create Student Link
-      await StudentRepository.create(
+      const newStudentId = await StudentRepository.create(
         {
           studentUserId: childUser.id,
           parentUserId: parent.id,
@@ -99,7 +99,13 @@ export class ParentService {
           );
         }
 
-      return childUser;
+      return  new StudentUserDTO({
+        id: newStudentId,
+        parentId: parent.id,
+        studentUserId: childUser.id,
+        experience: dto.experience,
+        studentUser: childUser
+      });
     };
 
     return txInstance
