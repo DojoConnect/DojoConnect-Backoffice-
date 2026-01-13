@@ -18,7 +18,7 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
     role: Role.DojoAdmin,
     balance: "150.75",
     emailVerified: true,
-    dob: "1990-05-14",
+    dob: new Date("1990-05-14"),
     gender: "male",
     city: "Lagos",
     street: "42 Ikoyi Crescent",

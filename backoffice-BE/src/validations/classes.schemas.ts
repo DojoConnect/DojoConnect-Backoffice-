@@ -62,7 +62,7 @@ const BaseClassSchema = z.object({
   capacity: z.number().int().positive(),
   streetAddress: z.string().trim().min(1),
   city: z.string().trim().min(1),
-  gradingDate: isoDateSchema,
+  gradingDate: isoDateSchema.optional().nullable(),
   gradingNotification: z
     .object({
       unit: z.enum(GradingNotificationUnit),
