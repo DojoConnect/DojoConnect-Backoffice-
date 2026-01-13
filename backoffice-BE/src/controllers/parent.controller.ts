@@ -23,3 +23,23 @@ export const handleAddChild = async (
     next(error);
   }
 };
+
+export const handleGetChildren = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const result = await ParentService.getChildren({
+      currentUser: req.user!,
+    });
+
+    res.status(200).json(
+      formatApiResponse({
+        data: result,
+      })
+    );
+  } catch (error) {
+    next(error);
+  }
+};

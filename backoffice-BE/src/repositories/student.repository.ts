@@ -1,5 +1,5 @@
-import { InferInsertModel, InferSelectModel } from "drizzle-orm";
-import { students } from "../db/schema.js";
+import { InferInsertModel, InferSelectModel, eq } from "drizzle-orm";
+import { students, users } from "../db/schema.js";
 import { Transaction } from "../db/index.js";
 
 export type IStudent = InferSelectModel<typeof students>;
@@ -13,5 +13,19 @@ export class StudentRepository {
       .$returningId();
 
     return insertResult.id;
+  };
+
+  static getStudentsByParentId = async (
+    parentId: string,
+    tx: Transaction
+  ) => {
+    return await tx
+      .select({
+        student: students,
+        user: users,
+      })
+      .from(students)
+      .innerJoin(users, eq(students.studentUserId, users.id))
+      .where(eq(students.parentUserId, parentId));
   };
 }

@@ -12,7 +12,7 @@ import { MailerService } from "./mailer.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { UsersService } from "./users.service.js";
 import { nanoid } from "nanoid";
-import { StudentUserDTO } from "../dtos/student,dtos.js";
+import { StudentUserDTO as StudentDTO } from "../dtos/student,dtos.js";
 
 export class ParentService {
   static addChild = async ({
@@ -99,12 +99,41 @@ export class ParentService {
           );
         }
 
-      return  new StudentUserDTO({
+      return  new StudentDTO({
         id: newStudentId,
         parentId: parent.id,
         studentUserId: childUser.id,
         experience: dto.experience,
         studentUser: childUser
+      });
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
+
+  static getChildren = async ({
+    currentUser,
+    txInstance,
+  }: {
+    currentUser: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      const studentsData = await StudentRepository.getStudentsByParentId(
+        currentUser.id,
+        tx
+      );
+
+      return studentsData.map((data) => {
+        return new StudentDTO({
+          id: data.student.id,
+          parentId: data.student.parentUserId,
+          studentUserId: data.student.studentUserId,
+          experience: data.student.experienceLevel,
+          studentUser: data.user,
+        });
       });
     };
 
