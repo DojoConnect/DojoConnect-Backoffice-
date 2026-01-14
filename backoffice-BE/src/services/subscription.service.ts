@@ -21,27 +21,27 @@ import Stripe from "stripe";
 import { assertDojoOwnership } from "../utils/assertions.utils.js";
 
 export class SubscriptionService {
-  static getOrCreateStripeCustId = async ({
+  static getOrCreateDojoStripeCustId = async ({
     user,
+    dojo,
     txInstance,
-    metadata,
   }: {
     user: IUser;
+    dojo: IDojo;
     txInstance?: Transaction;
-    metadata?: { dojoId?: string };
   }) => {
     const execute = async (tx: Transaction) => {
       // 1. Ensure Stripe customer exists
-      if (user.stripeCustomerId) {
-        return user.stripeCustomerId;
+      if (dojo.stripeCustomerId) {
+        return dojo.stripeCustomerId;
       }
 
       const customer = await StripeService.createCustomer(
         user
       );
 
-      await UsersService.updateUser({
-        userId: user.id,
+      await DojosService.updateDojo({
+        dojoId: dojo.id,
         update: {
           stripeCustomerId: customer.id,
         },
@@ -70,10 +70,10 @@ export class SubscriptionService {
       assertDojoOwnership(dojo, user);
 
       // 1. Ensure Stripe customer exists
-      let stripeCustomerId = await this.getOrCreateStripeCustId({
+      let stripeCustomerId = await this.getOrCreateDojoStripeCustId({
         user,
+        dojo,
         txInstance: tx,
-        metadata: { dojoId: dojo.id },
       });
 
       // 2. Check for existing incomplete setup
@@ -150,7 +150,7 @@ export class SubscriptionService {
         tx
       );
 
-      if (!user.stripeCustomerId || !sub || !sub.stripeSetupIntentId) {
+      if (!dojo.stripeCustomerId || !sub || !sub.stripeSetupIntentId) {
         throw new BadRequestException("No setup in progress");
       }
 
@@ -172,7 +172,7 @@ export class SubscriptionService {
       const grantTrial = !dojo.hasUsedTrial;
 
       const stripeSub = await StripeService.createSubscription({
-        custId: user.stripeCustomerId,
+        custId: dojo.stripeCustomerId,
         plan: dojo.activeSub,
         grantTrial,
         paymentMethodId,

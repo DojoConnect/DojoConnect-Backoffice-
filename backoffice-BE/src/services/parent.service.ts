@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  NotFoundException,
 } from "../core/errors/index.js";
 import { Transaction } from "../db/index.js";
 import * as dbService from "../db/index.js";
@@ -13,14 +14,15 @@ import { NotificationService } from "./notifications.service.js";
 import { UsersService } from "./users.service.js";
 import { nanoid } from "nanoid";
 import { StudentUserDTO as StudentDTO } from "../dtos/student,dtos.js";
+import { ParentRepository } from "../repositories/parent.repository.js";
 
 export class ParentService {
   static addChild = async ({
-    parent,
+    parentUser,
     dto,
     txInstance,
   }: {
-    parent: IUser;
+    parentUser: IUser;
     dto: AddChildDTO;
     txInstance?: Transaction;
   }) => {
@@ -35,13 +37,22 @@ export class ParentService {
         throw new ConflictException("User with this email already exists");
       }
 
+      const parent = await ParentRepository.getOneParentByUserId(
+        parentUser.id,
+        tx
+      );
+
+      if (!parent) {
+        throw new NotFoundException("Parent not found");
+      }
+
       // Generate Username (firstname.lastname + random)
       const baseUsername = `${dto.firstName.toLowerCase()}.${dto.lastName.toLowerCase()}`;
       const uniqueSuffix = nanoid(5); // Short random string
       const username = `${baseUsername}.${uniqueSuffix}`;
 
       // Generate Password (Parent's First Name)
-      const password = parent.firstName.toLowerCase();
+      const password = parentUser.firstName.toLowerCase();
 
       // Create Child User
       const childUser = await AuthService.createUser({
@@ -62,7 +73,7 @@ export class ParentService {
       const newStudentId = await StudentRepository.create(
         {
           studentUserId: childUser.id,
-          parentUserId: parent.id,
+          parentId: parent.id,
           experienceLevel: dto.experience,
         },
         tx
@@ -73,8 +84,8 @@ export class ParentService {
       const results = await Promise.allSettled([
       // Send mail to Parent
       MailerService.sendChildAddedEmailToParent(
-        parent.email,
-        parent.firstName,
+        parentUser.email,
+        parentUser.firstName,
         dto.firstName,
         dto.email
       ),
@@ -82,11 +93,11 @@ export class ParentService {
       MailerService.sendChildWelcomeEmail(
         dto.email,
         dto.firstName,
-        parent.firstName
+        parentUser.firstName
       ),
       // Send Notifications
       NotificationService.sendChildAddedNotification(
-        parent,
+        parentUser,
         dto.firstName
       ),
       NotificationService.sendWelcomeNotificationToChild(childUser)
@@ -129,7 +140,7 @@ export class ParentService {
       return studentsData.map((data) => {
         return new StudentDTO({
           id: data.student.id,
-          parentId: data.student.parentUserId,
+          parentId: data.student.parentId,
           studentUserId: data.student.studentUserId,
           experience: data.student.experienceLevel,
           studentUser: data.user,

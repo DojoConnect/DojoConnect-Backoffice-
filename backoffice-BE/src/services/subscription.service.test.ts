@@ -88,10 +88,11 @@ describe("SubscriptionService", () => {
   describe("getOrCreateStripeCustId", () => {
     it("should return existing stripeCustomerId if it exists", async () => {
       const stripeCustomerId = "cus_123";
-      user.stripeCustomerId = stripeCustomerId;
+      dojo.stripeCustomerId = stripeCustomerId;
 
-      const result = await SubscriptionService.getOrCreateStripeCustId({
+      const result = await SubscriptionService.getOrCreateDojoStripeCustId({
         user,
+        dojo,
       });
 
       expect(result).toBe(stripeCustomerId);
@@ -100,20 +101,20 @@ describe("SubscriptionService", () => {
     });
 
     it("should create a new Stripe customer and update the user if stripeCustomerId does not exist", async () => {
-      user.stripeCustomerId = null;
+      dojo.stripeCustomerId = "";
       const newStripeCustomerId = "cus_new_456";
       const customer = buildStripeCustMock({ id: newStripeCustomerId });
       createCustomerSpy.mockResolvedValue(customer);
 
-      const result = await SubscriptionService.getOrCreateStripeCustId({
+      const result = await SubscriptionService.getOrCreateDojoStripeCustId({
         user,
-        metadata: { dojoId: "dojo_1" },
+        dojo,
       });
 
       expect(result).toBe(newStripeCustomerId);
       expect(createCustomerSpy).toHaveBeenCalledWith(user);
-      expect(updateUserSpy).toHaveBeenCalledWith({
-        userId: user.id,
+      expect(updateDojoSpy).toHaveBeenCalledWith({
+        dojoId: dojo.id,
         update: { stripeCustomerId: newStripeCustomerId },
         txInstance: dbSpies.mockTx,
       });
@@ -122,7 +123,7 @@ describe("SubscriptionService", () => {
 
   describe("setupDojoAdminBilling", () => {
     beforeEach(() => {
-      user.stripeCustomerId = "cus_123";
+      dojo.stripeCustomerId = "cus_123";
     });
 
     it("should throw ConflictException if user does not own dojo", async () => {
@@ -179,7 +180,7 @@ describe("SubscriptionService", () => {
       });
 
       expect(retrieveSetupIntentSpy).toHaveBeenCalledWith("seti_canceled");
-      expect(setupIntentSpy).toHaveBeenCalledWith(user.stripeCustomerId);
+      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId);
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
     });
 
@@ -197,7 +198,7 @@ describe("SubscriptionService", () => {
       });
 
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
-      expect(setupIntentSpy).toHaveBeenCalledWith(user.stripeCustomerId);
+      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId);
       expect(createDojoAdminSubSpy).toHaveBeenCalledWith(
         {
           dojoId: dojo.id,
@@ -220,7 +221,7 @@ describe("SubscriptionService", () => {
     let sub: IDojoSub;
 
     beforeEach(() => {
-      user.stripeCustomerId = "cus_123";
+      dojo.stripeCustomerId = "cus_123";
       sub = buildSubscriptionMock({
         billingStatus: BillingStatus.SetupIntentCreated,
         stripeSetupIntentId: "seti_123",
@@ -237,7 +238,7 @@ describe("SubscriptionService", () => {
     });
 
     it("should throw BadRequestException if stripeCustomerId is missing", async () => {
-      user.stripeCustomerId = null;
+      dojo.stripeCustomerId = "";
       await expect(
         SubscriptionService.confirmDojoAdminBilling({ user })
       ).rejects.toThrow(BadRequestException);
@@ -282,7 +283,7 @@ describe("SubscriptionService", () => {
       await SubscriptionService.confirmDojoAdminBilling({ user });
 
       expect(createSubscriptionSpy).toHaveBeenCalledWith({
-        custId: user.stripeCustomerId,
+        custId: dojo.stripeCustomerId,
         plan: dojo.activeSub,
         grantTrial: true,
         paymentMethodId: "pm_123",

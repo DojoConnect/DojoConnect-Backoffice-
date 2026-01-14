@@ -26,6 +26,6 @@ export class StudentRepository {
       })
       .from(students)
       .innerJoin(users, eq(students.studentUserId, users.id))
-      .where(eq(students.parentUserId, parentId));
+      .where(eq(students.parentId, parentId));
   };
 }

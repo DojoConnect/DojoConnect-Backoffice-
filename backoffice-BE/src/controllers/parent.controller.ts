@@ -11,7 +11,7 @@ static handleAddChild = async (
 ) => {
   try {
     const result = await ParentService.addChild({
-      parent: req.user!,
+      parentUser: req.user!,
       dto: req.body,
     });
 

@@ -10,7 +10,6 @@ export interface UserDTOParams {
   username: string;
   avatar: string | null;
   role: Role;
-  balance: string;
   dob: Date | null;
   gender: string | null;
   city: string | null;
@@ -27,7 +26,6 @@ export class UserDTO implements UserDTOParams {
   username: string;
   avatar: string | null;
   role: Role;
-  balance: string;
   dob: Date | null;
   gender: string | null;
   city: string | null;
@@ -44,7 +42,6 @@ export class UserDTO implements UserDTOParams {
     this.username = params.username;
     this.avatar = params.avatar;
     this.role = params.role;
-    this.balance = params.balance;
     this.dob = params.dob;
     this.gender = params.gender;
     this.city = params.city;
@@ -64,7 +61,6 @@ export class UserDTO implements UserDTOParams {
       username: this.username,
       avatar: this.avatar,
       role: this.role,
-      balance: this.balance,
       dob: this.dob,
       gender: this.gender,
       city: this.city,

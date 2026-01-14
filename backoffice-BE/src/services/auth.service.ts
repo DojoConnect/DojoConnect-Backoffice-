@@ -52,6 +52,8 @@ import { IUser } from "../repositories/user.repository.js";
 import { SubscriptionService } from "./subscription.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
+import { StripeService } from "./stripe.service.js";
+import { ParentRepository } from "../repositories/parent.repository.js";
 
 export class AuthService {
   static generateAuthTokens = async ({
@@ -334,6 +336,10 @@ export class AuthService {
 
         let trialEndsAt: Date | null = addDays(new Date(), 14);
 
+        const stripeCustomer = await StripeService.createCustomer(
+          newUser,
+        );
+
         const newDojo = await DojosService.createDojo(
           {
             ownerUserId: newUser.id,
@@ -341,6 +347,7 @@ export class AuthService {
             tag: dto.dojoTag,
             tagline: dto.dojoTagline,
             activeSub: dto.plan,
+            stripeCustomerId: stripeCustomer.id,
             trialEndsAt,
             status: DojoStatus.Registered,
             referralCode: referral_code,
@@ -465,6 +472,15 @@ export class AuthService {
         role: Role.Parent,
         tx,
       });
+
+      const stripeCustomer = await StripeService.createCustomer(
+        newUser,
+      );
+
+      await ParentRepository.create({
+        userId: newUser.id,
+        stripeCustomerId: stripeCustomer.id,          
+      }, tx);
 
       // Send Welcome
         const results = await Promise.allSettled([

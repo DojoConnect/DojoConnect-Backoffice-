@@ -298,10 +298,12 @@ export const dojos = mysqlTable(
     tag: varchar("tag", { length: 50 }).unique().notNull(),
     tagline: varchar("tagline", { length: 255 }).notNull(),
     status: mysqlEnum(DojoStatus).notNull(),
+    balance: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
     activeSub: mysqlEnum("active_sub", StripePlans).notNull(),
     hasUsedTrial: boolean("has_used_trial").notNull().default(false),
     trialEndsAt: datetime("trial_ends_at"),
     referralCode: varchar("referral_code", { length: 255 }).notNull(),
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).unique().notNull(),
     referredBy: varchar("referred_by", { length: 255 }),
     createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
@@ -508,17 +510,20 @@ export const userOAuthAccounts = mysqlTable(
 export const parents = mysqlTable(
   "parents",
   {
-    id: int().autoincrement().primaryKey(),
-    email: varchar({ length: 255 }).notNull(),
-    enrollmentId: varchar("enrollment_id", { length: 255 }).default(""),
-    classId: varchar("class_id", { length: 255 }).default(""),
+    id: uuidPrimaryKey(),
+    userId: varchar("user_id", { length: UUID_LENGTH })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).unique().notNull(),
+    createdAt: timestamp("created_at", { mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updated_at", { mode: "string" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
   },
   (table) => [
-    unique("unique_parent_enrollment").on(
-      table.email,
-      table.enrollmentId,
-      table.classId
-    ),
   ]
 );
 
@@ -573,15 +578,15 @@ export const students = mysqlTable(
       .notNull()
       .unique()
       .references(() => users.id, { onDelete: "cascade" }),
-    parentUserId: varchar("parent_user_id", { length: UUID_LENGTH })
+    parentId: varchar("parent_id", { length: UUID_LENGTH })
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => parents.id, { onDelete: "cascade" }),
     experienceLevel: mysqlEnum("experience_level", ExperienceLevel).notNull(),
     createdAt: timestamp("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
-  (table) => [uniqueIndex("unique_student_parent").on(table.studentUserId, table.parentUserId)]
+  (table) => [uniqueIndex("unique_student_parent").on(table.studentUserId, table.parentId)]
 );
 
 export const tasks = mysqlTable("tasks", {
@@ -633,8 +638,6 @@ export const users = mysqlTable(
     emailVerified: boolean("email_verified").default(false).notNull(),
     avatar: text(),
     role: mysqlEnum(Role).notNull(),
-    balance: decimal({ precision: 10, scale: 2 }).default("0.00").notNull(),
-    stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
     dob: date("dob"),
     gender: varchar({ length: 10 }),
     city: varchar({ length: 50 }),

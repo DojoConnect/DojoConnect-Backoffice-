@@ -52,6 +52,8 @@ import { RefreshTokenRepository } from "../repositories/refresh-token.repository
 import { SubscriptionService } from "./subscription.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
+import { buildParentMock } from "../tests/factories/parent.factory.js";
+import { ParentRepository } from "../repositories/parent.repository.js";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -59,11 +61,14 @@ describe("Auth Service", () => {
   const mockDojo = buildDojoMock({name: "Test Dojo",});
   const mockDojoDTO = new BaseDojoDTO(mockDojo);
 
+  const mockStripeCustomer = buildStripeCustMock();
+
   let getOneUserByEmailSpy: MockInstance;
   let getOneUserByUsernameSpy: MockInstance;
   let getOneDojoByTagSpy: MockInstance;
   let saveUserSpy: MockInstance;
   let getOneUserByIDSpy: MockInstance;
+  let createStripeCustomerSpy: MockInstance;
   let getUserDojoSpy : MockInstance;
 
   beforeEach(() => {
@@ -75,6 +80,10 @@ describe("Auth Service", () => {
     getOneDojoByTagSpy = vi.spyOn(DojosService, "getOneDojoByTag");
     saveUserSpy = vi.spyOn(UsersService, "saveUser");
     getUserDojoSpy = vi.spyOn(DojosService, "fetchUserDojo").mockResolvedValue(mockDojo);
+
+    createStripeCustomerSpy = vi
+      .spyOn(StripeService, "createCustomer")
+      .mockResolvedValue(mockStripeCustomer as any);
 
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
@@ -388,11 +397,10 @@ describe("Auth Service", () => {
       fcmToken: "test-fcm-token",
     });
 
-    const mockStripeCustomer = buildStripeCustMock();
+
     const mockStripeSubscription = buildStripeSubMock();
 
     let hashPasswordSpy: MockInstance;
-    let createStripeCustomerSpy: MockInstance;
     let createStripeSubscriptionSpy: MockInstance;
     let createDojoSpy: MockInstance;
     let setupBillingSpy: MockInstance;
@@ -409,9 +417,6 @@ describe("Auth Service", () => {
       hashPasswordSpy = vi
         .spyOn(authUtils, "hashPassword")
         .mockResolvedValue("hashed_password");
-      createStripeCustomerSpy = vi
-        .spyOn(StripeService, "createCustomer")
-        .mockResolvedValue(mockStripeCustomer as any);
 
       createStripeSubscriptionSpy = vi
         .spyOn(StripeService, "createSubscription")
@@ -1027,16 +1032,22 @@ describe("Auth Service", () => {
       fcmToken: "token",
     })
 
-    let sendParentWelcomeEmailSpy: MockInstance;
-    let sendParentSignUpNotificationSpy: MockInstance;
-    
     // Define mockSavedUser locally
-    const mockSavedUser = buildUserMock({
+    const parentUser = buildUserMock({
         ...parentDto,
         id: "user-id",
         role: Role.Parent, 
         passwordHash: "hashed",
     });
+
+    const parent = buildParentMock({
+        userId: parentUser.id,
+    });
+
+    let sendParentWelcomeEmailSpy: MockInstance;
+    let sendParentSignUpNotificationSpy: MockInstance;
+    let createParentSpy: MockInstance;
+    
 
     beforeEach(() => {
         sendParentWelcomeEmailSpy = vi
@@ -1046,11 +1057,15 @@ describe("Auth Service", () => {
         sendParentSignUpNotificationSpy = vi
         .spyOn(NotificationService, "sendParentSignUpNotification")
         .mockResolvedValue();
+
+        createParentSpy = vi
+        .spyOn(ParentRepository, "create")
+        .mockResolvedValue(parent.id);
         
         // Reset specific spies
         getOneUserByEmailSpy.mockResolvedValue(null);
         getOneUserByUsernameSpy.mockResolvedValue(null);
-        saveUserSpy.mockResolvedValue({ ...mockSavedUser, role: Role.Parent });
+        saveUserSpy.mockResolvedValue({ ...parentUser, role: Role.Parent });
     });
 
     it("should successfully register a parent", async () => {
@@ -1087,7 +1102,7 @@ describe("Auth Service", () => {
     });
 
     it("should throw ConflictException if email exists", async () => {
-      getOneUserByEmailSpy.mockResolvedValue(mockSavedUser);
+      getOneUserByEmailSpy.mockResolvedValue(parentUser);
 
       await expect(AuthService.registerParent({ dto: parentDto })).rejects.toThrow(
         ConflictException
@@ -1095,7 +1110,7 @@ describe("Auth Service", () => {
     });
 
     it("should throw ConflictException if username is taken", async () => {
-       getOneUserByUsernameSpy.mockResolvedValue(mockSavedUser);
+       getOneUserByUsernameSpy.mockResolvedValue(parentUser);
 
        await expect(AuthService.registerParent({ dto: parentDto })).rejects.toThrow(
          ConflictException

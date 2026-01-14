@@ -37,6 +37,7 @@ export class StripeService {
       metadata: {
         ...metadata,
         userId: user.id,
+        userRole: user.role,
       },
     });
   };
