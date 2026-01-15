@@ -2,6 +2,12 @@ import Stripe from "stripe";
 import AppConfig from "../config/AppConfig.js";
 import { StripePlans } from "../constants/enums.js";
 import { IUser } from "../repositories/user.repository.js";
+import { BadRequestException } from "../core/errors/BadRequestException.js";
+import { SubscriptionType } from "../constants/subscription.constants.js";
+import { ClassSubStripeMetadata, DojoSubStripeMetadata } from "../types/subscription.types.js";
+import { IClass } from "../repositories/class.repository.js";
+import { IParent } from "../repositories/parent.repository.js";
+import { IStudent } from "../repositories/student.repository.js";
 
 export const StripePriceIDsMap = {
   [StripePlans.Monthly]: "price_1Sg2AkRbZzajfaIIlgDhjLfh",
@@ -27,6 +33,14 @@ export class StripeService {
     return stripeInstance;
   };
 
+  static verifyEventSig = (eventBody: any, signature: string|string[]) => {
+    try {
+      return StripeService.getStripeInstance().webhooks.constructEvent(eventBody, signature, AppConfig.STRIPE_WEBHOOK_SECRET!);
+    } catch (error) {
+      throw new BadRequestException("Invalid webhook signature");
+    }
+  }
+
   static createCustomer = async (
     user: IUser,
     metadata?: { dojoId?: string }
@@ -40,6 +54,14 @@ export class StripeService {
         userRole: user.role,
       },
     });
+  };
+
+  static createDojoSubSetupIntent = async (stripeCustId: string, dojoId: string, ownerUserId: string) => {
+    return await StripeService.setupIntent(stripeCustId, {
+      type: SubscriptionType.DojoSub,
+      dojoId,
+      ownerUserId
+    })
   };
 
   static setupIntent = async (stripeCustId: string, metadata?: Stripe.MetadataParam) => {
@@ -153,4 +175,31 @@ export class StripeService {
       active: false,
     });
   };
+
+  static createClassSubCheckOut = async ({dojoClass, parent, student}: {dojoClass: IClass, parent: IParent, student: IStudent}) => {
+    if (!dojoClass.stripePriceId) {
+      throw new BadRequestException("Class Stripe price not found");
+    }
+    
+    const metadata: ClassSubStripeMetadata = {
+      type: SubscriptionType.ClassSub,
+      classId: dojoClass.id,
+      studentId: student.id,
+    };    
+
+    return await StripeService.getStripeInstance().checkout.sessions.create({
+      payment_method_types: ["card"],
+       mode: "subscription",
+      customer: parent.stripeCustomerId,
+      line_items: [
+        {
+          price: dojoClass.stripePriceId,
+          quantity: 1,
+        },
+      ],
+      metadata,
+      success_url: `${AppConfig.WEB_URL}/success`,
+      cancel_url: `${AppConfig.WEB_URL}/cancel`,
+    });
+  }
 }

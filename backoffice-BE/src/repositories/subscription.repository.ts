@@ -1,11 +1,15 @@
 import { eq, desc, InferSelectModel, InferInsertModel } from "drizzle-orm";
 import { Transaction } from "../db/index.js";
-import { dojoSubscriptions } from "../db/schema.js";
+import { classSubscriptions, dojoSubscriptions } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
 
 export type IDojoSub = InferSelectModel<typeof dojoSubscriptions>;
 export type INewDojoSub = InferInsertModel<typeof dojoSubscriptions>;
 export type IUpdateDojoSub = Partial<Omit<INewDojoSub, "id" | "createdAt">>;
+
+export type IClassSub = InferSelectModel<typeof classSubscriptions>;
+export type INewClassSub = InferInsertModel<typeof classSubscriptions>;
+export type IUpdateClassSub = Partial<Omit<INewClassSub, "id" | "createdAt">>;
 
 export class SubscriptionRepository {
   static async findLatestDojoAdminSub(dojoId: string, tx: Transaction) {
@@ -42,5 +46,30 @@ export class SubscriptionRepository {
       .update(dojoSubscriptions)
       .set(update)
       .where(eq(dojoSubscriptions.id, dojoSubId));
+  };
+
+  static async createClassSub (newClassSubDTO: INewClassSub, tx: Transaction) {
+    const [insertResult] = await tx
+      .insert(classSubscriptions)
+      .values(newClassSubDTO)
+      .$returningId();
+
+    return insertResult.id;
+  }
+
+
+  static updateClassSubByStripeSubId = async ({
+    stripeSubId,
+    update,
+    tx,
+  }: {
+    stripeSubId: string;
+    update: IUpdateClassSub;
+    tx: Transaction;
+  }) => {
+    await tx
+      .update(classSubscriptions)
+      .set(update)
+      .where(eq(classSubscriptions.stripeSubId, stripeSubId));
   };
 }

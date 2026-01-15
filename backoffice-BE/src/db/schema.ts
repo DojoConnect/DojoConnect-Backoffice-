@@ -148,23 +148,6 @@ export const chatParticipants = mysqlTable(
   ]
 );
 
-export const childrenSubscription = mysqlTable("children_subscription", {
-  id: int().autoincrement().primaryKey(),
-  childId: int("child_id").notNull(),
-  enrollmentId: varchar("enrollment_id", { length: 50 }).notNull(),
-  stripeSubscriptionId: varchar("stripe_subscription_id", { length: 255 }),
-  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).notNull(),
-  status: mysqlEnum(["active", "cancelled", "paused"]).default("active"),
-  createdAt: timestamp("created_at")
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  updatedAt: timestamp("updated_at")
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull()
-      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
-  stripeSessionId: varchar("stripe_session_id", { length: 255 }),
-});
-
 export const classes = mysqlTable(
   "classes",
   {
@@ -275,6 +258,35 @@ export const classEnrollments = mysqlTable(
   },
   (table) => [uniqueIndex("student_class_unique").on(table.studentId, table.classId)]
 );
+
+export const classSubscriptions = mysqlTable("class_subscriptions", {
+  id: uuidPrimaryKey(),
+  studentId: varchar("student_id", { length: UUID_LENGTH }).notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+    classId: varchar("class_id", { length: UUID_LENGTH }).notNull()
+    .references(() => classes.id, { onDelete: "cascade" }),
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }).notNull(),
+  stripeSubId: varchar("stripe_sub_id", { length: 255 }).unique().notNull(),
+  status: mysqlEnum(BillingStatus).notNull(),
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  updatedAt: timestamp("updated_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull()
+      .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
+  endedAt: timestamp("ended_at"),
+});
+
+export const oneTimeClassPayments = mysqlTable("one_time_class_payments", {
+  id: uuidPrimaryKey(),
+  studentId: varchar("student_id", { length: UUID_LENGTH }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  classId: varchar("class_id", { length: UUID_LENGTH }).notNull().references(() => classes.id, { onDelete: "cascade" }),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }).unique(),
+  amount: decimal({ precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum(BillingStatus).notNull(),
+  paidAt: timestamp("paid_at"),
+});
 
 export const deletionRequests = mysqlTable("deletion_requests", {
   id: int().autoincrement().primaryKey(),
@@ -588,6 +600,14 @@ export const students = mysqlTable(
   },
   (table) => [uniqueIndex("unique_student_parent").on(table.studentUserId, table.parentId)]
 );
+
+export const stripeWebhookEvents = mysqlTable("stripe_webhook_events", {
+  id: varchar("id", { length: 255 }).primaryKey(), // Stripe event id
+  type: varchar("type", { length: 100 }).notNull(),
+  processedAt: timestamp("processed_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
 
 export const tasks = mysqlTable("tasks", {
   id: int().autoincrement().primaryKey(),

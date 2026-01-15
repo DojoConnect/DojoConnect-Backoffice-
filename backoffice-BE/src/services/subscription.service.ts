@@ -19,6 +19,7 @@ import {
 } from "../core/errors/index.js";
 import Stripe from "stripe";
 import { assertDojoOwnership } from "../utils/assertions.utils.js";
+import { ClassSubStripeMetadata } from "../types/subscription.types.js";
 
 export class SubscriptionService {
   static getOrCreateDojoStripeCustId = async ({
@@ -257,4 +258,95 @@ export class SubscriptionService {
         return DojoStatus.Registered;
     }
   }
+
+  static handleClassSubPaid = async (session: Stripe.Checkout.Session, metadata: ClassSubStripeMetadata, tx: Transaction) => {
+    if (!session.subscription) {
+      throw new BadRequestException("Subscription not found");
+    }
+
+    if (!session.customer) {
+      throw new BadRequestException("Customer not found");
+    }
+
+    /**
+     * Why trialing?
+     * Stripe may still attempt first invoice
+     * Final state comes from subscription events
+     */
+    await SubscriptionRepository.createClassSub(
+      {
+        classId: metadata.classId,
+        studentId: metadata.studentId,
+        stripeCustomerId: typeof session.customer === "string" ? session.customer : session.customer.id,
+        stripeSubId: typeof session.subscription === "string" ? session.subscription : session.subscription.id,
+        status: BillingStatus.Trialing,
+      },
+      tx
+    );
+  }
+
+  static syncClassSub = async (subscription: Stripe.Subscription, tx: Transaction) => {
+    const status = this.mapStripeSubStatus(subscription.status);
+    let endedAt: Date | null = null;
+    if (status === BillingStatus.Cancelled) {
+      if (!subscription.canceled_at) {
+        throw new BadRequestException("Subscription canceled at not found");
+      }
+      endedAt = new Date(subscription.canceled_at * 1000);
+    }
+
+    await SubscriptionRepository.updateClassSubByStripeSubId(
+      {
+        stripeSubId: subscription.id,
+        update: {
+          status,
+          endedAt:endedAt
+        },
+        tx
+      },
+    );
+}
+
+static markClassSubPastDue = async (subId: string, tx: Transaction) => {
+  await SubscriptionRepository.updateClassSubByStripeSubId(
+    {
+      stripeSubId: subId,
+      update: {
+        status: BillingStatus.PastDue,
+      },
+      tx
+    },
+  );
+}
+
+static markClassSubActive = async (subId: string, tx: Transaction) => {
+  await SubscriptionRepository.updateClassSubByStripeSubId(
+    {
+      stripeSubId: subId,
+      update: {
+        status: BillingStatus.Active,
+      },
+      tx
+    },
+  );
+}
+
+static markClassSubCancelled = async (subscription: Stripe.Subscription, tx: Transaction) => {
+  const status = this.mapStripeSubStatus(subscription.status);
+
+  if (status !== BillingStatus.Cancelled) {
+    return;
+  }
+
+  await SubscriptionRepository.updateClassSubByStripeSubId(
+    {
+      stripeSubId: subscription.id,
+      update: {
+        status,
+      },
+      tx
+    },
+  );
+}
+    
 }
