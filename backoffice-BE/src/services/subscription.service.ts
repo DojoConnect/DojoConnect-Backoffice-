@@ -20,6 +20,7 @@ import {
 import Stripe from "stripe";
 import { assertDojoOwnership } from "../utils/assertions.utils.js";
 import { ClassSubStripeMetadata } from "../types/subscription.types.js";
+import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
 
 export class SubscriptionService {
   static getOrCreateDojoStripeCustId = async ({
@@ -283,6 +284,36 @@ export class SubscriptionService {
       },
       tx
     );
+
+    // Create Enrollment if not exists
+    const existingEnrollment = await EnrollmentRepository.findOneByClassIdAndStudentId(
+      metadata.classId,
+      metadata.studentId,
+      tx
+    );
+
+    if (!existingEnrollment) {
+      await EnrollmentRepository.create(
+        {
+          classId: metadata.classId,
+          studentId: metadata.studentId,
+          active: true
+        },
+        tx
+      );
+
+      return;
+    }
+
+    if (!existingEnrollment.active) {
+      await EnrollmentRepository.update(
+        {
+          classEnrollmentId: existingEnrollment.id,
+          update: {active: true},
+          tx
+        },
+      );
+    }
   }
 
   static syncClassSub = async (subscription: Stripe.Subscription, tx: Transaction) => {
@@ -338,7 +369,13 @@ static markClassSubCancelled = async (subscription: Stripe.Subscription, tx: Tra
     return;
   }
 
-  await SubscriptionRepository.updateClassSubByStripeSubId(
+  const classSub = await SubscriptionRepository.findOneClassSubByStripeSubId(subscription.id, tx);
+
+  if (!classSub) {
+    throw new BadRequestException("Class subscription not found");
+  }
+
+  await Promise.all([SubscriptionRepository.updateClassSubByStripeSubId(
     {
       stripeSubId: subscription.id,
       update: {
@@ -346,7 +383,15 @@ static markClassSubCancelled = async (subscription: Stripe.Subscription, tx: Tra
       },
       tx
     },
-  );
+    ), EnrollmentRepository.updateByClassIdAndStudentId({
+      classId: classSub.classId,
+      studentId: classSub.studentId,
+      update: {
+      active: false,
+      revokedAt: new Date(),
+    },
+    tx
+  })])
 }
     
 }

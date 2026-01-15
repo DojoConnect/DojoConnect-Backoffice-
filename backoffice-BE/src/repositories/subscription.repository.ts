@@ -1,4 +1,4 @@
-import { eq, desc, InferSelectModel, InferInsertModel } from "drizzle-orm";
+import { eq, desc, InferSelectModel, InferInsertModel, SQL } from "drizzle-orm";
 import { Transaction } from "../db/index.js";
 import { classSubscriptions, dojoSubscriptions } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
@@ -57,6 +57,19 @@ export class SubscriptionRepository {
     return insertResult.id;
   }
 
+  static findOneClassSub = async ( whereClause: SQL | undefined,
+      tx: Transaction
+    ): Promise<IClassSub | null> => {
+      const classSub = returnFirst(
+        await tx.select().from(classSubscriptions).where(whereClause).limit(1).execute()
+      );
+  
+      return classSub || null;
+    }
+
+    static findOneClassSubByStripeSubId = async (stripeSubId: string, tx: Transaction): Promise<IClassSub | null> => {
+      return await this.findOneClassSub(eq(classSubscriptions.stripeSubId, stripeSubId), tx);
+    }
 
   static updateClassSubByStripeSubId = async ({
     stripeSubId,

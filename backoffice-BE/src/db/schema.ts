@@ -248,6 +248,8 @@ export const classEnrollments = mysqlTable(
     .references(() => students.id, { onDelete: "cascade" }),
     classId: varchar("class_id", { length: UUID_LENGTH }).notNull()
     .references(() => classes.id, { onDelete: "cascade" }),
+     active: boolean("active").default(true).notNull(),
+     revokedAt: timestamp("revoked_at"),
     createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
