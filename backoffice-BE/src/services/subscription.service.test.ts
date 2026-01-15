@@ -19,6 +19,7 @@ import {
   StripeSetupIntentStatus,
   StripeSubscriptionStatus,
 } from "../constants/enums.js";
+import { SubscriptionType } from "../constants/subscription.constants.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
 import { buildSubscriptionMock } from "../tests/factories/subscription.factory.js";
@@ -180,7 +181,11 @@ describe("SubscriptionService", () => {
       });
 
       expect(retrieveSetupIntentSpy).toHaveBeenCalledWith("seti_canceled");
-      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId);
+      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, {
+        dojoId: dojo.id,
+        ownerUserId: user.id,
+        type: SubscriptionType.DojoSub,
+      });
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
     });
 
@@ -198,7 +203,11 @@ describe("SubscriptionService", () => {
       });
 
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
-      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId);
+      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, {
+        dojoId: dojo.id,
+        ownerUserId: user.id,
+        type: SubscriptionType.DojoSub,
+      });
       expect(createDojoAdminSubSpy).toHaveBeenCalledWith(
         {
           dojoId: dojo.id,
@@ -288,6 +297,10 @@ describe("SubscriptionService", () => {
         grantTrial: true,
         paymentMethodId: "pm_123",
         idempotencyKey: `dojo-admin-sub-${sub.id}`,
+        metadata: {
+          dojoId: dojo.id,
+          type: SubscriptionType.DojoSub,
+        },
       });
       expect(updateDojoAdminSubSpy).toHaveBeenCalledWith({
         tx: dbSpies.mockTx,

@@ -262,7 +262,11 @@ describe("Class Service", () => {
 
         await ClassService.createClass({ dto, dojo });
 
-        expect(createStripeProdSpy).toHaveBeenCalledWith(dto.name, dojo.id);
+        expect(createStripeProdSpy).toHaveBeenCalledWith({
+          className: dto.name,
+          dojoId: dojo.id,
+          classId: newClassId,
+        });
         expect(createStripePriceSpy).toHaveBeenCalledWith(
           "prod_123",
           dto.price
