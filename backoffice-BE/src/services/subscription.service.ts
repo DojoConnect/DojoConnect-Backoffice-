@@ -99,7 +99,7 @@ export class SubscriptionService {
       }
 
       // 3. Create new SetupIntent
-      const setupIntent = await StripeService.setupIntent(stripeCustomerId);
+      const setupIntent = await StripeService.createDojoSubSetupIntent(stripeCustomerId, dojo.id, user.id);
 
       await SubscriptionRepository.createDojoAdminSub(
         {
@@ -171,11 +171,13 @@ export class SubscriptionService {
 
       const grantTrial = !dojo.hasUsedTrial;
 
-      const stripeSub = await StripeService.createSubscription({
+      const stripeSub = await StripeService.createDojoSubscription({
         custId: dojo.stripeCustomerId,
         plan: dojo.activeSub,
         grantTrial,
         paymentMethodId,
+        dojoId: dojo.id,
+        ownerUserId: user.id,
         idempotencyKey: `dojo-admin-sub-${sub.id}`,
       });
 

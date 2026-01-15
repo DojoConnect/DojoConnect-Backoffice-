@@ -104,8 +104,11 @@ export class ClassService {
         }
 
         const stripeProd = await StripeService.createClassProduct(
-          classData.name,
-          dojo.id
+          {
+            className: classData.name,
+            dojoId: dojo.id,
+            classId: newClassId,
+          }
         );
         const prodPrice = await StripeService.createClassPrice(
           stripeProd.id,

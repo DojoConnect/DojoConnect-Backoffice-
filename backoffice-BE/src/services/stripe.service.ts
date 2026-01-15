@@ -42,10 +42,42 @@ export class StripeService {
     });
   };
 
-  static setupIntent = async (stripeCustId: string) => {
+  static setupIntent = async (stripeCustId: string, metadata?: Stripe.MetadataParam) => {
     return await StripeService.getStripeInstance().setupIntents.create({
       customer: stripeCustId,
       payment_method_types: ["card"],
+      metadata,
+    });
+  };
+
+  static createDojoSubscription = async ({
+    custId,
+    plan,
+    paymentMethodId,
+    grantTrial = false,
+    idempotencyKey,
+    dojoId,
+    ownerUserId
+  }: {
+    custId: string;
+    plan: StripePlans;
+    paymentMethodId: string;
+    grantTrial: boolean;
+    idempotencyKey;
+    dojoId: string;
+    ownerUserId: string;
+  }) => {
+    const metadata: DojoSubStripeMetadata = {
+      type: SubscriptionType.DojoSub,
+      dojoId,
+    }
+    return await StripeService.createSubscription({
+      custId,
+      plan,
+      paymentMethodId,
+      grantTrial,
+      idempotencyKey,
+      metadata
     });
   };
 
@@ -55,12 +87,14 @@ export class StripeService {
     paymentMethodId,
     grantTrial = false,
     idempotencyKey,
+    metadata
   }: {
     custId: string;
     plan: StripePlans;
     paymentMethodId: string;
     grantTrial: boolean;
     idempotencyKey;
+    metadata?: Stripe.MetadataParam;
   }) => {
     const priceId = StripePriceIDsMap[plan];
     return await StripeService.getStripeInstance().subscriptions.create(
@@ -71,6 +105,7 @@ export class StripeService {
         default_payment_method: paymentMethodId,
         payment_behavior: "default_incomplete",
         payment_settings: { save_default_payment_method: "on_subscription" },
+        metadata,
       },
       {
         idempotencyKey,
@@ -90,9 +125,13 @@ export class StripeService {
     );
   };
 
-  static createClassProduct = async (productName: string, dojoId: string) => {
+  static createClassProduct = async ({className, dojoId, classId}: {className: string, dojoId: string, classId: string}) => {
     return await StripeService.getStripeInstance().products.create({
-      name: `DJC-${dojoId}-${productName}`,
+      name: `DJC-${dojoId}-${className}`,
+      metadata: {
+        dojoId,
+        classId
+      },
     });
   };
 
@@ -108,7 +147,6 @@ export class StripeService {
   static retrievePrice = async (priceId: string) => {
     return await StripeService.getStripeInstance().prices.retrieve(priceId);
   };
-
 
   static archivePrice = async (priceId: string) => {
     return await StripeService.getStripeInstance().prices.update(priceId, {
