@@ -166,3 +166,7 @@ export const UpdateClassInstructorSchema = z.object({
 
 export type CreateClassScheduleDTO = z.infer<typeof CreateClassSchema>["schedules"];
 
+
+export const EnrollStudentSchema = z.object({
+  studentId: z.uuid(),
+});

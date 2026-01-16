@@ -152,4 +152,14 @@ export class ParentService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
+
+  static getOneParentByUserId = async (userId: string, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
+      return await ParentRepository.getOneParentByUserId(userId, tx);
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
 }

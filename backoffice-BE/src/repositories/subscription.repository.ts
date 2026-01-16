@@ -1,7 +1,8 @@
-import { eq, desc, InferSelectModel, InferInsertModel, SQL } from "drizzle-orm";
+import { eq, desc, InferSelectModel, InferInsertModel, SQL, and, or } from "drizzle-orm";
 import { Transaction } from "../db/index.js";
 import { classSubscriptions, dojoSubscriptions } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
+import { BillingStatus } from "../constants/enums.js";
 
 export type IDojoSub = InferSelectModel<typeof dojoSubscriptions>;
 export type INewDojoSub = InferInsertModel<typeof dojoSubscriptions>;
@@ -69,6 +70,17 @@ export class SubscriptionRepository {
 
     static findOneClassSubByStripeSubId = async (stripeSubId: string, tx: Transaction): Promise<IClassSub | null> => {
       return await this.findOneClassSub(eq(classSubscriptions.stripeSubId, stripeSubId), tx);
+    }
+
+    static findOneActiveClassSubByClassIdAndStudentId = async (classId: string, studentId: string, tx: Transaction): Promise<IClassSub | null> => {
+      return await this.findOneClassSub(and(
+                  eq(classSubscriptions.classId, classId),
+                  eq(classSubscriptions.studentId, studentId),
+                  or(
+                     eq(classSubscriptions.status, BillingStatus.Active),
+                     eq(classSubscriptions.status, BillingStatus.Trialing)
+                  )
+                ), tx);
     }
 
   static updateClassSubByStripeSubId = async ({

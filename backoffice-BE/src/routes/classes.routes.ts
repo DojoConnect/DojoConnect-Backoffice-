@@ -9,6 +9,9 @@ import {
   UpdateClassSchema,
 } from "../validations/classes.schemas.js";
 import { isClassDojoOwnerMiddleware } from "../middlewares/authorization/is-dojo-owner.middleware.js";
+import { EnrollmentController } from "../controllers/enrollment.controller.js";
+import { EnrollStudentSchema } from "../validations/classes.schemas.js";
+import { isParentOfStudentMiddleware } from "../middlewares/authorization/is-parent-of-student.middleware.js";
 
 const router = Router({ mergeParams: true });
 
@@ -39,6 +42,15 @@ router.patch(
   isClassDojoOwnerMiddleware,
   validateReqBody(UpdateClassInstructorSchema),
   ClassesController.updateClassInstructor
+);
+
+router.post(
+  "/:classId/enroll",
+  requireAuth,
+  requireRole(Role.Parent),
+  isParentOfStudentMiddleware,
+  validateReqBody(EnrollStudentSchema),
+  EnrollmentController.enrollStudent
 );
 
 export default router;

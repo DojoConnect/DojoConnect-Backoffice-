@@ -48,6 +48,16 @@ static findOneByClassIdAndStudentId = async (
       .where(eq(classEnrollments.classId, classId));
   };
 
+  static fetchActiveEnrollmentsByClassId = async (
+    classId: string,
+    tx: Transaction
+  ): Promise<IClassEnrollment[]> => {
+    return await tx
+      .select()
+      .from(classEnrollments)
+      .where(and(eq(classEnrollments.classId, classId), eq(classEnrollments.active, true)));
+  };
+
   static fetchEnrollmentsByStudentId = async (
     studentId: string,
     tx: Transaction
@@ -82,5 +92,20 @@ static findOneByClassIdAndStudentId = async (
       tx: Transaction;
     }) => {
       await tx.update(classEnrollments).set(update).where(and(eq(classEnrollments.classId, classId), eq(classEnrollments.studentId, studentId)));
+    };
+
+    static findOneActiveEnrollmentByClassIdAndStudentId = async (
+      classId: string,
+      studentId: string,
+      tx: Transaction
+    ): Promise<IClassEnrollment | null> => {
+      return this.getOne(
+        and(
+          eq(classEnrollments.classId, classId),
+          eq(classEnrollments.studentId, studentId),
+          eq(classEnrollments.active, true)
+        ),
+        tx
+      );
     };
 }
