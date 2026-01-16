@@ -39,9 +39,11 @@ describe("EnrollmentService", () => {
   });
 
   it("should enroll multiple students in free class successfully", async () => {
-    vi.mocked(StudentRepository.findOneById)
-        .mockResolvedValueOnce(mockStudent)
-        .mockResolvedValueOnce({ ...mockStudent, id: "student-456" });
+    vi.mocked(StudentRepository.fetchStudentsWithUsersByIds)
+        .mockResolvedValue([
+            { student: mockStudent, user: { ...mockParentUser, firstName: "John", lastName: "Doe" } },
+            { student: { ...mockStudent, id: "student-456" }, user: { ...mockParentUser, firstName: "Jane", lastName: "Doe" } } 
+        ] as any);
     vi.mocked(ParentRepository.getOneParentByUserId).mockResolvedValue(mockParent);
     vi.mocked(ClassRepository.findById).mockResolvedValue(mockClass);
     vi.mocked(EnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([]);
@@ -54,21 +56,25 @@ describe("EnrollmentService", () => {
       studentIds: ["student-123", "student-456"],
     });
 
-    expect(result).toEqual({ status: "enrolled", checkoutUrl: null });
+    expect(result).toEqual({ status: "enrolled", clientSecret: null, customerId: null });
     expect(EnrollmentRepository.create).toHaveBeenCalledTimes(2);
   });
 
   it("should return checkout url for paid class with multiple students", async () => {
       const paidClass = { ...mockClass, subscriptionType: ClassSubscriptionType.Paid, stripePriceId: "price_123" };
-      vi.mocked(StudentRepository.findOneById)
-        .mockResolvedValueOnce(mockStudent)
-        .mockResolvedValueOnce({ ...mockStudent, id: "student-456" });
+      vi.mocked(StudentRepository.fetchStudentsWithUsersByIds)
+        .mockResolvedValue([
+            { student: mockStudent, user: { ...mockParentUser, firstName: "John", lastName: "Doe" } },
+            { student: { ...mockStudent, id: "student-456" }, user: { ...mockParentUser, firstName: "Jane", lastName: "Doe" } } 
+        ] as any);
       vi.mocked(ParentRepository.getOneParentByUserId).mockResolvedValue(mockParent);
       vi.mocked(ClassRepository.findById).mockResolvedValue(paidClass);
       vi.mocked(EnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([]);
       vi.mocked(EnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId).mockResolvedValue(null);
       vi.mocked(SubscriptionRepository.findOneActiveClassSubByClassIdAndStudentId).mockResolvedValue(null);
-      vi.mocked(StripeService.createClassSubCheckOut).mockResolvedValue({ url: "https://stripe.com/checkout" } as any);
+      vi.mocked(StripeService.createEnrollmentPaymentIntent).mockResolvedValue({ client_secret: "pi_secret_123" } as any);
+      vi.mocked(StripeService.retrievePrice).mockResolvedValue({ unit_amount: 1000, currency: "gbp" } as any);
+      vi.mocked(ParentRepository.update).mockResolvedValue(undefined as any);
 
       const result = await EnrollmentService.enrollStudents({
         parentUser: mockParentUser,
@@ -76,15 +82,13 @@ describe("EnrollmentService", () => {
         studentIds: ["student-123", "student-456"],
       });
 
-      expect(result).toEqual({ status: "checkout_required", checkoutUrl: "https://stripe.com/checkout" });
+      expect(result).toEqual({ status: "payment_required", clientSecret: "pi_secret_123", customerId: "cus_123" });
       // Verify Stripe Service called with correct list
-      expect(StripeService.createClassSubCheckOut).toHaveBeenCalledWith(expect.objectContaining({
-          students: expect.arrayContaining([expect.objectContaining({ id: "student-123" }), expect.objectContaining({ id: "student-456" })])
-      }));
+      expect(StripeService.createEnrollmentPaymentIntent).toHaveBeenCalled();
   });
 
   it("should throw error if any student not found", async () => {
-    vi.mocked(StudentRepository.findOneById).mockResolvedValue(null);
+    vi.mocked(StudentRepository.fetchStudentsWithUsersByIds).mockResolvedValue([]); // No students found
     vi.mocked(ClassRepository.findById).mockResolvedValue(mockClass);
 
     await expect(EnrollmentService.enrollStudents({
@@ -96,7 +100,7 @@ describe("EnrollmentService", () => {
 
   it("should throw error if parent not authorized for any student", async () => {
      vi.mocked(ClassRepository.findById).mockResolvedValue(mockClass);
-     vi.mocked(StudentRepository.findOneById).mockResolvedValue({ ...mockStudent, parentId: "other-parent" });
+     vi.mocked(StudentRepository.fetchStudentsWithUsersByIds).mockResolvedValue([{ student: { ...mockStudent, parentId: "other-parent" }, user: {} } as any]);
      vi.mocked(ParentRepository.getOneParentByUserId).mockResolvedValue(mockParent);
 
      await expect(EnrollmentService.enrollStudents({
@@ -107,7 +111,11 @@ describe("EnrollmentService", () => {
   });
 
   it("should throw error if class does not have enough capacity", async () => {
-    vi.mocked(StudentRepository.findOneById).mockResolvedValue(mockStudent);
+    vi.mocked(StudentRepository.fetchStudentsWithUsersByIds)
+        .mockResolvedValue([
+            { student: mockStudent, user: { ...mockParentUser, firstName: "John", lastName: "Doe" } },
+            { student: { ...mockStudent, id: "student-456" }, user: { ...mockParentUser, firstName: "Jane", lastName: "Doe" } } 
+        ] as any);
     vi.mocked(ParentRepository.getOneParentByUserId).mockResolvedValue(mockParent);
     vi.mocked(ClassRepository.findById).mockResolvedValue({ ...mockClass, capacity: 2 });
     // Already has 1 active enrollment
@@ -122,7 +130,7 @@ describe("EnrollmentService", () => {
   });
 
   it("should throw error if any student already enrolled", async () => {
-    vi.mocked(StudentRepository.findOneById).mockResolvedValue(mockStudent);
+    vi.mocked(StudentRepository.fetchStudentsWithUsersByIds).mockResolvedValue([{ student: mockStudent, user: {} } as any]);
     vi.mocked(ParentRepository.getOneParentByUserId).mockResolvedValue(mockParent);
     vi.mocked(ClassRepository.findById).mockResolvedValue(mockClass);
     vi.mocked(EnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([]);

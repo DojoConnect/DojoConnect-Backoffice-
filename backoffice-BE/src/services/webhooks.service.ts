@@ -45,6 +45,10 @@ export class WebhooksService {
           case StripeWebhookEvents.CustomerSubscriptionDeleted:
             WebhooksService.handleSubscriptionCancelled(event.data.object, tx)
             break
+          
+          case StripeWebhookEvents.PaymentIntentSucceeded:
+            WebhooksService.handlePaymentIntentSucceeded(event.data.object, tx)
+            break
 }
     }
 
@@ -57,8 +61,6 @@ export class WebhooksService {
 
       switch (metadata.type) {
         case SubscriptionType.ClassSub:
-          SubscriptionService.handleClassSubPaid(session, metadata, tx);
-          break;
         case SubscriptionType.OneTimeClass:
         case SubscriptionType.DojoSub:
           // TODO: Handle dojo subscription and One Time classes
@@ -167,6 +169,12 @@ export class WebhooksService {
         default:
           throw new Error("Invalid subscription type");
       }
+    }
+
+    static handlePaymentIntentSucceeded = async (paymentIntent: Stripe.PaymentIntent, tx: Transaction) => {
+        if (paymentIntent.metadata && paymentIntent.metadata.enrollment_type === 'dojo_class') {
+             await SubscriptionService.createClassSubscriptionsFromPaymentIntent(paymentIntent, tx);
+        }
     }
         
     

@@ -11,11 +11,8 @@ import {
   NotFoundException, 
   ForbiddenException, 
   ConflictException, 
-  BadRequestException 
 } from "../core/errors/index.js";
-import { ClassSubscriptionType, BillingStatus } from "../constants/enums.js";
-import { and, eq, or } from "drizzle-orm";
-import { classSubscriptions } from "../db/schema.js";
+import { ClassSubscriptionType, } from "../constants/enums.js";
 
 export class EnrollmentService {
   static enrollStudents = async ({
@@ -79,41 +76,52 @@ export class EnrollmentService {
       }
 
       // 5. Process Enrollment
-      if (dojoClass.subscriptionType === ClassSubscriptionType.Paid) {
-          // Create Checkout Session for ALL students
-           // We need to pass valid IStudent objects to StripeService. 
-           // We already fetched them above. Cast to IStudent (we checked for nulls).
-           const validStudents = students; 
 
-           const checkoutSession = await StripeService.createClassSubCheckOut({
-            dojoClass,
-            parent,
-            students: validStudents
-           });
-
-           if (!checkoutSession.url) {
-                throw new BadRequestException("Failed to create checkout session");
-           }
-
-           return {
-                status: 'checkout_required',
-                checkoutUrl: checkoutSession.url
-           };
-
-      } else {
+      if (dojoClass.subscriptionType !== ClassSubscriptionType.Paid) {
           // Free Class - Enroll All
-          for (const studentId of studentIds) {
-             await EnrollmentRepository.create({
+           await Promise.all(
+            studentIds.map(async (studentId) => {
+              EnrollmentRepository.create({
                 classId,
                 studentId,
                 active: true
-            }, tx);
-          }
+            }, tx)
+          })
+          );
 
           return {
             status: 'enrolled',
-            checkoutUrl: null
+            clientSecret: null,
           };
+      }
+
+      if (dojoClass.subscriptionType === ClassSubscriptionType.Paid) {
+                              
+           // Ensure Parent has Stripe Customer
+           let stripeCustomerId = parent.stripeCustomerId;
+           if (!stripeCustomerId) {
+              const customer = await StripeService.createCustomer(parentUser);
+              stripeCustomerId = customer.id;
+              
+              // Update Parent with new Stripe Customer Id
+               await ParentRepository.update({
+                  parentId: parent.id,
+                  update: { stripeCustomerId },
+                  tx
+               });
+           }
+
+           // Create Payment Intent
+           const paymentIntent = await StripeService.createEnrollmentPaymentIntent({
+             customerId: stripeCustomerId,
+             dojoClass,
+             students,
+           });
+
+           return {
+                status: 'payment_required',
+                clientSecret: paymentIntent.client_secret,
+           };
       }
     };
 

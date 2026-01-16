@@ -48,4 +48,15 @@ export class StudentRepository {
   static fetchStudentsByIds = async (studentIds: string[], tx: Transaction) => {
     return await tx.select().from(students).where(inArray(students.id, studentIds)); 
   }
+
+  static fetchStudentsWithUsersByIds = async (studentIds: string[], tx: Transaction) => {
+    return await tx
+      .select({
+        student: students,
+        user: users,
+      })
+      .from(students)
+      .innerJoin(users, eq(students.studentUserId, users.id))
+      .where(inArray(students.id, studentIds));
+  };
 }

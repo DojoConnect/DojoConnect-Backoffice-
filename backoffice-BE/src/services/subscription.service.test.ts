@@ -20,6 +20,7 @@ import {
   StripeSubscriptionStatus,
 } from "../constants/enums.js";
 import { SubscriptionType } from "../constants/subscription.constants.js";
+import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
 import { buildSubscriptionMock } from "../tests/factories/subscription.factory.js";
@@ -424,6 +425,74 @@ describe("SubscriptionService", () => {
       expect(SubscriptionService.deriveDojoStatus("unknown" as any)).toBe(
         DojoStatus.Registered
       );
+    });
+  });
+  describe("createClassSubscriptionsFromPaymentIntent", () => {
+    let mockPaymentIntent: any;
+
+    beforeEach(() => {
+      mockPaymentIntent = {
+        customer: { id: "cus_123" },
+        metadata: {
+          children_data: JSON.stringify([
+            { id: "student_1", name: "Student One" },
+            { id: "student_2", name: "Student Two" },
+          ]),
+          price_id: "price_123",
+          class_id: "class_123",
+        },
+      };
+
+      vi.spyOn(StripeService, "createClassSubscription").mockResolvedValue({
+        id: "sub_123",
+      } as any);
+      vi.spyOn(SubscriptionRepository, "createClassSub").mockResolvedValue({} as any);
+      vi.spyOn(
+        // @ts-ignore
+        EnrollmentRepository,
+        "findOneByClassIdAndStudentId"
+      ).mockResolvedValue(null);
+      vi.spyOn(
+        // @ts-ignore
+        EnrollmentRepository,
+        "create"
+      ).mockResolvedValue({} as any);
+      vi.spyOn(
+        // @ts-ignore
+        EnrollmentRepository,
+        "update"
+      ).mockResolvedValue({} as any);
+    });
+
+    it("should throw error if customer is missing", async () => {
+        mockPaymentIntent.customer = null;
+        await expect(SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent)).rejects.toThrow("Customer not found in payment intent");
+    });
+
+    it("should throw error if metadata is missing fields", async () => {
+       mockPaymentIntent.metadata = {};
+       await expect(SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent)).rejects.toThrow("Missing metadata in payment intent");
+    });
+
+    it("should create subscriptions and enrollments for all children", async () => {
+      await SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent);
+
+      expect(StripeService.createClassSubscription).toHaveBeenCalledTimes(2);
+      expect(SubscriptionRepository.createClassSub).toHaveBeenCalledTimes(2);
+      // @ts-ignore
+      expect(EnrollmentRepository.create).toHaveBeenCalledTimes(2);
+    });
+
+    it("should update enrollment if exists but inactive", async () => {
+       vi.spyOn(
+        // @ts-ignore
+        EnrollmentRepository,
+        "findOneByClassIdAndStudentId"
+      ).mockResolvedValue({ id: "enroll_1", active: false } as any);
+
+      await SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent);
+       // @ts-ignore
+      expect(EnrollmentRepository.update).toHaveBeenCalledTimes(2);
     });
   });
 });

@@ -261,7 +261,6 @@ export class SubscriptionService {
   }
 
   static handleClassSubPaid = async (session: Stripe.Checkout.Session, metadata: ClassSubStripeMetadata, tx: Transaction) => {
-    session.subscription_ids
     if (!session.subscription) {
       throw new BadRequestException("Subscription not found");
     }
@@ -395,4 +394,70 @@ static markClassSubCancelled = async (subscription: Stripe.Subscription, tx: Tra
   })])
 }
     
+  static createClassSubscriptionsFromPaymentIntent = async (paymentIntent: Stripe.PaymentIntent, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
+      const { customer, metadata } = paymentIntent;
+      if (!customer) {
+        throw new BadRequestException("Customer not found in payment intent");
+      }
+      if (!metadata.children_data || !metadata.price_id || !metadata.class_id) {
+          throw new BadRequestException("Missing metadata in payment intent");
+      }
+      
+      const childrenData = JSON.parse(metadata.children_data) as { id: string; }[];
+      const priceId = metadata.price_id;
+      const classId = metadata.class_id;
+      const customerId = typeof customer === 'string' ? customer : customer.id;
+
+      for (const child of childrenData) {
+        // 1. Create Stripe Subscription
+        const subscription = await StripeService.createClassSubscription({
+           customerId,
+           priceId,
+        });
+
+        // 2. Create Class Subscription Record
+        await SubscriptionRepository.createClassSub(
+           {
+             classId,
+             studentId: child.id,
+             stripeCustomerId: customerId,
+             stripeSubId: subscription.id,
+             status: BillingStatus.Active,
+           },
+           tx
+        );
+
+        // 3. Create/Update Enrollment
+        const existingEnrollment = await EnrollmentRepository.findOneByClassIdAndStudentId(
+          classId,
+          child.id,
+          tx
+        );
+
+        if (!existingEnrollment) {
+          await EnrollmentRepository.create(
+            {
+              classId,
+              studentId: child.id,
+              active: true
+            },
+            tx
+          );
+        } else if (!existingEnrollment.active) {
+           await EnrollmentRepository.update(
+            {
+              classEnrollmentId: existingEnrollment.id,
+              update: { active: true },
+              tx
+            }
+           );
+        }
+      }
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  }
 }

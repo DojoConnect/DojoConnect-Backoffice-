@@ -8,6 +8,7 @@ import { ClassSubStripeMetadata, DojoSubStripeMetadata } from "../types/subscrip
 import { IClass } from "../repositories/class.repository.js";
 import { IParent } from "../repositories/parent.repository.js";
 import { IStudent } from "../repositories/student.repository.js";
+import { getFullName } from "../utils/text.utils.js";
 
 export const StripePriceIDsMap = {
   [StripePlans.Monthly]: "price_1Sg2AkRbZzajfaIIlgDhjLfh",
@@ -46,7 +47,7 @@ export class StripeService {
     metadata?: { dojoId?: string }
   ) => {
     return await StripeService.getStripeInstance().customers.create({
-      name: `${user.firstName} ${user.lastName || ""}`.trim(),
+      name: getFullName(user.firstName, user.lastName),
       email: user.email,
       metadata: {
         ...metadata,
@@ -173,6 +174,64 @@ export class StripeService {
   static archivePrice = async (priceId: string) => {
     return await StripeService.getStripeInstance().prices.update(priceId, {
       active: false,
+    });
+  };
+
+  static createEnrollmentPaymentIntent = async ({
+    customerId,
+    dojoClass,
+    students
+  }: {
+    customerId: string;
+    dojoClass: IClass;
+    students: IStudent[];
+  }) => {
+
+    if (!dojoClass.stripePriceId) {
+      throw new BadRequestException("Class price not found");
+    }
+
+    // Fetch price details to get amount
+    const price = await StripeService.retrievePrice(dojoClass.stripePriceId);
+
+    // Calculate Total Amount
+    // We assume all students pay the full price for now
+    const unitAmount = (price.unit_amount || 0) / 100; // Stripe amounts are in cents
+    const totalAmount = unitAmount * students.length;
+
+    const childrenData = students.map(s => {
+      return { id: s.id,  };
+    });
+
+    const metadata = {
+      enrollment_type: 'dojo_class', 
+      child_count: students.length,
+      price_id: dojoClass.stripePriceId,
+      class_id: dojoClass.id,
+      children_data: JSON.stringify(childrenData)
+    }
+    return await StripeService.getStripeInstance().paymentIntents.create({
+      amount: Math.round(totalAmount * 100),
+      currency: "gbp",
+      customer: customerId,
+      metadata,
+      setup_future_usage: 'off_session',
+    });
+  };
+
+  static createClassSubscription = async ({
+    customerId,
+    priceId,
+  }: {
+    customerId: string;
+    priceId: string;
+  }) => {
+    return await StripeService.getStripeInstance().subscriptions.create({
+      customer: customerId,
+      items: [{ price: priceId }],
+      trial_period_days: 30,
+      payment_behavior: 'default_incomplete',
+       // We rely on the customer's default payment method which should be set up by the PI
     });
   };
 
