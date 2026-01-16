@@ -552,7 +552,7 @@ export class MailerService {
     dojoName,
     token,
   }: SendInstructorInviteEmailParams) => {
-    const inviteLink = `${AppConfig.WEB_URL}/invites/instructor?token=${token}`;
+    const inviteLink = `${AppConfig.WEB_URL}/instructor-invite?token=${token}`;
 
     const mailOptions = {
       from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
