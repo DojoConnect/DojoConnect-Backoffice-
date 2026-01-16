@@ -3,6 +3,7 @@ import {
   getTableColumns,
   InferInsertModel,
   InferSelectModel,
+  SQL,
 } from "drizzle-orm";
 import { dojoInstructors, dojos } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
@@ -14,7 +15,7 @@ export type IUpdateDojo = Partial<Omit<INewDojo, "id" | "createdAt">>;
 
 export class DojoRepository {
   static async getOne(
-    whereClause: any,
+    whereClause: SQL | undefined,
     tx: Transaction
   ): Promise<IDojo | null> {
     const dojo = returnFirst(

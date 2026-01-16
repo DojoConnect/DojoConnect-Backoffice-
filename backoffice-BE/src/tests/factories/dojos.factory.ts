@@ -10,6 +10,8 @@ export const buildDojoMock = (overrides?: Partial<IDojo>): IDojo => {
     tagline: "Building champions",
     activeSub: StripePlans.Monthly,
     status: DojoStatus.Trailing,
+    balance: "150.75",
+    stripeCustomerId: "cus_9f3h28fh32",
     referralCode: "REFJOHN2024",
     referredBy: "ref_12345",
     hasUsedTrial: false,

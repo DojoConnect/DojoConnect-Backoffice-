@@ -19,6 +19,8 @@ import {
   StripeSetupIntentStatus,
   StripeSubscriptionStatus,
 } from "../constants/enums.js";
+import { SubscriptionType } from "../constants/subscription.constants.js";
+import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
 import { buildSubscriptionMock } from "../tests/factories/subscription.factory.js";
@@ -88,10 +90,11 @@ describe("SubscriptionService", () => {
   describe("getOrCreateStripeCustId", () => {
     it("should return existing stripeCustomerId if it exists", async () => {
       const stripeCustomerId = "cus_123";
-      user.stripeCustomerId = stripeCustomerId;
+      dojo.stripeCustomerId = stripeCustomerId;
 
-      const result = await SubscriptionService.getOrCreateStripeCustId({
+      const result = await SubscriptionService.getOrCreateDojoStripeCustId({
         user,
+        dojo,
       });
 
       expect(result).toBe(stripeCustomerId);
@@ -100,20 +103,20 @@ describe("SubscriptionService", () => {
     });
 
     it("should create a new Stripe customer and update the user if stripeCustomerId does not exist", async () => {
-      user.stripeCustomerId = null;
+      dojo.stripeCustomerId = "";
       const newStripeCustomerId = "cus_new_456";
       const customer = buildStripeCustMock({ id: newStripeCustomerId });
       createCustomerSpy.mockResolvedValue(customer);
 
-      const result = await SubscriptionService.getOrCreateStripeCustId({
+      const result = await SubscriptionService.getOrCreateDojoStripeCustId({
         user,
-        metadata: { dojoId: "dojo_1" },
+        dojo,
       });
 
       expect(result).toBe(newStripeCustomerId);
       expect(createCustomerSpy).toHaveBeenCalledWith(user);
-      expect(updateUserSpy).toHaveBeenCalledWith({
-        userId: user.id,
+      expect(updateDojoSpy).toHaveBeenCalledWith({
+        dojoId: dojo.id,
         update: { stripeCustomerId: newStripeCustomerId },
         txInstance: dbSpies.mockTx,
       });
@@ -122,7 +125,7 @@ describe("SubscriptionService", () => {
 
   describe("setupDojoAdminBilling", () => {
     beforeEach(() => {
-      user.stripeCustomerId = "cus_123";
+      dojo.stripeCustomerId = "cus_123";
     });
 
     it("should throw ConflictException if user does not own dojo", async () => {
@@ -179,7 +182,11 @@ describe("SubscriptionService", () => {
       });
 
       expect(retrieveSetupIntentSpy).toHaveBeenCalledWith("seti_canceled");
-      expect(setupIntentSpy).toHaveBeenCalledWith(user.stripeCustomerId);
+      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, {
+        dojoId: dojo.id,
+        ownerUserId: user.id,
+        type: SubscriptionType.DojoSub,
+      });
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
     });
 
@@ -197,7 +204,11 @@ describe("SubscriptionService", () => {
       });
 
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
-      expect(setupIntentSpy).toHaveBeenCalledWith(user.stripeCustomerId);
+      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, {
+        dojoId: dojo.id,
+        ownerUserId: user.id,
+        type: SubscriptionType.DojoSub,
+      });
       expect(createDojoAdminSubSpy).toHaveBeenCalledWith(
         {
           dojoId: dojo.id,
@@ -220,7 +231,7 @@ describe("SubscriptionService", () => {
     let sub: IDojoSub;
 
     beforeEach(() => {
-      user.stripeCustomerId = "cus_123";
+      dojo.stripeCustomerId = "cus_123";
       sub = buildSubscriptionMock({
         billingStatus: BillingStatus.SetupIntentCreated,
         stripeSetupIntentId: "seti_123",
@@ -237,7 +248,7 @@ describe("SubscriptionService", () => {
     });
 
     it("should throw BadRequestException if stripeCustomerId is missing", async () => {
-      user.stripeCustomerId = null;
+      dojo.stripeCustomerId = "";
       await expect(
         SubscriptionService.confirmDojoAdminBilling({ user })
       ).rejects.toThrow(BadRequestException);
@@ -282,11 +293,15 @@ describe("SubscriptionService", () => {
       await SubscriptionService.confirmDojoAdminBilling({ user });
 
       expect(createSubscriptionSpy).toHaveBeenCalledWith({
-        custId: user.stripeCustomerId,
+        custId: dojo.stripeCustomerId,
         plan: dojo.activeSub,
         grantTrial: true,
         paymentMethodId: "pm_123",
         idempotencyKey: `dojo-admin-sub-${sub.id}`,
+        metadata: {
+          dojoId: dojo.id,
+          type: SubscriptionType.DojoSub,
+        },
       });
       expect(updateDojoAdminSubSpy).toHaveBeenCalledWith({
         tx: dbSpies.mockTx,
@@ -410,6 +425,74 @@ describe("SubscriptionService", () => {
       expect(SubscriptionService.deriveDojoStatus("unknown" as any)).toBe(
         DojoStatus.Registered
       );
+    });
+  });
+  describe("createClassSubscriptionsFromPaymentIntent", () => {
+    let mockPaymentIntent: any;
+
+    beforeEach(() => {
+      mockPaymentIntent = {
+        customer: { id: "cus_123" },
+        metadata: {
+          children_data: JSON.stringify([
+            { id: "student_1", name: "Student One" },
+            { id: "student_2", name: "Student Two" },
+          ]),
+          price_id: "price_123",
+          class_id: "class_123",
+        },
+      };
+
+      vi.spyOn(StripeService, "createClassSubscription").mockResolvedValue({
+        id: "sub_123",
+      } as any);
+      vi.spyOn(SubscriptionRepository, "createClassSub").mockResolvedValue({} as any);
+      vi.spyOn(
+        // @ts-ignore
+        EnrollmentRepository,
+        "findOneByClassIdAndStudentId"
+      ).mockResolvedValue(null);
+      vi.spyOn(
+        // @ts-ignore
+        EnrollmentRepository,
+        "create"
+      ).mockResolvedValue({} as any);
+      vi.spyOn(
+        // @ts-ignore
+        EnrollmentRepository,
+        "update"
+      ).mockResolvedValue({} as any);
+    });
+
+    it("should throw error if customer is missing", async () => {
+        mockPaymentIntent.customer = null;
+        await expect(SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent)).rejects.toThrow("Customer not found in payment intent");
+    });
+
+    it("should throw error if metadata is missing fields", async () => {
+       mockPaymentIntent.metadata = {};
+       await expect(SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent)).rejects.toThrow("Missing metadata in payment intent");
+    });
+
+    it("should create subscriptions and enrollments for all children", async () => {
+      await SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent);
+
+      expect(StripeService.createClassSubscription).toHaveBeenCalledTimes(2);
+      expect(SubscriptionRepository.createClassSub).toHaveBeenCalledTimes(2);
+      // @ts-ignore
+      expect(EnrollmentRepository.create).toHaveBeenCalledTimes(2);
+    });
+
+    it("should update enrollment if exists but inactive", async () => {
+       vi.spyOn(
+        // @ts-ignore
+        EnrollmentRepository,
+        "findOneByClassIdAndStudentId"
+      ).mockResolvedValue({ id: "enroll_1", active: false } as any);
+
+      await SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent);
+       // @ts-ignore
+      expect(EnrollmentRepository.update).toHaveBeenCalledTimes(2);
     });
   });
 });

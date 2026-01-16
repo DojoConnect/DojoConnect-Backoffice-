@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { ParentService } from "../services/parent.service.js";
 import { formatApiResponse } from "../utils/api.utils.js";
+import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 
 export class ParentController {
 
@@ -11,7 +12,7 @@ static handleAddChild = async (
 ) => {
   try {
     const result = await ParentService.addChild({
-      parent: req.user!,
+      parentUser: req.user!,
       dto: req.body,
     });
 
@@ -45,4 +46,25 @@ static handleGetChildren = async (
     next(error);
   }
 };
+
+static handleGetClasses = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  
+    if (!req.user) {
+      throw new InternalServerErrorException("User not found");
+    }
+
+    const result = await ParentService.getClassesEnrolledByChildren({
+      currentUser: req.user,
+    });
+
+    res.status(200).json(
+      formatApiResponse({
+        data: result,
+      })
+    );
+  };
 }

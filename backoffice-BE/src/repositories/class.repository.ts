@@ -1,4 +1,4 @@
-import { and, eq, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { and, eq, inArray, InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { classes, classSchedules } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
 import { Transaction } from "../db/index.js";
@@ -55,6 +55,16 @@ export class ClassRepository {
     }
 
     return result;
+  }
+
+  static async findClassesByIds(
+    classIds: string[],
+    tx: Transaction
+  ): Promise<IClass[]> {
+    return await tx
+      .select()
+      .from(classes)
+      .where(inArray(classes.id, classIds));
   }
 
   static async fetchClassSchedules(
