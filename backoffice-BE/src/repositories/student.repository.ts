@@ -1,4 +1,4 @@
-import { InferInsertModel, InferSelectModel, SQL, eq } from "drizzle-orm";
+import { InferInsertModel, InferSelectModel, SQL, eq, inArray } from "drizzle-orm";
 import { students, users } from "../db/schema.js";
 import { Transaction } from "../db/index.js";
 import { returnFirst } from "../utils/db.utils.js";
@@ -44,4 +44,8 @@ export class StudentRepository {
   static findOneById = async (studentId: string, tx: Transaction) => {
     return await this.findOne(eq(students.id, studentId), tx);
   };
+
+  static fetchStudentsByIds = async (studentIds: string[], tx: Transaction) => {
+    return await tx.select().from(students).where(inArray(students.id, studentIds)); 
+  }
 }

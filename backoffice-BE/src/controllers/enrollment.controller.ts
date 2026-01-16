@@ -10,12 +10,12 @@ export class EnrollmentController {
       }
 
       const { classId } = req.params;
-      const { studentId } = req.body;
+      const { studentIds } = req.body;
 
-      const result = await EnrollmentService.enrollStudent({
+      const result = await EnrollmentService.enrollStudents({
         parentUser: req.user,
         classId,
-        studentId,
+        studentIds,
       });
 
       res.status(200).json(formatApiResponse({ data: result }));

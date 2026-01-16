@@ -21,16 +21,10 @@ export const isParentOfStudentMiddleware = async (
       throw new UnauthorizedException("Unauthenticated");
     }
 
-    const studentId = req.params.studentId || req.body.studentId || req.query.studentId;
+    const { studentIds } = req.body;
 
-    if (!studentId) {
-      throw new BadRequestException("Missing studentId");
-    }
-
-    const student = await StudentService.getOneStudentByID(studentId);
-
-    if (!student) {
-      throw new NotFoundException("Student not found");
+    if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+      throw new BadRequestException("Missing or invalid studentIds");
     }
 
     const parent = await ParentService.getOneParentByUserId(parentUser.id);
@@ -39,8 +33,16 @@ export const isParentOfStudentMiddleware = async (
       throw new NotFoundException("Parent not found");
     }
 
-    if (student.parentId !== parent.id) {
-      throw new ForbiddenException("Access Denied: User is not the parent of this student");
+    // Verify all students belong to this parent
+    const students = await Promise.all(
+        studentIds.map(id => StudentService.getOneStudentByID(id))
+    );
+    
+    // Check if any student invalid or belongs to another parent
+    const unauthorizedStudent = students.find(s => !s || s.parentId !== parent.id);
+
+    if (unauthorizedStudent) {
+       throw new ForbiddenException("Access Denied: You are not authorized to act as parent for one or more of these students");
     }
 
     next();

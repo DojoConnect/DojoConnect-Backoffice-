@@ -261,6 +261,7 @@ export class SubscriptionService {
   }
 
   static handleClassSubPaid = async (session: Stripe.Checkout.Session, metadata: ClassSubStripeMetadata, tx: Transaction) => {
+    session.subscription_ids
     if (!session.subscription) {
       throw new BadRequestException("Subscription not found");
     }

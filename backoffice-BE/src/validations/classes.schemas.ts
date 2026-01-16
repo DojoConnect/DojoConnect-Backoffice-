@@ -168,5 +168,5 @@ export type CreateClassScheduleDTO = z.infer<typeof CreateClassSchema>["schedule
 
 
 export const EnrollStudentSchema = z.object({
-  studentId: z.uuid(),
+  studentIds: z.array(z.uuid()).min(1),
 });

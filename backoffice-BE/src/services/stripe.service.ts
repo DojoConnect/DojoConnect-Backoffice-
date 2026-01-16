@@ -176,28 +176,35 @@ export class StripeService {
     });
   };
 
-  static createClassSubCheckOut = async ({dojoClass, parent, student}: {dojoClass: IClass, parent: IParent, student: IStudent}) => {
+  static createClassSubCheckOut = async ({dojoClass, parent, students}: {dojoClass: IClass, parent: IParent, students: IStudent[]}) => {
     if (!dojoClass.stripePriceId) {
       throw new BadRequestException("Class Stripe price not found");
     }
     
-    const metadata: ClassSubStripeMetadata = {
+    const studentIds = students.map(s => s.id);
+
+    // Limit metadata size if necessary.
+    if (studentIds.join(",").length > 500) {
+        throw new BadRequestException("Too many students for one checkout session. Please enroll in smaller batches.");
+    }
+
+    const metadatas: ClassSubStripeMetadata[] = students.map(student => ({
       type: SubscriptionType.ClassSub,
       classId: dojoClass.id,
       studentId: student.id,
-    };    
+    }));   
 
     return await StripeService.getStripeInstance().checkout.sessions.create({
       payment_method_types: ["card"],
        mode: "subscription",
       customer: parent.stripeCustomerId,
-      line_items: [
-        {
-          price: dojoClass.stripePriceId,
-          quantity: 1,
-        },
-      ],
-      metadata,
+      line_items: metadatas.map(metadata => ({
+        price: dojoClass.stripePriceId!,
+        quantity: 1,
+        subscription_data: {
+          metadata
+        }
+      })),
       success_url: `${AppConfig.WEB_URL}/success`,
       cancel_url: `${AppConfig.WEB_URL}/cancel`,
     });
