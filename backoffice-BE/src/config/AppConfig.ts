@@ -26,6 +26,7 @@ export const appConfigSchema = z.object({
   JWT_REFRESH_SECRET: z.string().nonempty(),
 
   STRIPE_SECRET_KEY: z.string().nonempty(),
+  STRIPE_WEBHOOK_SECRET: z.string().nonempty(),
   STRIPE_TEST_SECRET_KEY: z.string(),
 
   WEB_URL: z.url().nonempty(),
@@ -61,6 +62,7 @@ export const AppConfig: IAppConfig = {
 
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
   STRIPE_TEST_SECRET_KEY: process.env.STRIPE_TEST_SECRET_KEY || "",
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
 
   WEB_URL: process.env.WEB_URL || "",
 

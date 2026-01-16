@@ -9,6 +9,8 @@ export class BaseDojoDTO implements IDojo {
   tag: string;
   tagline: string;
   status: DojoStatus;
+  balance: string;
+  stripeCustomerId: string;
   hasUsedTrial: boolean;
   activeSub: StripePlans;
   trialEndsAt: Date | null;
@@ -23,6 +25,8 @@ export class BaseDojoDTO implements IDojo {
     this.tag = params.tag;
     this.tagline = params.tagline;
     this.status = params.status;
+    this.balance = params.balance;
+    this.stripeCustomerId = params.stripeCustomerId;
     this.activeSub = params.activeSub;
     this.trialEndsAt = params.trialEndsAt;
     this.referralCode = params.referralCode;

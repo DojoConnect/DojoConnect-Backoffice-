@@ -16,6 +16,7 @@ import {
   UpdateClassDTO,
 } from "../validations/classes.schemas.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
+import { StudentUserDTO } from "../dtos/student.dtos.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { nextDay } from "date-fns";
 import { ClassFrequency, ClassSubscriptionType } from "../constants/enums.js";
@@ -32,11 +33,12 @@ import { IDojo } from "../repositories/dojo.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { CloudinaryService } from "./cloudinary.service.js";
 import { CloudinaryResourceType, ImageType } from "../constants/cloudinary.js";
-import { ForbiddenException } from "../core/errors/ForbiddenException.js";
 import {
   InstructorUserDetails,
   UserRepository,
 } from "../repositories/user.repository.js";
+import { StudentRepository } from "../repositories/student.repository.js";
+import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 
 export class ClassService {
   static createClass = async (
@@ -104,8 +106,11 @@ export class ClassService {
         }
 
         const stripeProd = await StripeService.createClassProduct(
-          classData.name,
-          dojo.id
+          {
+            className: classData.name,
+            dojoId: dojo.id,
+            classId: newClassId,
+          }
         );
         const prodPrice = await StripeService.createClassPrice(
           stripeProd.id,
@@ -475,5 +480,41 @@ export class ClassService {
     }
 
     return dojoInstructor;
+  };
+
+
+  static getEnrolledStudents = async (
+    classId: string,
+    txInstance?: Transaction
+  ): Promise<StudentUserDTO[]> => {
+    const execute = async (tx: Transaction) => {
+      const enrollments =
+        await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId(
+          classId,
+          tx
+        );
+
+      if (enrollments.length === 0) {
+        return [];
+      }
+
+      const studentIds = enrollments.map((e) => e.studentId);
+      const studentRecords =
+        await StudentRepository.fetchStudentsWithUsersByIds(studentIds, tx);
+
+        return studentRecords.map((record) => {
+            return new StudentUserDTO({
+                id: record.student.id,
+                studentUserId: record.student.studentUserId,
+                parentId: record.student.parentId,
+                experience: record.student.experienceLevel,
+                studentUser: record.user
+            })
+        })
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
   };
 }

@@ -68,23 +68,12 @@ CREATE TABLE `chats` (
 	CONSTRAINT `chats_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
-CREATE TABLE `children_subscription` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`child_id` int NOT NULL,
-	`enrollment_id` varchar(50) NOT NULL,
-	`stripe_subscription_id` varchar(255),
-	`stripe_customer_id` varchar(255) NOT NULL,
-	`status` enum('active','cancelled','paused') DEFAULT 'active',
-	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`stripe_session_id` varchar(255),
-	CONSTRAINT `children_subscription_id` PRIMARY KEY(`id`)
-);
---> statement-breakpoint
 CREATE TABLE `class_enrollments` (
 	`id` varchar(36) NOT NULL,
 	`student_id` varchar(36) NOT NULL,
 	`class_id` varchar(36) NOT NULL,
+	`active` boolean NOT NULL DEFAULT true,
+	`revoked_at` timestamp,
 	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `class_enrollments_id` PRIMARY KEY(`id`),
@@ -113,6 +102,20 @@ CREATE TABLE `class_schedules` (
 	`initial_class_date` date NOT NULL,
 	CONSTRAINT `class_schedules_id` PRIMARY KEY(`id`),
 	CONSTRAINT `time_order_check` CHECK(`class_schedules`.`start_time` < `class_schedules`.`end_time`)
+);
+--> statement-breakpoint
+CREATE TABLE `class_subscriptions` (
+	`id` varchar(36) NOT NULL,
+	`student_id` varchar(36) NOT NULL,
+	`class_id` varchar(36) NOT NULL,
+	`stripe_customer_id` varchar(255) NOT NULL,
+	`stripe_sub_id` varchar(255) NOT NULL,
+	`status` enum('no_customer','customer_created','setup_intent_created','payment_method_attached','subscription_created','trialing','active','past_due','unpaid','cancelled') NOT NULL,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`ended_at` timestamp,
+	CONSTRAINT `class_subscriptions_id` PRIMARY KEY(`id`),
+	CONSTRAINT `class_subscriptions_stripe_sub_id_unique` UNIQUE(`stripe_sub_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `classes` (
@@ -189,14 +192,17 @@ CREATE TABLE `dojos` (
 	`tag` varchar(50) NOT NULL,
 	`tagline` varchar(255) NOT NULL,
 	`status` enum('registered','onboarding_incomplete','trialing','active','past_due','blocked') NOT NULL,
+	`balance` decimal(10,2) NOT NULL DEFAULT '0.00',
 	`active_sub` enum('monthly','yearly') NOT NULL,
 	`has_used_trial` boolean NOT NULL DEFAULT false,
 	`trial_ends_at` datetime,
 	`referral_code` varchar(255) NOT NULL,
+	`stripe_customer_id` varchar(255) NOT NULL,
 	`referred_by` varchar(255),
 	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `dojos_id` PRIMARY KEY(`id`),
-	CONSTRAINT `dojos_tag_unique` UNIQUE(`tag`)
+	CONSTRAINT `dojos_tag_unique` UNIQUE(`tag`),
+	CONSTRAINT `dojos_stripe_customer_id_unique` UNIQUE(`stripe_customer_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `enrolled_children` (
@@ -289,13 +295,26 @@ CREATE TABLE `notifications` (
 	CONSTRAINT `notifications_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
+CREATE TABLE `one_time_class_payments` (
+	`id` varchar(36) NOT NULL,
+	`student_id` varchar(36) NOT NULL,
+	`class_id` varchar(36) NOT NULL,
+	`stripe_payment_intent_id` varchar(255),
+	`amount` decimal(10,2) NOT NULL,
+	`status` enum('no_customer','customer_created','setup_intent_created','payment_method_attached','subscription_created','trialing','active','past_due','unpaid','cancelled') NOT NULL,
+	`paid_at` timestamp,
+	CONSTRAINT `one_time_class_payments_id` PRIMARY KEY(`id`),
+	CONSTRAINT `one_time_class_payments_stripe_payment_intent_id_unique` UNIQUE(`stripe_payment_intent_id`)
+);
+--> statement-breakpoint
 CREATE TABLE `parents` (
-	`id` int AUTO_INCREMENT NOT NULL,
-	`email` varchar(255) NOT NULL,
-	`enrollment_id` varchar(255) DEFAULT '',
-	`class_id` varchar(255) DEFAULT '',
+	`id` varchar(36) NOT NULL,
+	`user_id` varchar(36) NOT NULL,
+	`stripe_customer_id` varchar(255) NOT NULL,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `parents_id` PRIMARY KEY(`id`),
-	CONSTRAINT `unique_parent_enrollment` UNIQUE(`email`,`enrollment_id`,`class_id`)
+	CONSTRAINT `parents_stripe_customer_id_unique` UNIQUE(`stripe_customer_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `password_reset_otps` (
@@ -332,15 +351,22 @@ CREATE TABLE `sessions` (
 	`expires_at` datetime NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE `stripe_webhook_events` (
+	`id` varchar(255) NOT NULL,
+	`type` varchar(100) NOT NULL,
+	`processed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	CONSTRAINT `stripe_webhook_events_id` PRIMARY KEY(`id`)
+);
+--> statement-breakpoint
 CREATE TABLE `students` (
 	`id` varchar(36) NOT NULL,
 	`student_user_id` varchar(36) NOT NULL,
-	`parent_user_id` varchar(36) NOT NULL,
+	`parent_id` varchar(36) NOT NULL,
 	`experience_level` enum('beginner','intermediate','advanced') NOT NULL,
 	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `students_id` PRIMARY KEY(`id`),
 	CONSTRAINT `students_student_user_id_unique` UNIQUE(`student_user_id`),
-	CONSTRAINT `unique_student_parent` UNIQUE(`student_user_id`,`parent_user_id`)
+	CONSTRAINT `unique_student_parent` UNIQUE(`student_user_id`,`parent_id`)
 );
 --> statement-breakpoint
 CREATE TABLE `tasks` (
@@ -405,8 +431,6 @@ CREATE TABLE `users` (
 	`email_verified` boolean NOT NULL DEFAULT false,
 	`avatar` text,
 	`role` enum('dojo-admin','instructor','parent','child') NOT NULL,
-	`balance` decimal(10,2) NOT NULL DEFAULT '0.00',
-	`stripe_customer_id` varchar(255),
 	`dob` date,
 	`gender` varchar(10),
 	`city` varchar(50),
@@ -433,6 +457,8 @@ ALTER TABLE `class_enrollments` ADD CONSTRAINT `class_enrollments_class_id_class
 ALTER TABLE `class_occurrences` ADD CONSTRAINT `class_occurrences_schedule_id_class_schedules_id_fk` FOREIGN KEY (`schedule_id`) REFERENCES `class_schedules`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `class_occurrences` ADD CONSTRAINT `class_occurrences_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `class_schedules` ADD CONSTRAINT `class_schedules_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `class_subscriptions` ADD CONSTRAINT `class_subscriptions_student_id_students_id_fk` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `class_subscriptions` ADD CONSTRAINT `class_subscriptions_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `classes` ADD CONSTRAINT `classes_dojo_id_dojos_id_fk` FOREIGN KEY (`dojo_id`) REFERENCES `dojos`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `classes` ADD CONSTRAINT `classes_instructor_id_dojo_instructors_id_fk` FOREIGN KEY (`instructor_id`) REFERENCES `dojo_instructors`(`id`) ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `dojo_instructors` ADD CONSTRAINT `dojo_instructors_instructor_user_id_users_id_fk` FOREIGN KEY (`instructor_user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -443,10 +469,13 @@ ALTER TABLE `instructor_invites` ADD CONSTRAINT `instructor_invites_dojo_id_dojo
 ALTER TABLE `instructor_invites` ADD CONSTRAINT `instructor_invites_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `instructor_invites` ADD CONSTRAINT `instructor_invites_invited_by_users_id_fk` FOREIGN KEY (`invited_by`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `notifications` ADD CONSTRAINT `notifications_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `one_time_class_payments` ADD CONSTRAINT `one_time_class_payments_student_id_students_id_fk` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `one_time_class_payments` ADD CONSTRAINT `one_time_class_payments_class_id_classes_id_fk` FOREIGN KEY (`class_id`) REFERENCES `classes`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `parents` ADD CONSTRAINT `parents_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `password_reset_otps` ADD CONSTRAINT `password_reset_otps_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `refresh_tokens` ADD CONSTRAINT `refresh_tokens_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `students` ADD CONSTRAINT `students_student_user_id_users_id_fk` FOREIGN KEY (`student_user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE `students` ADD CONSTRAINT `students_parent_user_id_users_id_fk` FOREIGN KEY (`parent_user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE `students` ADD CONSTRAINT `students_parent_id_parents_id_fk` FOREIGN KEY (`parent_id`) REFERENCES `parents`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `user_cards` ADD CONSTRAINT `user_cards_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE `user_oauth_accounts` ADD CONSTRAINT `user_oauth_accounts_user_id_users_id_fk` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX `announcement_id` ON `announcement_recipients` (`announcement_id`);--> statement-breakpoint

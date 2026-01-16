@@ -11,12 +11,12 @@ import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
 
-import AppConfig from "./config/AppConfig.js";
 import * as dbService from "./services/db.service.js";
 import {MailerService} from "./services/mailer.service.js";
 import { notFound } from "./middlewares/notFound.middleware.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import routes from "./routes/index.js";
+import webhooksRouter from "./routes/webhooks.routes.js";
 
 const corsOptions = {
   origin: [
@@ -28,18 +28,27 @@ const corsOptions = {
 };
 
 const app: Express = express();
-app.set("trust proxy", 1);
-
-app.use(cors(corsOptions));
-app.use(helmet());
 
 // Set because we are deployed on Cpanel
 // On cPanel, a Node app is always behind a proxy (Apache + often LiteSpeed). 
 // cPanel injects X-Forwarded-For automatically, so Express must trust the proxy.
 // We use 1 instead of true to prevent spoofed headers
+app.set("trust proxy", 1);
 
+app.use(cors(corsOptions));
+app.use(helmet());
+
+// Stripe Webhook Requires the raw buffer of the request body to validate signature
+app.use(
+  "/api/webhooks",
+  webhooksRouter // must use express.raw internally
+);
 
 app.use(express.json()); // bodyParser not needed
+app.use(express.urlencoded({ extended: true }));
+
+/* ------------------ API Routes ------------------ */
+app.use("/api", routes);
 
 /* ------------------ Backoffice Utilities (from combine.js) ------------------ */
 
@@ -324,11 +333,6 @@ function convertTo12Hour(time24h) {
 
   return `${hours}:${minutes} ${period}`;
 }
-
-/** Helper for Sending Appointment Emails */
-
-/* ------------------ API Routes ------------------ */
-app.use("/api", routes);
 
 /* ------------------ EXPORTING/REPORTING (from combine.js) ------------------ */
 

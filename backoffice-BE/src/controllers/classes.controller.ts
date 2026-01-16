@@ -61,4 +61,18 @@ export class ClassesController {
       })
     );
   }
+
+
+
+  static async handleGetClassStudents(req: Request, res: Response) {
+    const { classId } = req.params;
+
+    const students = await ClassService.getEnrolledStudents(classId);
+
+    res.status(200).json(
+      formatApiResponse({
+        data: students,
+      })
+    );
+  }
 }
