@@ -142,11 +142,13 @@ describe("Parent Service", () => {
         };
 
         it("should return list of children", async () => {
+            const mockParent = buildParentMock({ userId: currentUser.id });
+            getOneParentByUserIdSpy.mockResolvedValue(mockParent);
             getStudentsAndUserByParentIdSpy.mockResolvedValue([student]);
 
             const result = await ParentService.getChildren({ currentUser });
 
-            expect(getStudentsAndUserByParentIdSpy).toHaveBeenCalledWith(currentUser.id, expect.anything());
+            expect(getStudentsAndUserByParentIdSpy).toHaveBeenCalledWith(mockParent.id, expect.anything());
             expect(result).toHaveLength(1);
             expect(result[0].id).toBe(student.student.id);
         });
