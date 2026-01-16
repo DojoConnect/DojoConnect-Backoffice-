@@ -57,6 +57,10 @@ export class StudentRepository {
     return await this.findOne(eq(students.id, studentId), tx);
   };
 
+  static findOneByUserId = async (userId: string, tx: Transaction) => {
+    return await this.findOne(eq(students.studentUserId, userId), tx);
+  };
+
   static fetchStudentsByIds = async (studentIds: string[], tx: Transaction) => {
     return await tx.select().from(students).where(inArray(students.id, studentIds)); 
   }

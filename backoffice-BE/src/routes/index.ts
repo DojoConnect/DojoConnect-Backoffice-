@@ -8,6 +8,7 @@ import instructorsRouter from "./instructors.routes.js";
 import uploadRouter from "./upload.routes.js";
 import parentsRouter from "./parent.routes.js";
 import classesRouter from "./classes.routes.js";
+import studentRouter from "./student.routes.js";
 
 const router = Router();
 
@@ -23,6 +24,7 @@ router.use("/billing", billingRouter);
 router.use("/instructors", instructorsRouter);
 router.use("/uploads", uploadRouter);
 router.use("/parents", parentsRouter);
+router.use("/students", studentRouter);
 
 router.use("/dev", devRouter);
 
