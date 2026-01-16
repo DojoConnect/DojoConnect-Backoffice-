@@ -5,7 +5,7 @@ import {
 import { Transaction } from "../db/index.js";
 import * as dbService from "../db/index.js";
 import { AddChildDTO } from "../dtos/parent.dtos.js";
-import { IUser } from "../repositories/user.repository.js";
+import { InstructorUserDetails, IUser } from "../repositories/user.repository.js";
 import { AuthService } from "./auth.service.js";
 import { Role } from "../constants/enums.js";
 import { StudentRepository } from "../repositories/student.repository.js";
@@ -15,6 +15,10 @@ import { UsersService } from "./users.service.js";
 import { nanoid } from "nanoid";
 import { StudentUserDTO as StudentDTO } from "../dtos/student,dtos.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
+import { ClassRepository } from "../repositories/class.repository.js";
+import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { ClassDTO } from "../dtos/class.dtos.js";
+import { UserRepository } from "../repositories/user.repository.js";
 
 export class ParentService {
   static addChild = async ({
@@ -132,7 +136,7 @@ export class ParentService {
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
-      const studentsData = await StudentRepository.getStudentsByParentId(
+      const studentsData = await StudentRepository.getStudentsAndUserByParentId(
         currentUser.id,
         tx
       );
@@ -162,4 +166,79 @@ export class ParentService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
-}
+
+  static getClassesEnrolledByChildren = async ({
+    currentUser,
+    txInstance,
+  }: {
+    currentUser: IUser;
+    txInstance?: Transaction;
+  }): Promise<ClassDTO[]> => {
+    const execute = async (tx: Transaction) => {
+      const parent = await ParentRepository.getOneParentByUserId(
+        currentUser.id,
+        tx
+      );
+
+      if (!parent) {
+        throw new NotFoundException("Parent not found");
+      }
+
+      const studentsData = await StudentRepository.getStudentsByParentId(
+        parent.id,
+        tx
+      );
+
+      if (studentsData.length === 0) {
+        return [];
+      }
+
+      const studentIds = studentsData.map((student) => student.student.id);
+
+      const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByStudentIds(
+        studentIds,
+        tx
+      );
+
+      if (enrollments.length === 0) {
+        return [];
+      }
+
+      const classIds = enrollments.map((enrollment) => enrollment.classId);
+      const uniqueClassIds = Array.from(new Set(classIds));
+
+      const classes = await ClassRepository.findClassesByIds(
+        uniqueClassIds,
+        tx
+      );
+
+      const instructorIds = classes.map((classData) => classData.instructorId).filter((id) => id !== null);
+
+      const instructors = await UserRepository.getUserProfileByInstructorIds(
+        instructorIds,
+        tx
+      );
+
+      const instructorMap = new Map(instructors.map((instructor) => [instructor.id, instructor]));
+
+      const classesDTOs = classes.map((classData) => {
+        let instructor: InstructorUserDetails | null|undefined = null;
+
+        if (classData.instructorId) {
+          instructor = instructorMap.get(classData.instructorId);
+        }
+        return new ClassDTO({
+          ...classData,
+          instructor,
+          schedules: [],
+        });
+      });
+
+      return classesDTOs
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  };
+};

@@ -16,7 +16,7 @@ export class StudentRepository {
     return insertResult.id;
   };
 
-  static getStudentsByParentId = async (
+  static getStudentsAndUserByParentId = async (
     parentId: string,
     tx: Transaction
   ) => {
@@ -27,6 +27,18 @@ export class StudentRepository {
       })
       .from(students)
       .innerJoin(users, eq(students.studentUserId, users.id))
+      .where(eq(students.parentId, parentId));
+  };
+
+  static getStudentsByParentId = async (
+    parentId: string,
+    tx: Transaction
+  ) => {
+    return await tx
+      .select({
+        student: students,
+      })
+      .from(students)
       .where(eq(students.parentId, parentId));
   };
 

@@ -1,4 +1,4 @@
-import { and, eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
+import { and, eq, inArray, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
 import { classEnrollments, dojos } from "../db/schema.js";
 import { Transaction } from "../db/index.js";
 import { returnFirst } from "../utils/db.utils.js";
@@ -58,14 +58,14 @@ static findOneByClassIdAndStudentId = async (
       .where(and(eq(classEnrollments.classId, classId), eq(classEnrollments.active, true)));
   };
 
-  static fetchEnrollmentsByStudentId = async (
-    studentId: string,
+  static fetchActiveEnrollmentsByStudentIds = async (
+    studentIds: string[],
     tx: Transaction
   ): Promise<IClassEnrollment[]> => {
     return await tx
       .select()
       .from(classEnrollments)
-      .where(eq(classEnrollments.studentId, studentId));
+      .where(and(inArray(classEnrollments.studentId, studentIds), eq(classEnrollments.active, true)));
   };
 
   static update = async ({

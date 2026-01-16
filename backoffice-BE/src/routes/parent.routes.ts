@@ -13,6 +13,8 @@ router.use(requireAuth, requireRole(Role.Parent));
 
 router.get("/children", ParentController.handleGetChildren);
 
+router.get("/classes", ParentController.handleGetClasses);
+
 router.post(
   "/children",
   validateReqBody(AddChildSchema),
