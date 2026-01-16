@@ -136,8 +136,17 @@ export class ParentService {
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
-      const studentsData = await StudentRepository.getStudentsAndUserByParentId(
+      const parent = await ParentRepository.getOneParentByUserId(
         currentUser.id,
+        tx
+      );
+
+      if (!parent) {
+        throw new NotFoundException("Parent not found");
+      }
+
+      const studentsData = await StudentRepository.getStudentsAndUserByParentId(
+        parent.id,
         tx
       );
 
