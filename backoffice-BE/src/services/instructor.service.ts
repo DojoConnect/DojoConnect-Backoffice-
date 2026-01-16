@@ -290,4 +290,14 @@ export class InstructorService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   }
+
+  static findOneByUserIdAndDojoId = async (userId: string, dojoId: string, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
+      return await InstructorsRepository.findOneByUserIdAndDojoId(userId, dojoId, tx);
+    };
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+  }
 }

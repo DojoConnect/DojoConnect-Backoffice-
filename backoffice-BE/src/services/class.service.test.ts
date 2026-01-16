@@ -57,6 +57,12 @@ vi.mock("./notifications.service.js");
 vi.mock("./users.service.js");
 vi.mock("./cloudinary.service.js");
 vi.mock("../repositories/user.repository.js");
+vi.mock("../repositories/enrollment.repository.js");
+vi.mock("../repositories/student.repository.js");
+
+import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { StudentRepository } from "../repositories/student.repository.js";
+import { StudentUserDTO } from "../dtos/student.dtos.js";
 
 describe("Class Service", () => {
   let dbServiceSpy: DbServiceSpies;
@@ -775,6 +781,74 @@ describe("Class Service", () => {
       await expect(ClassService.getClassSchedulesAndInstructor(classId)).rejects.toThrow(
         new InternalServerErrorException("Instructor User account not found")
       );
+    });
+  });
+  describe("getEnrolledStudents", () => {
+    let fetchActiveEnrollmentsSpy: MockInstance;
+    let fetchStudentsWithUsersByIdsSpy: MockInstance;
+
+    beforeEach(() => {
+        fetchActiveEnrollmentsSpy = vi.spyOn(
+            ClassEnrollmentRepository,
+            "fetchActiveEnrollmentsByClassId"
+        );
+        fetchStudentsWithUsersByIdsSpy = vi.spyOn(
+            StudentRepository,
+            "fetchStudentsWithUsersByIds"
+        );
+    });
+
+    it("should return empty array if no active enrollments found", async () => {
+        fetchActiveEnrollmentsSpy.mockResolvedValue([]);
+
+        const result = await ClassService.getEnrolledStudents("class-id");
+
+        expect(result).toEqual([]);
+        expect(fetchActiveEnrollmentsSpy).toHaveBeenCalledWith("class-id", dbServiceSpy.mockTx);
+        expect(fetchStudentsWithUsersByIdsSpy).not.toHaveBeenCalled();
+    });
+
+    it("should return list of students when enrollments exist", async () => {
+        const mockEnrollments = [
+            { studentId: "student-1", active: true },
+            { studentId: "student-2", active: true },
+        ];
+        fetchActiveEnrollmentsSpy.mockResolvedValue(mockEnrollments);
+
+        const mockStudentRecords = [
+            {
+                student: {
+                    id: "student-1",
+                    studentUserId: "user-1",
+                    parentId: "parent-1",
+                    experienceLevel: "Beginner",
+                },
+                user: buildUserMock({ id: "user-1" }),
+            },
+            {
+                student: {
+                    id: "student-2",
+                    studentUserId: "user-2",
+                    parentId: "parent-2",
+                    experienceLevel: "Intermediate",
+                },
+                user: buildUserMock({ id: "user-2" }),
+            },
+        ];
+        fetchStudentsWithUsersByIdsSpy.mockResolvedValue(mockStudentRecords);
+
+        const result = await ClassService.getEnrolledStudents("class-id");
+
+        expect(result).toHaveLength(2);
+        expect(result[0]).toBeInstanceOf(StudentUserDTO);
+        expect(result[0].id).toBe("student-1");
+        expect(result[1].id).toBe("student-2");
+        
+        expect(fetchActiveEnrollmentsSpy).toHaveBeenCalledWith("class-id", dbServiceSpy.mockTx);
+        expect(fetchStudentsWithUsersByIdsSpy).toHaveBeenCalledWith(
+            ["student-1", "student-2"],
+            dbServiceSpy.mockTx
+        );
     });
   });
 });

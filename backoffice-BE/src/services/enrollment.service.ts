@@ -4,7 +4,7 @@ import { IUser } from "../repositories/user.repository.js";
 import { StudentRepository } from "../repositories/student.repository.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
 import { ClassRepository } from "../repositories/class.repository.js";
-import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { SubscriptionRepository } from "../repositories/subscription.repository.js";
 import { StripeService } from "./stripe.service.js";
 import { 
@@ -51,7 +51,7 @@ export class EnrollmentService {
       }
 
       // 3. Validate Capacity
-      const currentEnrollments = await EnrollmentRepository.fetchActiveEnrollmentsByClassId(classId, tx);
+      const currentEnrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId(classId, tx);
       const activeEnrollmentsCount = currentEnrollments.length;
       
       if (activeEnrollmentsCount + studentIds.length > dojoClass.capacity) {
@@ -61,7 +61,7 @@ export class EnrollmentService {
       // 4. Validate Each Student (Existing Enrollment/Sub)
       for (const studentId of studentIds) {
           // Check Active Enrollment
-          const existing = await EnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId(classId, studentId, tx);
+          const existing = await ClassEnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId(classId, studentId, tx);
           if (existing) {
               throw new ConflictException(`Student ${studentId} is already actively enrolled in this class`);
           }
@@ -81,7 +81,7 @@ export class EnrollmentService {
           // Free Class - Enroll All
            await Promise.all(
             studentIds.map(async (studentId) => {
-              EnrollmentRepository.create({
+              ClassEnrollmentRepository.create({
                 classId,
                 studentId,
                 active: true

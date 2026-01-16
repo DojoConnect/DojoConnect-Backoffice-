@@ -3,7 +3,7 @@ import { EnrollmentService } from "./enrollment.service.js";
 import { StudentRepository } from "../repositories/student.repository.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
 import { ClassRepository } from "../repositories/class.repository.js";
-import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { SubscriptionRepository } from "../repositories/subscription.repository.js";
 import { StripeService } from "./stripe.service.js";
 import {
@@ -46,9 +46,9 @@ describe("EnrollmentService", () => {
         ] as any);
     vi.mocked(ParentRepository.getOneParentByUserId).mockResolvedValue(mockParent);
     vi.mocked(ClassRepository.findById).mockResolvedValue(mockClass);
-    vi.mocked(EnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([]);
-    vi.mocked(EnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId).mockResolvedValue(null);
-    vi.mocked(EnrollmentRepository.create).mockResolvedValue("enrollment-id");
+    vi.mocked(ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([]);
+    vi.mocked(ClassEnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId).mockResolvedValue(null);
+    vi.mocked(ClassEnrollmentRepository.create).mockResolvedValue("enrollment-id");
 
     const result = await EnrollmentService.enrollStudents({
       parentUser: mockParentUser,
@@ -57,7 +57,7 @@ describe("EnrollmentService", () => {
     });
 
     expect(result).toEqual({ status: "enrolled", clientSecret: null, customerId: null });
-    expect(EnrollmentRepository.create).toHaveBeenCalledTimes(2);
+    expect(ClassEnrollmentRepository.create).toHaveBeenCalledTimes(2);
   });
 
   it("should return checkout url for paid class with multiple students", async () => {
@@ -69,8 +69,8 @@ describe("EnrollmentService", () => {
         ] as any);
       vi.mocked(ParentRepository.getOneParentByUserId).mockResolvedValue(mockParent);
       vi.mocked(ClassRepository.findById).mockResolvedValue(paidClass);
-      vi.mocked(EnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([]);
-      vi.mocked(EnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId).mockResolvedValue(null);
+      vi.mocked(ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([]);
+      vi.mocked(ClassEnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId).mockResolvedValue(null);
       vi.mocked(SubscriptionRepository.findOneActiveClassSubByClassIdAndStudentId).mockResolvedValue(null);
       vi.mocked(StripeService.createEnrollmentPaymentIntent).mockResolvedValue({ client_secret: "pi_secret_123" } as any);
       vi.mocked(StripeService.retrievePrice).mockResolvedValue({ unit_amount: 1000, currency: "gbp" } as any);
@@ -119,7 +119,7 @@ describe("EnrollmentService", () => {
     vi.mocked(ParentRepository.getOneParentByUserId).mockResolvedValue(mockParent);
     vi.mocked(ClassRepository.findById).mockResolvedValue({ ...mockClass, capacity: 2 });
     // Already has 1 active enrollment
-    vi.mocked(EnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([{ active: true } as any]);
+    vi.mocked(ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([{ active: true } as any]);
 
     // Try to enroll 2 more (1+2 > 2)
     await expect(EnrollmentService.enrollStudents({
@@ -133,8 +133,8 @@ describe("EnrollmentService", () => {
     vi.mocked(StudentRepository.fetchStudentsWithUsersByIds).mockResolvedValue([{ student: mockStudent, user: {} } as any]);
     vi.mocked(ParentRepository.getOneParentByUserId).mockResolvedValue(mockParent);
     vi.mocked(ClassRepository.findById).mockResolvedValue(mockClass);
-    vi.mocked(EnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([]);
-    vi.mocked(EnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId).mockResolvedValue({ id: "1" } as any);
+    vi.mocked(ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId).mockResolvedValue([]);
+    vi.mocked(ClassEnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId).mockResolvedValue({ id: "1" } as any);
 
     await expect(EnrollmentService.enrollStudents({
         parentUser: mockParentUser,
