@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import AppConfig from "../config/AppConfig.js";
-import { StripePlans } from "../constants/enums.js";
+import { NodeEnv, StripePlans } from "../constants/enums.js";
 import { IUser } from "../repositories/user.repository.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
 import { SubscriptionType } from "../constants/subscription.constants.js";
@@ -38,6 +38,7 @@ export class StripeService {
     try {
       return StripeService.getStripeInstance().webhooks.constructEvent(eventBody, signature, AppConfig.STRIPE_WEBHOOK_SECRET!);
     } catch (error) {
+      console.error("Error verifying webhook signature:", error);
       throw new BadRequestException("Invalid webhook signature");
     }
   }
@@ -210,13 +211,21 @@ export class StripeService {
       class_id: dojoClass.id,
       children_data: JSON.stringify(childrenData)
     }
-    return await StripeService.getStripeInstance().paymentIntents.create({
+
+    const params: Stripe.PaymentIntentCreateParams = {
       amount: Math.round(totalAmount * 100),
       currency: "gbp",
       customer: customerId,
       metadata,
       setup_future_usage: 'off_session',
-    });
+    };
+
+    if (AppConfig.NODE_ENV === NodeEnv.Development) {
+      console.log("Development mode, setting payment method types to card");
+      params.payment_method_types = ['card'];
+    }
+
+    return await StripeService.getStripeInstance().paymentIntents.create(params);
   };
 
   static createClassSubscription = async ({
