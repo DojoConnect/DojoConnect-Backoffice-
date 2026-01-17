@@ -12,8 +12,10 @@ This is the backend API for the DojoConnect Backoffice application.
 -   **Validation**: Zod
 -   **Authentication**: JWT
 
-## API Documentation
-The API documentation and Postman collection can be found here: [Postman Documentation](https://documenter.getpostman.com/view/12403591/2sB3dQvpJ7)
+## Documentation
+- **API (Postman)**: [Postman Documentation](https://documenter.getpostman.com/view/12403591/2sB3dQvpJ7)
+
+- **Design (Figma)**: [Figma Design](https://www.figma.com/design/US2oryjdfvsSILHYlyB8PL/Dojo-Connect?node-id=12512-94912&p=f)
 
 ## Prerequisites
 -   Node.js (v20+)
