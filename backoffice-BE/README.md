@@ -1,114 +1,106 @@
-# Back Office API - Setup & Installation Guide
+# DojoConnect Backoffice API
+
+## Project Overview
+This is the backend API for the DojoConnect Backoffice application. 
+
+## Tech Stack
+-   **Runtime**: Node.js (v20+)
+-   **Framework**: Express
+-   **Language**: TypeScript
+-   **Database**: MariaDB (via Drizzle ORM)
+-   **Testing**: Vitest
+-   **Validation**: Zod
+-   **Authentication**: JWT
 
 ## Prerequisites
+-   Node.js (v20+)
+-   npm
+-   MariaDB
+-   Docker (optional, for local database)
 
-- Node.js (v14+)
-- npm
-- MySQL
-- cPanel access (for deployment)
+## Environment Variables
+The application requires several environment variables to function correctly (Database, Stripe, Cloudinary, etc.).
+
+> [!NOTE]
+> The complete list of required environment variables and their types can be found in [src/config/AppConfig.ts](src/config/AppConfig.ts).
+
+Create a `.env` file in the root directory and populate it with the variables defined in `AppConfig.ts`.
 
 ## Local Setup
 
 ### 1. Install Dependencies
-
 ```bash
-cd back-office/backoffice-BE
 npm install
 ```
 
 ### 2. Database Setup
 
-The application requires two MySQL databases:
-
-**Database 1:**
-- Name: `dojoburz_trial`
-- User: `dojoburz_trial`
-- Password: `]!pT(TqFTj^h`
-
-**Database 2:**
-- Name: `dojoburz_dojoconnect`
-- User: `dojoburz_dojoconnect`
-- Password: `Trodpen2022*??-23`
-
-**To extract database tables:**
-1. Login to cPanel
-2. Navigate to phpMyAdmin
-3. Select database → Export tab → Quick export → SQL format → Go
-4. Repeat for second database
-5. Import SQL files into your local MySQL databases
-
-### 3. Environment Variables
-
-Create `.env` file:
-
-```env
-PORT=5000
-ZOHO_EMAIL=hello@dojoconnect.app
-ZOHO_PASSWORD=Connectdojo1!
-```
-
-### 4. Run Application
-
+#### Using Docker (Recommended for local dev)
+You can spin up a local MariaDB instance using Docker. This will also set up phpMyAdmin on http://localhost:8080.
 ```bash
-npm start
+docker compose up -d
 ```
+*Note: Ensure your `.env` variables match the credentials in `docker-compose.yml`.*
 
-Verify: `curl http://localhost:5000/` should return `Dojo API is running 🚀`
-
-## cPanel Deployment
-
-### 1. Upload Files
-
-Upload project files to cPanel (via File Manager, FTP, or SSH). Exclude `node_modules` folder.
-
-### 2. Create Databases
-
-1. cPanel → MySQL Databases
-2. Create two databases (cPanel will prefix with username)
-3. Create users and grant ALL PRIVILEGES
-4. Note down actual database names and credentials
-
-#### Creating Users on local db
-Open the phpMyAdmin dashboard and run the following `sql`. Edit the username and password as you wish. The script is designed to be idempotent, so should run successfully no matter how many times you run it. 
-
+#### Manual Database Configuration (Alternative)
+If you prefer not to use Docker, you can install MariaDB locally and run the following SQL to set up the use:
 ```sql
 CREATE USER IF NOT EXISTS 'devuser'@'localhost' IDENTIFIED BY 'devpassword';
 ALTER USER 'devuser'@'localhost' IDENTIFIED BY 'devpassword';
 GRANT ALL PRIVILEGES ON `dojoburz_dojoconnect`.* TO 'devuser'@'localhost';
 FLUSH PRIVILEGES;
-
 ```
 
-### 3. Update Database Config
+#### Database Migrations (Drizzle)
+This project uses Drizzle ORM for database management.
 
-Edit `app.js` and update database credentials (lines 18-24 and 173-181) with your cPanel database names and passwords.
+-   **Generate Migrations**: Generates SQL migration files based on schema changes.
+    ```bash
+    npm run db:generate
+    ```
+-   **Run Migrations**: Applies the migrations to the database.
+    ```bash
+    npm run db:migrate
+    ```
 
-### 4. Install Dependencies
-
-Via SSH or cPanel Terminal:
+### 3. Run Application
 ```bash
-cd ~/public_html/backoffice-api
-npm install --production
+npm run dev
+```
+The server will start on the port specified in your `.env` (default 5002).
+
+## Scripts
+The following scripts are available in `package.json`:
+
+-   `npm run dev`: Starts the development server with watch mode (`tsx`).
+-   `npm run build`: Builds the project for production (cleans `dist`, compiles TS).
+-   `npm run start`: Starts the production server from `dist/server.js`.
+-   `npm test`: Runs unit tests using Vitest.
+-   `npm run db:generate`: Generates Drizzle migration files.
+-   `npm run db:migrate`: Applies Drizzle migrations to the database.
+
+## Testing
+For detailed testing instructions, please refer to [TESTING-GUIDE.md](TESTING-GUIDE.md).
+
+To run the tests:
+```bash
+npm test
 ```
 
-### 5. Setup Node.js App
+## Deployment
 
-1. cPanel → Setup Node.js App
-2. Create Application:
-   - Node.js version: v14+
-   - Application root: your folder name
-   - Application startup file: `app.js`
-3. Add environment variables: `PORT`, `ZOHO_EMAIL`, `ZOHO_PASSWORD`
-4. Click Run NPM Install
-5. Click Restart App
+### Automated Deployment (Recommended)
+This repository uses GitHub Actions for automated deployment to cPanel. Pushing to the `production` branch triggers the deployment workflow defined in `.github/workflows`.
 
-### 6. Verify
-
-Check logs in Setup Node.js App → View Logs. Test API endpoint in browser.
+### Manual Deployment (Legacy)
+If you need to deploy manually:
+1.  **Build**: `npm run build`
+2.  **Upload**: Upload the contents of `dist`, `package.json`, and `.env` to the server.
+3.  **Install**: Run `npm install --production` on the server.
+4.  **Restart**: Restart the Node.js application via cPanel.
 
 ## Troubleshooting
-
-- **Database connection fails**: Verify credentials and MySQL service is running
-- **Port in use**: Change PORT in `.env` or kill process on port 5000
-- **App won't start**: Check logs, verify `app.js` is startup file, ensure dependencies installed
-- **Module not found**: Run `npm install` again on server
+-   **Database connection fails**: Verify credentials and MySQL service is running.
+-   **Port in use**: Change `PORT` in `.env` or kill the process using the port.
+-   **Module not found**: Run `npm install` again.
+-   **App won't start**: Check logs, verify `dist/server.js` is startup file, ensure dependencies installed
