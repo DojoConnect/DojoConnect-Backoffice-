@@ -63,6 +63,20 @@ This project uses Drizzle ORM for database management.
     npm run db:migrate
     ```
 
+#### Database Relations & Query Patterns
+
+This project takes a manual approach to handling database relations for better control and compatibility.
+
+**Why Manual Relations?**
+- Drizzle ORM does not have full support for MariaDB's relational features.
+- We define foreign keys at the database/schema level but do not declare ORM-level relations (1:1, 1:M, M:M).
+- This gives us explicit control over how and when related data is fetched.
+
+**Best Practices:**
+- **Limit joins**: Avoid using more than one join in a single query to keep queries simple and performant.
+- **1:1 or single-row fetches**: Use joins when fetching a single related row (e.g., user profile).
+- **1:M or multi-row fetches**: Use separate queries to fetch related data. First, fetch and filter the main dataset, then fetch related records in a second query. This ensures you only retrieve the data you need and avoids N+1 problems. 
+
 ### 3. Run Application
 ```bash
 npm run dev
