@@ -8,6 +8,7 @@ import { formatApiResponse } from "../utils/api.utils.js";
 import { NotFoundException } from "../core/errors/index.js";
 import { ClassService } from "../services/class.service.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
+import { StudentService } from "../services/student.service.js";
 
 export class DojosController {
   static async handleFetchDojoByTag(req: Request, res: Response) {
@@ -115,4 +116,23 @@ export class DojosController {
           formatApiResponse({ data: classDTOs, message: "Classes fetched." })
         );
     }
+
+    static async handleFetchDojoStudents(req: Request, res: Response) {
+      const dojo = req.dojo;
+      
+      if (!dojo) {
+          throw new InternalServerErrorException(
+            "Dojo not found on request object."
+          );
+      }
+
+      const students = await StudentService.fetchAllDojoStudents(dojo.id);
+
+      res.status(200).json(
+          formatApiResponse({
+              data: students.map((student) => student.toJSON()),
+              message: "Dojo students fetched successfully",
+          })
+      );
+  }
 }
