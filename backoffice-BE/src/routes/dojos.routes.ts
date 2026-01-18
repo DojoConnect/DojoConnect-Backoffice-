@@ -55,12 +55,11 @@ router.get(
 );
 
 router.get(
-  "/:dojoId/students",
+  "/dojos/:dojoId/students",
   requireAuth,
   requireRole(Role.DojoAdmin),
   isDojoOwnerMiddleware,
   DojosController.handleFetchDojoStudents
 );
-
 
 export default router;
