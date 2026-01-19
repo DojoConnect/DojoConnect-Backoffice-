@@ -78,6 +78,7 @@ export class StudentService {
             ? execute(txInstance)
             : dbService.runInTransaction(execute);
     };
+    
 
     static fetchAllDojoStudents = async (dojoId: string, txInstance?: Transaction): Promise<StudentUserDTO[]> => {
         const execute = async (tx: Transaction) => {
