@@ -80,34 +80,32 @@ export class StudentService {
     };
 
     static fetchAllInstructorStudents = async (instructorId: string, txInstance?: Transaction): Promise<StudentUserDTO[]> => {
-        const execute = async (tx: Transaction) => {
-            const results = await StudentRepository.fetchInstructorStudentsWithUsers(
-                instructorId, 
-                tx
-            );
+    const execute = async (tx: Transaction) => {
+        const classes = await ClassRepository.findAllByInstructorId(instructorId, tx);
+        if (classes.length === 0) return [];
 
-            const uniqueStudentsMap = new Map<string, StudentUserDTO>();
+        const classIds = classes.map((c) => c.id);
 
-            results.forEach((row) => {
-                if (!uniqueStudentsMap.has(row.student.id)) {
-                    uniqueStudentsMap.set(
-                        row.student.id,
-                        new StudentUserDTO({
-                            id: row.student.id,
-                            studentUserId: row.student.studentUserId,
-                            parentId: row.student.parentId,
-                            experience: row.student.experienceLevel,
-                            studentUser: row.user,
-                        })
-                    );
-                }
-            });
+        const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassIds(classIds, tx);
+        if (enrollments.length === 0) return [];
 
-            return Array.from(uniqueStudentsMap.values());
-        };
+        const uniqueStudentIds = Array.from(new Set(enrollments.map((e) => e.studentId)));
 
-        return txInstance 
-           ? execute(txInstance) 
-           : dbService.runInTransaction(execute);
+        const studentDetails = await StudentRepository.fetchStudentsWithUsersByIds(uniqueStudentIds, tx);
+
+        return studentDetails.map((row) => 
+            new StudentUserDTO({
+                id: row.student.id,
+                studentUserId: row.student.studentUserId,
+                parentId: row.student.parentId,
+                experience: row.student.experienceLevel,
+                studentUser: row.user,
+            })
+        );
     };
+
+    return txInstance 
+       ? execute(txInstance) 
+       : dbService.runInTransaction(execute);
+};
 }

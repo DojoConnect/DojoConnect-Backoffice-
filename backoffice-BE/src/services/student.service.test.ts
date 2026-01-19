@@ -76,4 +76,46 @@ describe("Student Service", () => {
             await expect(StudentService.getEnrolledClasses({ currentUser })).rejects.toThrow(NotFoundException);
         });
     });
+
+    describe("fetchAllInstructorStudents", () => {
+        const instructorId = "instructor-999";
+
+        it("should return a unique list of students for an instructor", async () => {
+            
+            const findAllByInstructorIdSpy = vi.spyOn(ClassRepository, "findAllByInstructorId");
+            findAllByInstructorIdSpy.mockResolvedValue([{ id: "class-A" }, { id: "class-B" }] as any);
+            
+            const fetchActiveEnrollmentsByClassIdsSpy = vi.spyOn(ClassEnrollmentRepository, "fetchActiveEnrollmentsByClassIds");
+            fetchActiveEnrollmentsByClassIdsSpy.mockResolvedValue([
+                { studentId: "student-1", classId: "class-A" },
+                { studentId: "student-1", classId: "class-B" },
+            ] as any);
+
+            const fetchStudentsWithUsersByIdsSpy = vi.spyOn(StudentRepository, "fetchStudentsWithUsersByIds");
+            fetchStudentsWithUsersByIdsSpy.mockResolvedValue([
+                { 
+                    student: { id: "student-1", studentUserId: "u1", experienceLevel: "Beginner" }, 
+                    user: { id: "u1", firstName: "Charlie" } 
+                }
+            ] as any);
+
+            const result = await StudentService.fetchAllInstructorStudents(instructorId);
+
+            expect(findAllByInstructorIdSpy).toHaveBeenCalledWith(instructorId, expect.anything());
+            expect(fetchActiveEnrollmentsByClassIdsSpy).toHaveBeenCalledWith(["class-A", "class-B"], expect.anything());
+            
+            expect(fetchStudentsWithUsersByIdsSpy).toHaveBeenCalledWith(["student-1"], expect.anything());
+            
+            expect(result).toHaveLength(1);
+            expect(result[0].studentUser.firstName).toBe("Charlie");
+        });
+
+        it("should return empty array if instructor has no classes", async () => {
+            vi.spyOn(ClassRepository, "findAllByInstructorId").mockResolvedValue([]);
+            
+            const result = await StudentService.fetchAllInstructorStudents(instructorId);
+            
+            expect(result).toEqual([]);
+        });
+    });
 });

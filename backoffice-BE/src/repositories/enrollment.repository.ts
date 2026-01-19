@@ -108,4 +108,20 @@ static findOneByClassIdAndStudentId = async (
         tx
       );
     };
+
+    static fetchActiveEnrollmentsByClassIds = async (
+      classIds: string[],
+      tx: Transaction
+    ): Promise<IClassEnrollment[]> => {
+        if (classIds.length === 0) return [];
+        return await tx
+            .select()
+            .from(classEnrollments)
+            .where(
+                and(
+                    inArray(classEnrollments.classId, classIds), 
+                    eq(classEnrollments.active, true)
+                )
+            );
+    };
 }
