@@ -81,30 +81,32 @@ export class StudentService {
 
     static fetchAllDojoStudents = async (dojoId: string, txInstance?: Transaction): Promise<StudentUserDTO[]> => {
         const execute = async (tx: Transaction) => {
-            const results = await StudentRepository.fetchDojoStudentsWithUsers(dojoId, tx);
+            
+            const classes = await ClassRepository.findAllByDojoId(dojoId, tx);
+            if (classes.length === 0) return [];
 
-            const uniqueStudentsMap = new Map<string, StudentUserDTO>();
+            const classIds = classes.map((c) => c.id);
 
-            results.forEach((row) => {
-                if (!uniqueStudentsMap.has(row.student.id)) {
-                    uniqueStudentsMap.set(
-                        row.student.id,
-                        new StudentUserDTO({
-                            id: row.student.id,
-                            studentUserId: row.student.studentUserId,
-                            parentId: row.student.parentId,
-                            experience: row.student.experienceLevel,
-                            studentUser: row.user,
-                        })
-                    );
-                }
-            });
+            const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassIds(classIds, tx);
+            if (enrollments.length === 0) return [];
 
-            return Array.from(uniqueStudentsMap.values());
+            const uniqueStudentIds = Array.from(new Set(enrollments.map((e) => e.studentId)));
+
+            const studentDetails = await StudentRepository.fetchStudentsWithUsersByIds(uniqueStudentIds, tx);
+
+            return studentDetails.map((row) => 
+                new StudentUserDTO({
+                    id: row.student.id,
+                    studentUserId: row.student.studentUserId,
+                    parentId: row.student.parentId,
+                    experience: row.student.experienceLevel,
+                    studentUser: row.user,
+                })
+            );
         };
 
         return txInstance 
-            ? execute(txInstance) 
-            : dbService.runInTransaction(execute);
+        ? execute(txInstance) 
+        : dbService.runInTransaction(execute);
     };
 }

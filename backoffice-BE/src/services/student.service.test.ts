@@ -18,6 +18,10 @@ describe("Student Service", () => {
     let findClassesByIdsSpy: MockInstance;
     let getUserProfileByInstructorIdsSpy: MockInstance;
 
+    let findAllByDojoIdSpy: MockInstance;
+    let fetchActiveEnrollmentsByClassIdsSpy: MockInstance;
+    let fetchStudentsWithUsersByIdsSpy: MockInstance;
+
     beforeEach(() => {
         dbSpies = createDrizzleDbSpies();
         
@@ -28,6 +32,10 @@ describe("Student Service", () => {
 
         vi.spyOn(console, "log").mockImplementation(() => {});
         vi.spyOn(console, "error").mockImplementation(() => {});
+
+        findAllByDojoIdSpy = vi.spyOn(ClassRepository, "findAllByDojoId");
+        fetchActiveEnrollmentsByClassIdsSpy = vi.spyOn(ClassEnrollmentRepository, "fetchActiveEnrollmentsByClassIds");
+        fetchStudentsWithUsersByIdsSpy = vi.spyOn(StudentRepository, "fetchStudentsWithUsersByIds");
     });
 
     afterEach(() => {
@@ -76,4 +84,41 @@ describe("Student Service", () => {
             await expect(StudentService.getEnrolledClasses({ currentUser })).rejects.toThrow(NotFoundException);
         });
     });
+
+    describe("fetchAllDojoStudents", () => {
+    const dojoId = "wolf-dojo";
+
+    it("should return a unique list of students for a dojo", async () => {
+        
+        findAllByDojoIdSpy.mockResolvedValue([{ id: "class-1" }, { id: "class-2" }]);
+        
+        fetchActiveEnrollmentsByClassIdsSpy.mockResolvedValue([
+            { studentId: "student-A", classId: "class-1" },
+            { studentId: "student-A", classId: "class-2" },
+            { studentId: "student-B", classId: "class-2" },
+        ]);
+
+        fetchStudentsWithUsersByIdsSpy.mockResolvedValue([
+            { student: { id: "student-A", studentUserId: "u1" }, user: { id: "u1", firstName: "Alex" } },
+            { student: { id: "student-B", studentUserId: "u2" }, user: { id: "u2", firstName: "Blake" } },
+        ]);
+
+        const result = await StudentService.fetchAllDojoStudents(dojoId);
+
+        expect(findAllByDojoIdSpy).toHaveBeenCalledWith(dojoId, expect.anything());
+        expect(fetchActiveEnrollmentsByClassIdsSpy).toHaveBeenCalledWith(["class-1", "class-2"], expect.anything());
+        
+        expect(fetchStudentsWithUsersByIdsSpy).toHaveBeenCalledWith(["student-A", "student-B"], expect.anything());
+        expect(result).toHaveLength(2);
+    });
+
+    it("should return an empty array if the dojo has no classes", async () => {
+        findAllByDojoIdSpy.mockResolvedValue([]);
+        
+        const result = await StudentService.fetchAllDojoStudents(dojoId);
+        
+        expect(result).toEqual([]);
+        expect(fetchActiveEnrollmentsByClassIdsSpy).not.toHaveBeenCalled();
+    });
+});
 });
