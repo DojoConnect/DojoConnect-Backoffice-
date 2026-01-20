@@ -1,6 +1,12 @@
 import { Role } from "../constants/enums.js";
 import { IDojo } from "../repositories/dojo.repository.js";
+import { IDojoInstructor } from "../repositories/instructors.repository.js";
+import { IParent } from "../repositories/parent.repository.js";
+import { IStudent } from "../repositories/student.repository.js";
 import { BaseDojoDTO } from "./dojo.dtos.js";
+import { DojoInstructorDTO } from "./instructor.dtos.js";
+import { ParentDTO } from "./parent.dtos.js";
+import { StudentDTO } from "./student.dtos.js";
 
 export interface UserDTOParams {
   id: string;
@@ -15,8 +21,24 @@ export interface UserDTOParams {
   city: string | null;
   street: string | null;
   createdAt: Date;
-  dojo?: IDojo|null;
 }
+
+export interface DojoOwnerUserDTOParams extends UserDTOParams {
+  dojo: IDojo;
+}
+
+export interface InstructorUserDTOParams extends UserDTOParams {
+  instructor: IDojoInstructor;
+}
+
+export interface ParentUserDTOParams extends UserDTOParams {
+  parent: IParent;
+}
+
+export interface StudentUserDTOParams extends UserDTOParams {
+  student: IStudent;
+}
+
 
 export class UserDTO implements UserDTOParams {
   id: string;
@@ -31,7 +53,6 @@ export class UserDTO implements UserDTOParams {
   city: string | null;
   street: string | null;
   createdAt: Date;
-  dojo?: BaseDojoDTO;
 
 
   constructor(params: UserDTOParams) {
@@ -47,9 +68,6 @@ export class UserDTO implements UserDTOParams {
     this.city = params.city;
     this.street = params.street;
     this.createdAt = params.createdAt;
-    if (params.dojo) {
-      this.dojo = new BaseDojoDTO(params.dojo);
-    }
   }
 
   toJSON() {
@@ -66,7 +84,71 @@ export class UserDTO implements UserDTOParams {
       city: this.city,
       street: this.street,
       createdAt: this.createdAt,
-      dojo: this.dojo ? this.dojo.toJSON() : undefined,
     };
+  }
+}
+
+export class DojoAdminUserDTO extends UserDTO implements DojoOwnerUserDTOParams {
+  dojo: BaseDojoDTO;
+
+  constructor (params: DojoOwnerUserDTOParams) {
+    super(params);
+    this.dojo = new BaseDojoDTO(params.dojo);
+  }
+
+  toJSON() {
+    return {
+      ...super.toJSON(),
+      dojo: this.dojo.toJSON(),
+    };
+  }
+}
+
+export class InstructorUserDTO extends UserDTO implements InstructorUserDTOParams {
+  instructor: DojoInstructorDTO;
+
+  constructor (params: InstructorUserDTOParams) {
+    super(params);
+    this.instructor = new DojoInstructorDTO(params.instructor);
+  }
+
+  toJSON() {
+    return {
+      ...super.toJSON(),
+      instructor: this.instructor.toJSON(),
+    }
+  }
+}
+
+export class StudentUserDTO extends UserDTO implements StudentUserDTOParams {
+  student: StudentDTO;
+
+  constructor (params: StudentUserDTOParams) {
+    super(params);
+    this.student = new StudentDTO(params.student);
+  }
+
+  toJSON() {
+    return {
+      ...super.toJSON(),
+      student: this.student.toJSON(),
+    };
+  } 
+}
+  
+
+export class ParentUserDTO extends UserDTO implements ParentUserDTOParams {
+  parent: ParentDTO;
+
+  constructor (params: ParentUserDTOParams) {
+    super(params);
+    this.parent = new ParentDTO(params.parent);
+  }
+
+  toJSON() {
+    return {
+      ...super.toJSON(),
+      parent: this.parent.toJSON(),
+    }
   }
 }

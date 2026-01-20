@@ -92,7 +92,7 @@ const buildAuthResponseDTOParamsMMock = (
   return {
     accessToken: "access",
     refreshToken: "refresh",
-    user: buildUserDtoMock(),
+    userDto: buildUserDtoMock(),
     ...overrides,
   };
 };

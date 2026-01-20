@@ -1,4 +1,5 @@
 import { InstructorInviteStatus } from "../constants/enums.js";
+import { IDojoInstructor } from "../repositories/instructors.repository.js";
 import {
   IInstructorInvite,
   InstructorInviteDetails,
@@ -80,4 +81,27 @@ export class InstructorInviteDetailsDTO {
       invitedAt: this.invitedAt,
     };
   }
+}
+
+export class DojoInstructorDTO implements IDojoInstructor {
+    id: string;
+    dojoId: string;
+    instructorUserId: string;
+    createdAt: Date;
+
+    constructor(params: IDojoInstructor) {
+        this.id = params.id;
+        this.dojoId = params.dojoId;
+        this.instructorUserId = params.instructorUserId;
+        this.createdAt = params.createdAt;
+    }
+
+    toJSON() {
+        return {
+            id: this.id,
+            dojoId: this.dojoId,
+            userId: this.instructorUserId,
+            createdAt: this.createdAt
+        }
+    }
 }

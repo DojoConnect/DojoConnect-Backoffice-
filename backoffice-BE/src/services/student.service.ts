@@ -19,6 +19,16 @@ export class StudentService {
             : dbService.runInTransaction(execute);
     }
 
+    static findStudentByUserId = async (userId: string, txInstance?: Transaction) => {
+        const execute = async (tx: Transaction) => {
+            return await StudentRepository.findOneByUserId(userId, tx);
+        }
+
+        return txInstance
+            ? execute(txInstance)
+            : dbService.runInTransaction(execute);
+    }
+
     static getEnrolledClasses = async ({
         currentUser,
         txInstance,
