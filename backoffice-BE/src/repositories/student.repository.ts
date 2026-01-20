@@ -75,17 +75,4 @@ export class StudentRepository {
       .innerJoin(users, eq(students.studentUserId, users.id))
       .where(inArray(students.id, studentIds));
   };
-
-  static async fetchInstructorStudentsWithUsers(instructorId: string, tx: Transaction) {
-    return await tx
-      .select({
-        student: students,
-        user: users,
-      })
-      .from(students)
-      .innerJoin(users, eq(students.studentUserId, users.id))
-      .innerJoin(classEnrollments, eq(classEnrollments.studentId, students.id))
-      .innerJoin(classes, eq(classEnrollments.classId, classes.id))
-      .where(eq(classes.instructorId, instructorId));
-  }
 }

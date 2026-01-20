@@ -7,6 +7,8 @@ import { UserRepository } from "../repositories/user.repository.js";
 import { createDrizzleDbSpies, DbServiceSpies } from "../tests/spies/drizzle-db.spies.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
 import { buildClassMock } from "../tests/factories/class.factory.js";
+import { buildStudentMock } from "../tests/factories/student.factory.js";
+import { buildEnrollmentMock } from "../tests/factories/enrollment.factory.js";
 import { NotFoundException } from "../core/errors/index.js";
 import { Role } from "../constants/enums.js";
 
@@ -18,6 +20,10 @@ describe("Student Service", () => {
     let findClassesByIdsSpy: MockInstance;
     let getUserProfileByInstructorIdsSpy: MockInstance;
 
+    let findAllByInstructorIdSpy: MockInstance;
+    let fetchActiveEnrollmentsByClassIdsSpy: MockInstance;
+    let fetchStudentsWithUsersByIdsSpy: MockInstance;
+
     beforeEach(() => {
         dbSpies = createDrizzleDbSpies();
         
@@ -25,6 +31,10 @@ describe("Student Service", () => {
         fetchActiveEnrollmentsByStudentIdsSpy = vi.spyOn(ClassEnrollmentRepository, "fetchActiveEnrollmentsByStudentIds");
         findClassesByIdsSpy = vi.spyOn(ClassRepository, "findClassesByIds");
         getUserProfileByInstructorIdsSpy = vi.spyOn(UserRepository, "getUserProfileByInstructorIds");
+
+        findAllByInstructorIdSpy = vi.spyOn(ClassRepository, "findAllByInstructorId");
+        fetchActiveEnrollmentsByClassIdsSpy = vi.spyOn(ClassEnrollmentRepository, "fetchActiveEnrollmentsByClassIds");
+        fetchStudentsWithUsersByIdsSpy = vi.spyOn(StudentRepository, "fetchStudentsWithUsersByIds");
 
         vi.spyOn(console, "log").mockImplementation(() => {});
         vi.spyOn(console, "error").mockImplementation(() => {});
@@ -78,43 +88,45 @@ describe("Student Service", () => {
     });
 
     describe("fetchAllInstructorStudents", () => {
-        const instructorId = "instructor-999";
+        const instructorId = "ins-123";
 
-        it("should return a unique list of students for an instructor", async () => {
+        it("should return unique students across multiple instructor classes using mock builders", async () => {
             
-            const findAllByInstructorIdSpy = vi.spyOn(ClassRepository, "findAllByInstructorId");
-            findAllByInstructorIdSpy.mockResolvedValue([{ id: "class-A" }, { id: "class-B" }] as any);
+            const mockClasses = [
+                buildClassMock({ id: "class-1", instructorId }),
+                buildClassMock({ id: "class-2", instructorId })
+            ];
+            vi.spyOn(ClassRepository, "findAllByInstructorId").mockResolvedValue(mockClasses as any);
             
-            const fetchActiveEnrollmentsByClassIdsSpy = vi.spyOn(ClassEnrollmentRepository, "fetchActiveEnrollmentsByClassIds");
-            fetchActiveEnrollmentsByClassIdsSpy.mockResolvedValue([
-                { studentId: "student-1", classId: "class-A" },
-                { studentId: "student-1", classId: "class-B" },
-            ] as any);
+            const mockEnrollments = [
+                buildEnrollmentMock({ studentId: "student-A", classId: "class-1" }),
+                buildEnrollmentMock({ studentId: "student-A", classId: "class-2" }),
+                buildEnrollmentMock({ studentId: "student-B", classId: "class-2" }),
+            ];
+            vi.spyOn(ClassEnrollmentRepository, "fetchActiveEnrollmentsByClassIds").mockResolvedValue(mockEnrollments as any);
 
-            const fetchStudentsWithUsersByIdsSpy = vi.spyOn(StudentRepository, "fetchStudentsWithUsersByIds");
-            fetchStudentsWithUsersByIdsSpy.mockResolvedValue([
+            const mockStudentRows = [
                 { 
-                    student: { id: "student-1", studentUserId: "u1", experienceLevel: "Beginner" }, 
-                    user: { id: "u1", firstName: "Charlie" } 
-                }
-            ] as any);
+                    student: buildStudentMock({ id: "student-A" }), 
+                    user: buildUserMock({ id: "u1", firstName: "Alex" }) 
+                },
+                { 
+                    student: buildStudentMock({ id: "student-B" }), 
+                    user: buildUserMock({ id: "u2", firstName: "Blake" }) 
+                },
+            ];
+            const studentSpy = vi.spyOn(StudentRepository, "fetchStudentsWithUsersByIds").mockResolvedValue(mockStudentRows as any);
 
             const result = await StudentService.fetchAllInstructorStudents(instructorId);
 
-            expect(findAllByInstructorIdSpy).toHaveBeenCalledWith(instructorId, expect.anything());
-            expect(fetchActiveEnrollmentsByClassIdsSpy).toHaveBeenCalledWith(["class-A", "class-B"], expect.anything());
-            
-            expect(fetchStudentsWithUsersByIdsSpy).toHaveBeenCalledWith(["student-1"], expect.anything());
-            
-            expect(result).toHaveLength(1);
-            expect(result[0].studentUser.firstName).toBe("Charlie");
+            expect(studentSpy).toHaveBeenCalledWith(["student-A", "student-B"], expect.anything());
+            expect(result).toHaveLength(2);
+            expect(result[0].studentUser.firstName).toBe("Alex");
         });
 
         it("should return empty array if instructor has no classes", async () => {
             vi.spyOn(ClassRepository, "findAllByInstructorId").mockResolvedValue([]);
-            
             const result = await StudentService.fetchAllInstructorStudents(instructorId);
-            
             expect(result).toEqual([]);
         });
     });
