@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { InstructorService } from "../services/instructor.service.js";
+import { StudentService } from "../services/student.service.js";
 
 export class InstructorController {
   static async handleAcceptInvite(req: Request, res: Response) {
@@ -39,6 +40,17 @@ export class InstructorController {
     res.status(200).json({
       data: classes,
       message: 'Instructor classes fetched successfully',
+    });
+  }
+
+  static async handleFetchInstructorStudents(req: Request, res: Response) {
+    const instructorId  = req.params.instructorId as string;
+
+    const students = await StudentService.fetchAllInstructorStudents(instructorId);
+
+    res.status(200).json({
+        data: students.map((s) => s.toJSON()),
+        message: "Instructor students fetched successfully",
     });
   }
 }

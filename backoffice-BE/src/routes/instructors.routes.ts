@@ -34,4 +34,12 @@ router.get(
   InstructorController.getInstructorClasses
 );
 
+router.get(
+  "/instructors/:instructorId/students",
+  requireAuth,
+  requireRole(Role.DojoAdmin, Role.Instructor),
+  isMemberOfInstructorDojoMiddleware,
+  InstructorController.handleFetchInstructorStudents
+);
+
 export default router;
