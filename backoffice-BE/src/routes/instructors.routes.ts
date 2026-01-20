@@ -35,7 +35,7 @@ router.get(
 );
 
 router.get(
-  "/instructors/:instructorId/students",
+  "/:instructorId/students",
   requireAuth,
   requireRole(Role.DojoAdmin, Role.Instructor),
   isMemberOfInstructorDojoMiddleware,

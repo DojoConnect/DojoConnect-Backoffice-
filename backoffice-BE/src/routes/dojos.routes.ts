@@ -55,7 +55,7 @@ router.get(
 );
 
 router.get(
-  "/dojos/:dojoId/students",
+  "/:dojoId/students",
   requireAuth,
   requireRole(Role.DojoAdmin),
   isDojoOwnerMiddleware,
