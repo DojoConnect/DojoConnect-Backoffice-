@@ -7,6 +7,8 @@ import { UserRepository } from "../repositories/user.repository.js";
 import { createDrizzleDbSpies, DbServiceSpies } from "../tests/spies/drizzle-db.spies.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
 import { buildClassMock } from "../tests/factories/class.factory.js";
+import { buildStudentMock } from "../tests/factories/student.factory.js";
+import { buildEnrollmentMock } from "../tests/factories/enrollment.factory.js";
 import { NotFoundException } from "../core/errors/index.js";
 import { Role } from "../constants/enums.js";
 
@@ -18,6 +20,10 @@ describe("Student Service", () => {
     let findClassesByIdsSpy: MockInstance;
     let getUserProfileByInstructorIdsSpy: MockInstance;
 
+    let findAllByDojoIdSpy: MockInstance;
+    let fetchActiveEnrollmentsByClassIdsSpy: MockInstance;
+    let fetchStudentsWithUsersByIdsSpy: MockInstance;
+
     beforeEach(() => {
         dbSpies = createDrizzleDbSpies();
         
@@ -28,6 +34,10 @@ describe("Student Service", () => {
 
         vi.spyOn(console, "log").mockImplementation(() => {});
         vi.spyOn(console, "error").mockImplementation(() => {});
+
+        findAllByDojoIdSpy = vi.spyOn(ClassRepository, "findAllByDojoId");
+        fetchActiveEnrollmentsByClassIdsSpy = vi.spyOn(ClassEnrollmentRepository, "fetchActiveEnrollmentsByClassIds");
+        fetchStudentsWithUsersByIdsSpy = vi.spyOn(StudentRepository, "fetchStudentsWithUsersByIds");
     });
 
     afterEach(() => {
@@ -74,6 +84,42 @@ describe("Student Service", () => {
             findOneByUserIdSpy.mockResolvedValue(null);
 
             await expect(StudentService.getEnrolledClasses({ currentUser })).rejects.toThrow(NotFoundException);
+        });
+    });
+
+    describe("fetchAllDojoStudents", () => {
+        const dojoId = "wolf-dojo";
+
+        it("should return a unique list of students for a dojo", async () => {
+            const studentAId = "student-A";
+            const studentBId = "student-B";
+
+            findAllByDojoIdSpy.mockResolvedValue([
+                buildClassMock({ id: "class-1" }),
+                buildClassMock({ id: "class-2" })
+            ]);
+            
+            fetchActiveEnrollmentsByClassIdsSpy.mockResolvedValue([
+                buildEnrollmentMock({ studentId: studentAId, classId: "class-1" }),
+                buildEnrollmentMock({ studentId: studentAId, classId: "class-2" }),
+                buildEnrollmentMock({ studentId: studentBId, classId: "class-2" }),
+            ]);
+
+            fetchStudentsWithUsersByIdsSpy.mockResolvedValue([
+                { 
+                    student: buildStudentMock({ id: studentAId, studentUserId: "u1" }), 
+                    user: buildUserMock({ id: "u1", firstName: "Alex" }) 
+                },
+                { 
+                    student: buildStudentMock({ id: studentBId, studentUserId: "u2" }), 
+                    user: buildUserMock({ id: "u2", firstName: "Blake" }) 
+                },
+            ]);
+
+            const result = await StudentService.fetchAllDojoStudents(dojoId);
+
+            expect(result).toHaveLength(2);
+            expect(result[0].studentUser.firstName).toBe("Alex");
         });
     });
 });

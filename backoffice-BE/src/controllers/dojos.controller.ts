@@ -8,15 +8,16 @@ import { formatApiResponse } from "../utils/api.utils.js";
 import { NotFoundException } from "../core/errors/index.js";
 import { ClassService } from "../services/class.service.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
+import { StudentService } from "../services/student.service.js";
 
 export class DojosController {
   static async handleFetchDojoByTag(req: Request, res: Response) {
-    const tag = req.params.tag;
+    const tag = req.params.tag as string;
     if (!tag) {
       throw new BadRequestException("Slug is required");
     }
 
-    const dojo = await DojosService.getOneDojoByTag(req.params.tag);
+    const dojo = await DojosService.getOneDojoByTag(tag);
 
     if (!dojo) {
       throw new NotFoundException(`Dojo with tag ${tag} not found`);
@@ -26,7 +27,7 @@ export class DojosController {
   }
 
   static async handleFetchInvitedInstructors(req: Request, res: Response) {
-    const dojoId = req.params.dojoId;
+    const dojoId = req.params.dojoId as string;
     if (!dojoId) {
       throw new BadRequestException("Dojo ID is required");
     }
@@ -65,7 +66,7 @@ export class DojosController {
   }
 
   static async handleFetchDojoInstructors(req: Request, res: Response) {
-    const dojoId = req.params.dojoId;
+    const dojoId = req.params.dojoId as string;
 
     const instructors = await DojosService.fetchInstructors({ dojoId });
 
@@ -115,4 +116,23 @@ export class DojosController {
           formatApiResponse({ data: classDTOs, message: "Classes fetched." })
         );
     }
+
+    static async handleFetchDojoStudents(req: Request, res: Response) {
+      const dojo = req.dojo;
+      
+      if (!dojo) {
+          throw new InternalServerErrorException(
+            "Dojo not found on request object."
+          );
+      }
+
+      const students = await StudentService.fetchAllDojoStudents(dojo.id);
+
+      res.status(200).json(
+          formatApiResponse({
+              data: students.map((student) => student.toJSON()),
+              message: "Dojo students fetched successfully",
+          })
+      );
+  }
 }

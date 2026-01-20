@@ -23,7 +23,7 @@ export const isClassInstructorOrDojoOwnerMiddleware = async (
       throw new UnauthorizedException("Unauthenticated");
     }
 
-    const { classId } = req.params;
+    const classId = req.params.classId as string;
 
     if (!classId) {
       throw new BadRequestException("Missing classId");

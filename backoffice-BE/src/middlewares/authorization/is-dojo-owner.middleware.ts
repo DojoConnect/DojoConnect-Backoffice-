@@ -24,7 +24,7 @@ export const isDojoOwnerMiddleware = async (
       throw new BadRequestException("Missing dojoId");
     }
 
-    const dojo = await DojosService.getOneDojoByID(req.params.dojoId);
+    const dojo = await DojosService.getOneDojoByID(req.params.dojoId as string);
 
     if (!dojo) {
       throw new NotFoundException("Dojo not found");
@@ -56,7 +56,7 @@ export const isClassDojoOwnerMiddleware = async (req: Request, _: Response, next
       throw new BadRequestException("Missing classId");
     }
 
-    const dojoClass = await ClassService.getClassById(req.params.classId,);
+    const dojoClass = await ClassService.getClassById(req.params.classId as string);
 
     if (!dojoClass) {
       throw new NotFoundException("Class not found");

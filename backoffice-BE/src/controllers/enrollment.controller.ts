@@ -9,7 +9,7 @@ export class EnrollmentController {
          throw new InternalServerErrorException("User not found in request");
       }
 
-      const { classId } = req.params;
+      const classId = req.params.classId as string;
       const { studentIds } = req.body;
 
       const result = await EnrollmentService.enrollStudents({
