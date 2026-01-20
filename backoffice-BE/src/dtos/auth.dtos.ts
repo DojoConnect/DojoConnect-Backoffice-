@@ -1,4 +1,4 @@
-import { UserDTO, UserDTOParams } from "./user.dtos.js";
+import { UserDTO } from "./user.dtos.js";
 
 export interface AuthTokens {
   accessToken: string;
@@ -6,25 +6,25 @@ export interface AuthTokens {
 }
 
 export interface AuthResponseDTOParams extends AuthTokens {
-  user: UserDTOParams;
+  userDto: UserDTO;
 }
 
 export class AuthResponseDTO implements AuthResponseDTOParams {
   accessToken: string;
   refreshToken: string;
-  user: UserDTO;
+  userDto: UserDTO;
 
   constructor(params: AuthResponseDTOParams) {
     this.accessToken = params.accessToken;
     this.refreshToken = params.refreshToken;
-    this.user = new UserDTO(params.user);
+    this.userDto = params.userDto;
   }
 
   toJSON() {
     return {
       accessToken: this.accessToken,
       refreshToken: this.refreshToken,
-      user: this.user.toJSON(),
+      user: this.userDto.toJSON(),
     };
   }
 }

@@ -18,10 +18,9 @@ import { generateInviteToken, hashToken } from "../utils/auth.utils.js";
 import { addDays } from "date-fns";
 import { InstructorInviteStatus, Role } from "../constants/enums.js";
 import { InstructorService } from "./instructor.service.js";
-import { ClassService } from "./class.service.js";
 import { MailerService } from "./mailer.service.js";
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
-import { InstructorsRepository } from "../repositories/instructors.repository.js";
+import { InstructorDetails, InstructorsRepository } from "../repositories/instructors.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { ClassRepository } from "../repositories/class.repository.js";
 
@@ -264,7 +263,7 @@ export class DojosService {
   }: {
     dojoId: string;
     txInstance?: Transaction;
-  }) => {
+  }):Promise<InstructorDetails[]> => {
     const execute = async (tx: Transaction) => {
       const instructors = await InstructorsRepository.fetchDojoInstructors({
         dojoId,

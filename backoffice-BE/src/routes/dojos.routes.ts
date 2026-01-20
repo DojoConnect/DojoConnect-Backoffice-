@@ -54,5 +54,12 @@ router.get(
   DojosController.getClasses
 );
 
+router.get(
+  "/:dojoId/students",
+  requireAuth,
+  requireRole(Role.DojoAdmin),
+  isDojoOwnerMiddleware,
+  DojosController.handleFetchDojoStudents
+);
 
 export default router;

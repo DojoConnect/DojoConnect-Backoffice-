@@ -6,7 +6,7 @@ import { ClassDTO } from "../dtos/class.dtos.js";
 export class ClassesController {
 
   static async getClassById(req: Request, res: Response) {
-    const { classId } = req.params;
+    const classId = req.params.classId as string;
 
     const classData = await ClassService.getClassSchedulesAndInstructor(classId);
 
@@ -18,7 +18,7 @@ export class ClassesController {
   }
 
   static async handleViewClassByUnAuthenticatedUser(req: Request, res: Response) {
-    const { classId } = req.params;
+    const classId = req.params.classId as string;
 
     const classData = await ClassService.getClassSchedulesAndInstructor(classId);
 
@@ -30,7 +30,7 @@ export class ClassesController {
   }
 
   static async updateClass(req: Request, res: Response) {
-    const { classId } = req.params;
+    const classId = req.params.classId as string;
 
     const updatedClass = await ClassService.updateClass({
       classId,
@@ -46,7 +46,7 @@ export class ClassesController {
   }
 
   static async updateClassInstructor(req: Request, res: Response) {
-    const { classId } = req.params;
+    const classId = req.params.classId as string;
     const { instructorId } = req.body;
 
     const updatedClass = await ClassService.updateClassInstructor({
@@ -65,7 +65,7 @@ export class ClassesController {
 
 
   static async handleGetClassStudents(req: Request, res: Response) {
-    const { classId } = req.params;
+    const classId = req.params.classId as string;
 
     const students = await ClassService.getEnrolledStudents(classId);
 

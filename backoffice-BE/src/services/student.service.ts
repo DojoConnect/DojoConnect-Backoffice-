@@ -6,11 +6,22 @@ import { IUser, UserRepository, InstructorUserDetails } from "../repositories/us
 import { NotFoundException } from "../core/errors/index.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { ClassRepository } from "../repositories/class.repository.js";
+import { StudentWihUserDTO } from "../dtos/student.dtos.js";
 
 export class StudentService {
     static getOneStudentByID = async (studentId: string, txInstance?: Transaction) => {
         const execute = async (tx: Transaction) => {
             return await StudentRepository.findOneById(studentId, tx);
+        }
+
+        return txInstance
+            ? execute(txInstance)
+            : dbService.runInTransaction(execute);
+    }
+
+    static findStudentByUserId = async (userId: string, txInstance?: Transaction) => {
+        const execute = async (tx: Transaction) => {
+            return await StudentRepository.findOneByUserId(userId, tx);
         }
 
         return txInstance
@@ -76,5 +87,67 @@ export class StudentService {
         return txInstance
             ? execute(txInstance)
             : dbService.runInTransaction(execute);
+    };
+
+    static fetchAllInstructorStudents = async (instructorId: string, txInstance?: Transaction): Promise<StudentWihUserDTO[]> => {
+    const execute = async (tx: Transaction) => {
+        const classes = await ClassRepository.findAllByInstructorId(instructorId, tx);
+        if (classes.length === 0) return [];
+
+        const classIds = classes.map((c) => c.id);
+
+        const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassIds(classIds, tx);
+        if (enrollments.length === 0) return [];
+
+        const uniqueStudentIds = Array.from(new Set(enrollments.map((e) => e.studentId)));
+
+        const studentDetails = await StudentRepository.fetchStudentsWithUsersByIds(uniqueStudentIds, tx);
+
+        return studentDetails.map((row) => 
+            new StudentWihUserDTO({
+                id: row.student.id,
+                studentUserId: row.student.studentUserId,
+                parentId: row.student.parentId,
+                experience: row.student.experienceLevel,
+                studentUser: row.user,
+            })
+        );
+    };
+
+    return txInstance 
+       ? execute(txInstance) 
+       : dbService.runInTransaction(execute);
+};
+    
+
+    static fetchAllDojoStudents = async (dojoId: string, txInstance?: Transaction): Promise<StudentWihUserDTO[]> => {
+        const execute = async (tx: Transaction) => {
+            
+            const classes = await ClassRepository.findAllByDojoId(dojoId, tx);
+            if (classes.length === 0) return [];
+
+            const classIds = classes.map((c) => c.id);
+
+            const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassIds(classIds, tx);
+            if (enrollments.length === 0) return [];
+
+            const uniqueStudentIds = Array.from(new Set(enrollments.map((e) => e.studentId)));
+
+            const studentDetails = await StudentRepository.fetchStudentsWithUsersByIds(uniqueStudentIds, tx);
+
+            return studentDetails.map((row) => 
+                new StudentWihUserDTO({
+                    id: row.student.id,
+                    studentUserId: row.student.studentUserId,
+                    parentId: row.student.parentId,
+                    experience: row.student.experienceLevel,
+                    studentUser: row.user,
+                })
+            );
+        };
+
+        return txInstance 
+        ? execute(txInstance) 
+        : dbService.runInTransaction(execute);
     };
 }

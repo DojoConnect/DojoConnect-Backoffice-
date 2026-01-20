@@ -47,11 +47,9 @@ import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.rep
 import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
-import { UserDTO } from "../dtos/user.dtos.js";
 import { IUser } from "../repositories/user.repository.js";
 import { SubscriptionService } from "./subscription.service.js";
 import { NotificationService } from "./notifications.service.js";
-import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
 import { StripeService } from "./stripe.service.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
 
@@ -136,26 +134,11 @@ export class AuthService {
         });
       }
 
-      const [authTokens, dojo] = await Promise.all([
-        AuthService.generateAuthTokens({
-          user,
-          userIp,
-          userAgent,
-          txInstance: tx,
-        }),
-        DojosService.fetchUserDojo({
-          user,
-          txInstance: tx,
-        }),
-      ]);
-
-    if (!dojo && (user.role === Role.DojoAdmin || user.role === Role.Instructor)) {
-        throw new NotFoundException("Dojo not found for DojoAdmin or Instructor");
-      }
-
-      return new AuthResponseDTO({
-        ...authTokens,
-        user: new UserDTO({ ...user, dojo }),
+      return this.getAuthResponseDTO({
+        user,
+        userIp,
+        userAgent,
+        txInstance: tx,
       });
     };
 
@@ -163,6 +146,33 @@ export class AuthService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
+
+  static getAuthResponseDTO = async ({user, userIp, userAgent, txInstance}: {user: IUser; userIp?: string;
+    userAgent?: string; txInstance?: Transaction}) => {
+      const execute = async (tx: Transaction) => {
+        const [authTokens, userDto] = await Promise.all([
+        AuthService.generateAuthTokens({
+          user,
+          userIp,
+          userAgent,
+          txInstance: tx,
+        }),
+        UsersService.getUserDTO(
+          user,
+          tx,
+        ),
+      ]);
+
+      return new AuthResponseDTO({
+        ...authTokens,
+        userDto,
+      });
+      }
+
+      return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+    }
 
   static revokeRefreshToken = async ({
     dto,
@@ -221,26 +231,11 @@ export class AuthService {
 
       if (!user) throw new NotFoundException("User not found");
 
-      const [authTokens, dojo] = await Promise.all([
-        AuthService.generateAuthTokens({
-          user,
-          userIp,
-          userAgent,
-          txInstance: tx,
-        }),
-        DojosService.fetchUserDojo({
-          user,
-          txInstance: tx,
-        }),
-      ]);
-
-      if (!dojo) {
-        throw new NotFoundException("Dojo not found for user");
-      }
-
-      return new AuthResponseDTO({
-        ...authTokens,
-        user: new UserDTO({ ...user, dojo: new BaseDojoDTO(dojo) }),
+      return this.getAuthResponseDTO({
+        user,
+        userIp,
+        userAgent,
+        txInstance: tx,
       });
     };
 
@@ -417,7 +412,7 @@ export class AuthService {
         return new RegisterDojoAdminResponseDTO({
           stripeClientSecret: stripeClientSecret!,
           ...authTokens,
-          user: new UserDTO({ ...newUser, dojo: new BaseDojoDTO(dojo) }),
+          userDto: await UsersService.getUserDTO(newUser, tx),
         });
       } catch (err) {
         console.log(`An error occurred while trying to register user: ${err}`);
@@ -497,16 +492,12 @@ export class AuthService {
           );
         }
 
-      const authTokens = await AuthService.generateAuthTokens({
+
+      return this.getAuthResponseDTO({
         user: newUser,
         userIp,
         userAgent,
         txInstance: tx,
-      });
-
-      return new AuthResponseDTO({
-        ...authTokens,
-        user: new UserDTO({ ...newUser, dojo: undefined }),
       });
     };
 
@@ -661,9 +652,11 @@ export class AuthService {
         throw new NotFoundException("Dojo not found for user");
       }
 
-      return new AuthResponseDTO({
-        ...authTokens,
-        user: new UserDTO({ ...user, dojo: new BaseDojoDTO(dojo) }),
+      return this.getAuthResponseDTO({
+        user,
+        userIp,
+        userAgent,
+        txInstance: tx,
       });
     };
 

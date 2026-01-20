@@ -1,5 +1,5 @@
 import { InferInsertModel, InferSelectModel, SQL, eq, inArray } from "drizzle-orm";
-import { students, users } from "../db/schema.js";
+import { students, users, classes, classEnrollments } from "../db/schema.js";
 import { Transaction } from "../db/index.js";
 import { returnFirst } from "../utils/db.utils.js";
 

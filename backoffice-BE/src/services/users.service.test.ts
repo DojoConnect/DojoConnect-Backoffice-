@@ -13,6 +13,19 @@ import {
   buildUserMock,
 } from "../tests/factories/user.factory.js";
 import { eq } from "drizzle-orm";
+import { DojosService } from "./dojos.service.js";
+import { InstructorService } from "./instructor.service.js";
+import { ParentService } from "./parent.service.js";
+import { StudentService } from "./student.service.js";
+import { Role } from "../constants/enums.js";
+import { buildDojoMock } from "../tests/factories/dojos.factory.js";
+import { buildInstructorMock } from "../tests/factories/instructor.factory.js";
+import { buildParentMock } from "../tests/factories/parent.factory.js";
+import { buildStudentMock } from "../tests/factories/student.factory.js";
+import { DojoAdminUserDTO, InstructorUserDTO, ParentUserDTO, StudentUserDTO } from "../dtos/user.dtos.js";
+import { UnauthorizedException } from "../core/errors/UnauthorizedException.js";
+import { NotFoundException } from "../core/errors/NotFoundException.js";
+import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 
 describe("Users Service", () => {
   const whereClause = eq(users.id, "1");
@@ -547,6 +560,153 @@ describe("Users Service", () => {
       });
 
       expect(dbSpies.runInTransactionSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getDojoAdminUserDTO", () => {
+    it("should throw UnauthorizedException if user role is not DojoAdmin", async () => {
+      const user = buildUserMock({ role: Role.Instructor });
+      await expect(UsersService.getDojoAdminUserDTO(user)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("should throw NotFoundException if dojo is not found", async () => {
+      const user = buildUserMock({ role: Role.DojoAdmin });
+      vi.spyOn(DojosService, "fetchUserDojo").mockResolvedValue(null);
+
+      await expect(UsersService.getDojoAdminUserDTO(user)).rejects.toThrow(NotFoundException);
+    });
+
+    it("should return DojoAdminUserDTO when everything is correct", async () => {
+      const user = buildUserMock({ role: Role.DojoAdmin });
+      const dojo = buildDojoMock();
+      vi.spyOn(DojosService, "fetchUserDojo").mockResolvedValue(dojo);
+
+      const result = await UsersService.getDojoAdminUserDTO(user);
+
+      expect(result).toBeInstanceOf(DojoAdminUserDTO);
+      expect(result.id).toBe(user.id);
+      expect(result.dojo.id).toBe(dojo.id);
+    });
+  });
+
+  describe("getInstructorUserDto", () => {
+    it("should throw UnauthorizedException if user role is not Instructor", async () => {
+      const user = buildUserMock({ role: Role.Parent });
+      await expect(UsersService.getInstructorUserDto(user)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("should throw NotFoundException if instructor is not found", async () => {
+      const user = buildUserMock({ role: Role.Instructor });
+      vi.spyOn(InstructorService, "findInstructorByUserId").mockResolvedValue(null);
+
+      await expect(UsersService.getInstructorUserDto(user)).rejects.toThrow(NotFoundException);
+    });
+
+    it("should return InstructorUserDTO when everything is correct", async () => {
+      const user = buildUserMock({ role: Role.Instructor });
+      const instructor = buildInstructorMock();
+      vi.spyOn(InstructorService, "findInstructorByUserId").mockResolvedValue(instructor);
+
+      const result = await UsersService.getInstructorUserDto(user);
+
+      expect(result).toBeInstanceOf(InstructorUserDTO);
+      expect(result.id).toBe(user.id);
+      expect(result.instructor.id).toBe(instructor.id);
+    });
+  });
+
+  describe("getParentUserDto", () => {
+    it("should throw UnauthorizedException if user role is not Parent", async () => {
+      const user = buildUserMock({ role: Role.Instructor });
+      await expect(UsersService.getParentUserDto(user)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("should throw NotFoundException if parent is not found", async () => {
+      const user = buildUserMock({ role: Role.Parent });
+      vi.spyOn(ParentService, "getOneParentByUserId").mockResolvedValue(null);
+
+      await expect(UsersService.getParentUserDto(user)).rejects.toThrow(NotFoundException);
+    });
+
+    it("should return ParentUserDTO when everything is correct", async () => {
+      const user = buildUserMock({ role: Role.Parent });
+      const parent = buildParentMock();
+      vi.spyOn(ParentService, "getOneParentByUserId").mockResolvedValue(parent);
+
+      const result = await UsersService.getParentUserDto(user);
+
+      expect(result).toBeInstanceOf(ParentUserDTO);
+      expect(result.id).toBe(user.id);
+      expect(result.parent.id).toBe(parent.id);
+    });
+  });
+
+  describe("getStudentUserDto", () => {
+    it("should throw UnauthorizedException if user role is not Child", async () => {
+      const user = buildUserMock({ role: Role.Parent });
+      await expect(UsersService.getStudentUserDto(user)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("should throw NotFoundException if student is not found", async () => {
+      const user = buildUserMock({ role: Role.Child });
+      vi.spyOn(StudentService, "findStudentByUserId").mockResolvedValue(null);
+
+      await expect(UsersService.getStudentUserDto(user)).rejects.toThrow(NotFoundException);
+    });
+
+    it("should return StudentUserDTO when everything is correct", async () => {
+      const user = buildUserMock({ role: Role.Child });
+      const student = buildStudentMock();
+      vi.spyOn(StudentService, "findStudentByUserId").mockResolvedValue(student);
+
+      const result = await UsersService.getStudentUserDto(user);
+
+      expect(result).toBeInstanceOf(StudentUserDTO);
+      expect(result.id).toBe(user.id);
+      expect(result.student.id).toBe(student.id);
+    });
+  });
+
+  describe("getUserDTO", () => {
+    it("should call getDojoAdminUserDTO for DojoAdmin role", async () => {
+      const user = buildUserMock({ role: Role.DojoAdmin });
+      const spy = vi.spyOn(UsersService, "getDojoAdminUserDTO").mockResolvedValue({} as any);
+
+      await UsersService.getUserDTO(user);
+
+      expect(spy).toHaveBeenCalledWith(user, expect.anything());
+    });
+
+    it("should call getInstructorUserDto for Instructor role", async () => {
+      const user = buildUserMock({ role: Role.Instructor });
+      const spy = vi.spyOn(UsersService, "getInstructorUserDto").mockResolvedValue({} as any);
+
+      await UsersService.getUserDTO(user);
+
+      expect(spy).toHaveBeenCalledWith(user, expect.anything());
+    });
+
+    it("should call getParentUserDto for Parent role", async () => {
+      const user = buildUserMock({ role: Role.Parent });
+      const spy = vi.spyOn(UsersService, "getParentUserDto").mockResolvedValue({} as any);
+
+      await UsersService.getUserDTO(user);
+
+      expect(spy).toHaveBeenCalledWith(user, expect.anything());
+    });
+
+    it("should call getStudentUserDto for Child role", async () => {
+      const user = buildUserMock({ role: Role.Child });
+      const spy = vi.spyOn(UsersService, "getStudentUserDto").mockResolvedValue({} as any);
+
+      await UsersService.getUserDTO(user);
+
+      expect(spy).toHaveBeenCalledWith(user, expect.anything());
+    });
+
+    it("should throw InternalServerErrorException for unknown role", async () => {
+      const user = buildUserMock({ role: "ADMIN_OWNER" as any });
+      await expect(UsersService.getUserDTO(user)).rejects.toThrow(InternalServerErrorException);
     });
   });
 });
