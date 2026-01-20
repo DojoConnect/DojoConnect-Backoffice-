@@ -13,7 +13,7 @@ import { MailerService } from "./mailer.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { UsersService } from "./users.service.js";
 import { nanoid } from "nanoid";
-import { StudentUserDTO as StudentDTO } from "../dtos/student.dtos.js";
+import { StudentWihUserDTO as StudentWihUserDTO } from "../dtos/student.dtos.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
 import { ClassRepository } from "../repositories/class.repository.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
@@ -114,7 +114,7 @@ export class ParentService {
           );
         }
 
-      return  new StudentDTO({
+      return  new StudentWihUserDTO({
         id: newStudentId,
         parentId: parent.id,
         studentUserId: childUser.id,
@@ -151,7 +151,7 @@ export class ParentService {
       );
 
       return studentsData.map((data) => {
-        return new StudentDTO({
+        return new StudentWihUserDTO({
           id: data.student.id,
           parentId: data.student.parentId,
           studentUserId: data.student.studentUserId,

@@ -6,12 +6,22 @@ import { IUser, UserRepository, InstructorUserDetails } from "../repositories/us
 import { NotFoundException } from "../core/errors/index.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { ClassRepository } from "../repositories/class.repository.js";
-import { StudentUserDTO } from "../dtos/student.dtos.js";
+import { StudentWihUserDTO } from "../dtos/student.dtos.js";
 
 export class StudentService {
     static getOneStudentByID = async (studentId: string, txInstance?: Transaction) => {
         const execute = async (tx: Transaction) => {
             return await StudentRepository.findOneById(studentId, tx);
+        }
+
+        return txInstance
+            ? execute(txInstance)
+            : dbService.runInTransaction(execute);
+    }
+
+    static findStudentByUserId = async (userId: string, txInstance?: Transaction) => {
+        const execute = async (tx: Transaction) => {
+            return await StudentRepository.findOneByUserId(userId, tx);
         }
 
         return txInstance
@@ -79,7 +89,7 @@ export class StudentService {
             : dbService.runInTransaction(execute);
     };
 
-    static fetchAllInstructorStudents = async (instructorId: string, txInstance?: Transaction): Promise<StudentUserDTO[]> => {
+    static fetchAllInstructorStudents = async (instructorId: string, txInstance?: Transaction): Promise<StudentWihUserDTO[]> => {
     const execute = async (tx: Transaction) => {
         const classes = await ClassRepository.findAllByInstructorId(instructorId, tx);
         if (classes.length === 0) return [];
@@ -94,7 +104,7 @@ export class StudentService {
         const studentDetails = await StudentRepository.fetchStudentsWithUsersByIds(uniqueStudentIds, tx);
 
         return studentDetails.map((row) => 
-            new StudentUserDTO({
+            new StudentWihUserDTO({
                 id: row.student.id,
                 studentUserId: row.student.studentUserId,
                 parentId: row.student.parentId,
@@ -110,7 +120,7 @@ export class StudentService {
 };
     
 
-    static fetchAllDojoStudents = async (dojoId: string, txInstance?: Transaction): Promise<StudentUserDTO[]> => {
+    static fetchAllDojoStudents = async (dojoId: string, txInstance?: Transaction): Promise<StudentWihUserDTO[]> => {
         const execute = async (tx: Transaction) => {
             
             const classes = await ClassRepository.findAllByDojoId(dojoId, tx);
@@ -126,7 +136,7 @@ export class StudentService {
             const studentDetails = await StudentRepository.fetchStudentsWithUsersByIds(uniqueStudentIds, tx);
 
             return studentDetails.map((row) => 
-                new StudentUserDTO({
+                new StudentWihUserDTO({
                     id: row.student.id,
                     studentUserId: row.student.studentUserId,
                     parentId: row.student.parentId,

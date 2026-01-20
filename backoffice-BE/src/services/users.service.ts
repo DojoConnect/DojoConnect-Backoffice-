@@ -8,6 +8,15 @@ import {
   IUser,
   UserRepository,
 } from "../repositories/user.repository.js";
+import { InstructorService } from "./instructor.service.js";
+import { StudentService } from "./student.service.js";
+import { ParentService } from "./parent.service.js";
+import { UnauthorizedException } from "../core/errors/UnauthorizedException.js";
+import { Role } from "../constants/enums.js";
+import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
+import { NotFoundException } from "../core/errors/NotFoundException.js";
+import { DojosService } from "./dojos.service.js";
+import { DojoAdminUserDTO, InstructorUserDTO, ParentUserDTO, StudentUserDTO } from "../dtos/user.dtos.js";
 
 export type IUserCard = InferSelectModel<typeof userCards>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
@@ -220,5 +229,131 @@ export class UsersService {
       ? execute(txInstance)
       : dbService.runInTransaction(execute);
   };
+
+  static getUserDTO = async (user: IUser, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
+      switch (user.role) {
+        case Role.DojoAdmin:
+          return UsersService.getDojoAdminUserDTO(user, tx);
+        case Role.Instructor:
+          return UsersService.getInstructorUserDto(user, tx);
+        case Role.Parent:
+          return UsersService.getParentUserDto(user, tx);
+        case Role.Child:
+          return UsersService.getStudentUserDto(user, tx);
+        default:
+          throw new InternalServerErrorException("User is not a DojoAdmin, Instructor, Parent or Child");
+      }
+    }
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+    }
+  
+    static getDojoAdminUserDTO = async (user: IUser, txInstance?: Transaction) => {
+      const execute = async (tx: Transaction) => {
+        if (user.role !== Role.DojoAdmin) {
+          throw new UnauthorizedException("User is not a DojoOwner");
+        }
+    
+        const dojo = await DojosService.fetchUserDojo({
+          user,
+          txInstance: tx,
+        });
+    
+        if (!dojo) {
+          throw new NotFoundException("Dojo not found for DojoOwner");
+        }
+    
+        return new DojoAdminUserDTO({
+          ...user,
+          dojo,
+        });
+      }
+
+      return txInstance
+        ? execute(txInstance)
+        : dbService.runInTransaction(execute);
+      
+    }
+  
+    static getInstructorUserDto = async (user: IUser, txInstance?: Transaction) => {
+      const execute = async (tx: Transaction) => {
+        if (user.role !== Role.Instructor) {
+          throw new UnauthorizedException("User is not an Instructor");
+        }
+  
+        const instructor = await InstructorService.findInstructorByUserId(
+        user.id,
+        tx,
+      );
+  
+      if (!instructor) {
+        throw new NotFoundException("Instructor not found for Instructor");
+      }
+  
+      return new InstructorUserDTO({
+        ...user,
+        instructor,
+      });
+    }
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+    }
+  
+    static getParentUserDto = async (user: IUser, txInstance?: Transaction) => {
+      const execute = async (tx: Transaction) => {
+      if (user.role !== Role.Parent) {
+        throw new UnauthorizedException("User is not a Parent");
+      }
+  
+      const parent = await ParentService.getOneParentByUserId(
+        user.id,
+        tx
+      );
+  
+      if (!parent) {
+        throw new NotFoundException("Parent not found for Parent");
+      }
+  
+      return new ParentUserDTO({
+        ...user,
+        parent,
+      });
+    }
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+    }
+  
+    static getStudentUserDto = async (user: IUser, txInstance?: Transaction) => {
+      const execute = async (tx: Transaction) => {
+      if (user.role !== Role.Child) {
+        throw new UnauthorizedException("User is not a Student");
+      }
+  
+      const student = await StudentService.findStudentByUserId(
+        user.id,
+        tx
+      );
+  
+      if (!student) {
+        throw new NotFoundException("Student not found for Student");
+      }
+  
+      return new StudentUserDTO({
+        ...user,
+        student,
+      });
+    }
+
+    return txInstance
+      ? execute(txInstance)
+      : dbService.runInTransaction(execute);
+    }
 }
 

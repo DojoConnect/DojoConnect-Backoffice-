@@ -64,5 +64,5 @@ export const buildNewUserCardMock = (
 export const buildUserDtoMock = (
   overrides?: Partial<UserDTOParams>
 ): UserDTO => {
-  return new UserDTO({ ...buildUserMock(overrides),  dojo: new BaseDojoDTO(buildDojoMock()) });
+  return new UserDTO({ ...buildUserMock(overrides), });
 };
