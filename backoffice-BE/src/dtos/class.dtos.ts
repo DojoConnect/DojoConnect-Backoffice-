@@ -85,6 +85,7 @@ export class ClassDTO {
             id: this.instructor.instructorId,
             lastName: this.instructor.lastName,
             firstName: this.instructor.firstName,
+            email: this.instructor.email,
             avatarUrl: this.instructor.avatar
               ? CloudinaryService.getAssetUrl(this.instructor.avatar)
               : null,
