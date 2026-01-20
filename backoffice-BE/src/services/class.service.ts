@@ -16,7 +16,7 @@ import {
   UpdateClassDTO,
 } from "../validations/classes.schemas.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
-import { StudentUserDTO } from "../dtos/student.dtos.js";
+import { StudentWihUserDTO } from "../dtos/student.dtos.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { nextDay } from "date-fns";
 import { ClassFrequency, ClassSubscriptionType } from "../constants/enums.js";
@@ -486,7 +486,7 @@ export class ClassService {
   static getEnrolledStudents = async (
     classId: string,
     txInstance?: Transaction
-  ): Promise<StudentUserDTO[]> => {
+  ): Promise<StudentWihUserDTO[]> => {
     const execute = async (tx: Transaction) => {
       const enrollments =
         await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId(
@@ -503,7 +503,7 @@ export class ClassService {
         await StudentRepository.fetchStudentsWithUsersByIds(studentIds, tx);
 
         return studentRecords.map((record) => {
-            return new StudentUserDTO({
+            return new StudentWihUserDTO({
                 id: record.student.id,
                 studentUserId: record.student.studentUserId,
                 parentId: record.student.parentId,

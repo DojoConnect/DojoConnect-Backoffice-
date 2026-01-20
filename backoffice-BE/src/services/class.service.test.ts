@@ -62,7 +62,7 @@ vi.mock("../repositories/student.repository.js");
 
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { StudentRepository } from "../repositories/student.repository.js";
-import { StudentUserDTO } from "../dtos/student.dtos.js";
+import { StudentWihUserDTO } from "../dtos/student.dtos.js";
 
 describe("Class Service", () => {
   let dbServiceSpy: DbServiceSpies;
@@ -840,7 +840,7 @@ describe("Class Service", () => {
         const result = await ClassService.getEnrolledStudents("class-id");
 
         expect(result).toHaveLength(2);
-        expect(result[0]).toBeInstanceOf(StudentUserDTO);
+        expect(result[0]).toBeInstanceOf(StudentWihUserDTO);
         expect(result[0].id).toBe("student-1");
         expect(result[1].id).toBe("student-2");
         
