@@ -1,8 +1,6 @@
 import * as dbService from "../db/index.js";
 import { StripeService } from "./stripe.service.js";
 import { DojosService } from "./dojos.service.js";
-import { UsersService } from "./users.service.js";
-import { ConflictException } from "../core/errors/index.js";
 import { DojoRepository, IDojo } from "../repositories/dojo.repository.js";
 import { Transaction } from "../db/index.js";
 import {

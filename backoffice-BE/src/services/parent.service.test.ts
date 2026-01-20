@@ -35,13 +35,10 @@ describe("Parent Service", () => {
   let getStudentsByParentIdSpy: MockInstance;
   let getStudentsAndUserByParentIdSpy: MockInstance;
 
-  let fetchEnrollmentsByStudentIdSpy: MockInstance;
   let fetchActiveEnrollmentsByStudentIdsSpy: MockInstance;
 
-  let findByIdSpy: MockInstance;
   let findClassesByIdsSpy: MockInstance;
 
-  let getUserProfileForInstructorSpy: MockInstance;
   let getUserProfileByInstructorIdsSpy: MockInstance;
 
   beforeEach(() => {
@@ -72,11 +69,12 @@ describe("Parent Service", () => {
       "fetchActiveEnrollmentsByStudentIds",
     );
 
-    findByIdSpy = vi.spyOn(ClassRepository, "findById");
+    getUserProfileByInstructorIdsSpy = vi.spyOn(UserRepository, "getUserProfileByInstructorIds");
     findClassesByIdsSpy = vi.spyOn(ClassRepository, "findClassesByIds");
 
-    getUserProfileForInstructorSpy = vi.spyOn(UserRepository, "getUserProfileForInstructor");
-    getUserProfileByInstructorIdsSpy = vi.spyOn(UserRepository, "getUserProfileByInstructorIds");
+    vi.spyOn(UserRepository, "getUserProfileForInstructor");
+    vi.spyOn(ClassRepository, "findById");
+    
 
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});

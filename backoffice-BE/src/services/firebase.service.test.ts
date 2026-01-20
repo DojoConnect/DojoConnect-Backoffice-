@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import type { Mock, MockInstance } from "vitest";
+import type { MockInstance } from "vitest";
 import { SupportedOAuthProviders } from "../constants/enums.js";
 import { UnauthorizedException } from "../core/errors/index.js";
 import { buildDecodedIdTokenMock } from "../tests/factories/firebase.factory.js";

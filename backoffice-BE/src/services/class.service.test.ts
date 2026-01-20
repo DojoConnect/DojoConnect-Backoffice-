@@ -24,7 +24,6 @@ import {
   UpdateClassDTO,
   UpdateClassSchema,
 } from "../validations/classes.schemas.js";
-import { ForbiddenException } from "../core/errors/ForbiddenException.js";
 import { UserRepository } from "../repositories/user.repository.js";
 
 vi.mock("date-fns");
@@ -57,8 +56,6 @@ describe("Class Service", () => {
   let findInstructorSpy: MockInstance;
   let createStripeProdSpy: MockInstance;
   let createStripePriceSpy: MockInstance;
-  let archiveStripePriceSpy: MockInstance;
-  let retrieveStripePriceSpy: MockInstance;
   let getUserByIdSpy: MockInstance;
   let notifyOwnerSpy: MockInstance;
   let notifyInstructorSpy: MockInstance;
@@ -91,7 +88,7 @@ describe("Class Service", () => {
     createStripePriceSpy = vi
       .spyOn(StripeService, "createClassPrice")
       .mockResolvedValue(buildStripePriceMock({ id: "price_123" }));
-    archiveStripePriceSpy = vi.spyOn(StripeService, "archivePrice");
+    vi.spyOn(StripeService, "archivePrice");
     getUserByIdSpy = vi.spyOn(UsersService, "getOneUserByID");
     notifyOwnerSpy = vi.spyOn(NotificationService, "notifyDojoOwnerOfClassCreation");
     notifyInstructorSpy = vi.spyOn(NotificationService, "notifyInstructorOfNewClassAssigned");
@@ -107,7 +104,7 @@ describe("Class Service", () => {
     deleteSchedulesRepoSpy = vi.spyOn(ClassRepository, "deleteSchedules");
     createSchedulesRepoSpy = vi.spyOn(ClassRepository, "createSchedules");
     fetchClassSchedulesRepoSpy = vi.spyOn(ClassRepository, "fetchClassSchedules");
-    retrieveStripePriceSpy = vi
+    vi
       .spyOn(StripeService, "retrievePrice")
       .mockResolvedValue(buildStripePriceMock());
     userProfileForInstructorSpy = vi.spyOn(UserRepository, "getUserProfileForInstructor");
