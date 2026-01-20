@@ -13,7 +13,7 @@ export class InstructorController {
   }
 
   static async handleFetchInviteDetails(req: Request, res: Response) {
-    const { token } = req.params;
+    const token = req.params.token as string;
 
     const inviteDetails = await InstructorService.getInviteDetails(token);
 
@@ -33,7 +33,7 @@ export class InstructorController {
   }
 
   static async getInstructorClasses(req: Request, res: Response) {
-    const { instructorId } = req.params;
+    const instructorId = req.params.instructorId as string;
 
     const classes = await InstructorService.getInstructorClasses(instructorId);
 
