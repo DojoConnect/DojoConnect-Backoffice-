@@ -21,10 +21,7 @@ import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { nextDay } from "date-fns";
 import { ClassFrequency, ClassSubscriptionType } from "../constants/enums.js";
 import { mapWeekdayToDayNumber } from "../utils/date.utils.js";
-import {
-  IDojoInstructor,
-  InstructorsRepository,
-} from "../repositories/instructors.repository.js";
+import { IDojoInstructor, InstructorsRepository } from "../repositories/instructors.repository.js";
 import { StripeService } from "./stripe.service.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
 import { NotificationService } from "./notifications.service.js";
@@ -33,10 +30,7 @@ import { IDojo } from "../repositories/dojo.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { CloudinaryService } from "./cloudinary.service.js";
 import { CloudinaryResourceType, ImageType } from "../constants/cloudinary.js";
-import {
-  InstructorUserDetails,
-  UserRepository,
-} from "../repositories/user.repository.js";
+import { InstructorUserDetails, UserRepository } from "../repositories/user.repository.js";
 import { StudentRepository } from "../repositories/student.repository.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 
@@ -49,7 +43,7 @@ export class ClassService {
       dto: CreateClassDTO;
       dojo: IDojo;
     },
-    txInstance?: dbService.Transaction
+    txInstance?: dbService.Transaction,
   ): Promise<ClassDTO> => {
     const execute = async (tx: Transaction) => {
       const { schedules, ...classDetails } = dto;
@@ -63,7 +57,7 @@ export class ClassService {
         dojoInstructor = await ClassService.assertInstructorExistInDojo(
           dto.instructorId,
           dojo.id,
-          tx
+          tx,
         );
       }
 
@@ -77,25 +71,19 @@ export class ClassService {
         await CloudinaryService.moveImageFromTempFolder(
           dto.imagePublicId,
           dojo.id,
-          ImageType.CLASS
+          ImageType.CLASS,
         );
       }
 
       const newClassId = await ClassRepository.create(
         {
           classData,
-          schedulesData:
-            ClassService.mapCreateClassScheduleDTOToINewClassSchedule(
-              schedules
-            ),
+          schedulesData: ClassService.mapCreateClassScheduleDTOToINewClassSchedule(schedules),
         },
-        tx
+        tx,
       );
 
-      const classWithSchedules = await ClassService.fetchClassAndSchedules(
-        newClassId,
-        tx
-      );
+      const classWithSchedules = await ClassService.fetchClassAndSchedules(newClassId, tx);
 
       if (
         classData.frequency === ClassFrequency.Weekly &&
@@ -105,16 +93,14 @@ export class ClassService {
           throw new BadRequestException("Price is required for paid classes");
         }
 
-        const stripeProd = await StripeService.createClassProduct(
-          {
-            className: classData.name,
-            dojoId: dojo.id,
-            classId: newClassId,
-          }
-        );
+        const stripeProd = await StripeService.createClassProduct({
+          className: classData.name,
+          dojoId: dojo.id,
+          classId: newClassId,
+        });
         const prodPrice = await StripeService.createClassPrice(
           stripeProd.id,
-          Number(classData.price)
+          Number(classData.price),
         );
 
         await ClassRepository.update({
@@ -163,20 +149,15 @@ export class ClassService {
       return new ClassDTO(await ClassService.getClassSchedulesAndInstructor(newClassId, tx));
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getClassSchedulesAndInstructor = async (
     classId: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<ClassWithSchedulesAndInstructor> => {
     const execute = async (tx: Transaction) => {
-      const classAndSchedules = await ClassService.fetchClassAndSchedules(
-        classId,
-        tx
-      );
+      const classAndSchedules = await ClassService.fetchClassAndSchedules(classId, tx);
       if (!classAndSchedules) {
         throw new NotFoundException(`Class with ID ${classId} not found.`);
       }
@@ -184,16 +165,13 @@ export class ClassService {
       let instructorDetails: InstructorUserDetails | null = null;
 
       if (classAndSchedules.instructorId) {
-        const instructorUserProfile =
-          await UserRepository.getUserProfileForInstructor(
-            classAndSchedules.instructorId,
-            tx
-          );
+        const instructorUserProfile = await UserRepository.getUserProfileForInstructor(
+          classAndSchedules.instructorId,
+          tx,
+        );
 
         if (!instructorUserProfile) {
-          throw new InternalServerErrorException(
-            `Instructor User account not found`
-          );
+          throw new InternalServerErrorException(`Instructor User account not found`);
         }
 
         instructorDetails = {
@@ -208,15 +186,10 @@ export class ClassService {
       };
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static getClassById = async (
-    classId: string,
-    txInstance?: Transaction
-  ): Promise<IClass> => {
+  static getClassById = async (classId: string, txInstance?: Transaction): Promise<IClass> => {
     const execute = async (tx: Transaction) => {
       const dojoClass = await ClassRepository.findById(classId, tx);
 
@@ -227,14 +200,12 @@ export class ClassService {
       return dojoClass;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getAllClassesByDojoId = async (
     dojoId: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<ClassWithInstructor[]> => {
     const execute = async (tx: Transaction) => {
       const classes = await ClassRepository.findAllByDojoId(dojoId, tx);
@@ -243,8 +214,10 @@ export class ClassService {
         .map((c) => c.instructorId)
         .filter((id): id is string => id !== null);
 
-      const instructorUserDetails =
-        await UserRepository.getUserProfileByInstructorIds(instructorIds, tx);
+      const instructorUserDetails = await UserRepository.getUserProfileByInstructorIds(
+        instructorIds,
+        tx,
+      );
 
       const instructorMap = new Map<string, InstructorUserDetails>();
       instructorUserDetails.forEach((userDetails) => {
@@ -265,14 +238,12 @@ export class ClassService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static async fetchClassAndSchedules(
     classId: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<(IClass & { schedules: IClassSchedule[] }) | null> {
     const execute = async (tx: Transaction) => {
       const dojoClass = await ClassRepository.findById(classId, tx);
@@ -289,9 +260,7 @@ export class ClassService {
       };
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   }
 
   static updateClass = async (
@@ -302,7 +271,7 @@ export class ClassService {
       classId: string;
       dto: UpdateClassDTO;
     },
-    txInstance?: dbService.Transaction
+    txInstance?: dbService.Transaction,
   ): Promise<ClassDTO> => {
     const execute = async (tx: dbService.Transaction) => {
       const existingClass = await ClassRepository.findById(classId, tx);
@@ -317,11 +286,7 @@ export class ClassService {
       };
 
       if (dto.instructorId) {
-        await ClassService.assertInstructorExistInDojo(
-          dto.instructorId,
-          existingClass.dojoId,
-          tx
-        );
+        await ClassService.assertInstructorExistInDojo(dto.instructorId, existingClass.dojoId, tx);
         updatePayload.instructorId = dto.instructorId;
       }
 
@@ -336,36 +301,28 @@ export class ClassService {
         const schedulesToInsert: INewClassSchedule[] =
           ClassService.mapCreateClassScheduleDTOToINewClassSchedule(schedules);
 
-        await ClassRepository.createSchedules(
-          schedulesToInsert,
-          existingClass.id,
-          tx
-        );
+        await ClassRepository.createSchedules(schedulesToInsert, existingClass.id, tx);
       }
 
       if (Object.keys(updatePayload).length > 0) {
         await ClassRepository.update({ classId, update: updatePayload, tx });
       }
 
-      if (
-        dto.imagePublicId &&
-        dto.imagePublicId !== existingClass.imagePublicId
-      ) {
+      if (dto.imagePublicId && dto.imagePublicId !== existingClass.imagePublicId) {
         await CloudinaryService.moveImageFromTempFolder(
           dto.imagePublicId,
           existingClass.dojoId,
-          ImageType.CLASS
+          ImageType.CLASS,
         );
       }
 
       if (dto.instructorId && existingClass.instructorId != dto.instructorId) {
         if (existingClass.instructorId) {
           // Notify prev instructor of reassignment if there was one
-          const prevInstructorUserProfile =
-            await UserRepository.getUserProfileForInstructor(
-              existingClass.instructorId,
-              tx
-            );
+          const prevInstructorUserProfile = await UserRepository.getUserProfileForInstructor(
+            existingClass.instructorId,
+            tx,
+          );
 
           if (!prevInstructorUserProfile) {
             throw new InternalServerErrorException("Dojo Instructor not found");
@@ -378,11 +335,10 @@ export class ClassService {
         }
 
         // Notify new instructor of class assignment
-        const newInstructorUserProfile =
-          await UserRepository.getUserProfileForInstructor(
-            dto.instructorId,
-            tx
-          );
+        const newInstructorUserProfile = await UserRepository.getUserProfileForInstructor(
+          dto.instructorId,
+          tx,
+        );
 
         if (!newInstructorUserProfile) {
           throw new InternalServerErrorException("Dojo Instructor not found");
@@ -398,9 +354,7 @@ export class ClassService {
       return new ClassDTO(updatedClass!);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static updateClassInstructor = async (
@@ -411,19 +365,19 @@ export class ClassService {
       classId: string;
       instructorId: string | null;
     },
-    txInstance?: dbService.Transaction
+    txInstance?: dbService.Transaction,
   ): Promise<ClassDTO> => {
     return await ClassService.updateClass(
       {
         classId,
         dto: { instructorId },
       },
-      txInstance
+      txInstance,
     );
   };
 
   static mapCreateClassScheduleDTOToINewClassSchedule = (
-    schedules: CreateClassScheduleDTO
+    schedules: CreateClassScheduleDTO,
   ): INewClassSchedule[] => {
     return schedules
       .map((s) => {
@@ -432,10 +386,7 @@ export class ClassService {
         if (s.type === ClassFrequency.OneTime) {
           initialClassDate = s.date;
         } else {
-          initialClassDate = nextDay(
-            new Date(),
-            mapWeekdayToDayNumber(s.weekday)
-          );
+          initialClassDate = nextDay(new Date(), mapWeekdayToDayNumber(s.weekday));
         }
 
         const { type, ...scheduleData } = s;
@@ -456,65 +407,56 @@ export class ClassService {
     }
 
     if (asset.resource_type !== CloudinaryResourceType.IMAGE) {
-      throw new BadRequestException(
-        `Asset with ID ${imagePublicId} is not an image`
-      );
+      throw new BadRequestException(`Asset with ID ${imagePublicId} is not an image`);
     }
   };
 
   static assertInstructorExistInDojo = async (
     instructorId: string,
     dojoId: string,
-    tx: Transaction
+    tx: Transaction,
   ) => {
     const dojoInstructor = await InstructorsRepository.findOneByIdAndDojoId(
       instructorId,
       dojoId,
-      tx
+      tx,
     );
 
     if (!dojoInstructor) {
-      throw new NotFoundException(
-        `Instructor with ID ${instructorId} not found for Dojo`
-      );
+      throw new NotFoundException(`Instructor with ID ${instructorId} not found for Dojo`);
     }
 
     return dojoInstructor;
   };
 
-
   static getEnrolledStudents = async (
     classId: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<StudentWihUserDTO[]> => {
     const execute = async (tx: Transaction) => {
-      const enrollments =
-        await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId(
-          classId,
-          tx
-        );
+      const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId(
+        classId,
+        tx,
+      );
 
       if (enrollments.length === 0) {
         return [];
       }
 
       const studentIds = enrollments.map((e) => e.studentId);
-      const studentRecords =
-        await StudentRepository.fetchStudentsWithUsersByIds(studentIds, tx);
+      const studentRecords = await StudentRepository.fetchStudentsWithUsersByIds(studentIds, tx);
 
-        return studentRecords.map((record) => {
-            return new StudentWihUserDTO({
-                id: record.student.id,
-                studentUserId: record.student.studentUserId,
-                parentId: record.student.parentId,
-                experience: record.student.experienceLevel,
-                studentUser: record.user
-            })
-        })
+      return studentRecords.map((record) => {
+        return new StudentWihUserDTO({
+          id: record.student.id,
+          studentUserId: record.student.studentUserId,
+          parentId: record.student.parentId,
+          experience: record.student.experienceLevel,
+          studentUser: record.user,
+        });
+      });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 }

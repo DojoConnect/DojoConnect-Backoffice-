@@ -7,9 +7,7 @@ import { SupportedOAuthProviders } from "../constants/enums.js";
 export type IOAuthAcct = InferSelectModel<typeof userOAuthAccounts>;
 export type INewOAuthAcct = InferInsertModel<typeof userOAuthAccounts>;
 
-export type IUpdateOAuthProvider = Partial<
-  Omit<INewOAuthAcct, "id" | "createdAt">
->;
+export type IUpdateOAuthProvider = Partial<Omit<INewOAuthAcct, "id" | "createdAt">>;
 
 export class UserOAuthAccountsRepository {
   static async findByProviderAndProviderUserId({
@@ -28,21 +26,15 @@ export class UserOAuthAccountsRepository {
         .where(
           and(
             eq(userOAuthAccounts.providerUserId, providerUserId),
-            eq(userOAuthAccounts.provider, provider)
-          )
+            eq(userOAuthAccounts.provider, provider),
+          ),
         )
         .limit(1)
-        .execute()
+        .execute(),
     );
   }
 
-  static async createOAuthAcct({
-    dto,
-    tx,
-  }: {
-    dto: INewOAuthAcct;
-    tx: Transaction;
-  }) {
+  static async createOAuthAcct({ dto, tx }: { dto: INewOAuthAcct; tx: Transaction }) {
     // Create OAuth link
     await tx.insert(userOAuthAccounts).values(dto);
   }
@@ -56,9 +48,6 @@ export class UserOAuthAccountsRepository {
     update: IUpdateOAuthProvider;
     tx: Transaction;
   }) {
-    await tx
-      .update(userOAuthAccounts)
-      .set(update)
-      .where(eq(userOAuthAccounts.id, oAuthAcctId));
+    await tx.update(userOAuthAccounts).set(update).where(eq(userOAuthAccounts.id, oAuthAcctId));
   }
 }

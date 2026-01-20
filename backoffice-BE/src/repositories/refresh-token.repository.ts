@@ -11,17 +11,14 @@ export class RefreshTokenRepository {
     await tx.insert(refreshTokens).values(token);
   }
 
-  static async getOne(
-    token: string,
-    tx: Transaction
-  ): Promise<IRefreshToken | null> {
+  static async getOne(token: string, tx: Transaction): Promise<IRefreshToken | null> {
     const storedToken = returnFirst(
       await tx
         .select()
         .from(refreshTokens)
         .where(eq(refreshTokens.hashedToken, token))
         .limit(1)
-        .execute()
+        .execute(),
     );
 
     return storedToken || null;
@@ -44,13 +41,7 @@ export class RefreshTokenRepository {
     });
   }
 
-  static async delete({
-    whereClause,
-    tx,
-  }: {
-    whereClause: SQL;
-    tx: Transaction;
-  }) {
+  static async delete({ whereClause, tx }: { whereClause: SQL; tx: Transaction }) {
     await tx.delete(refreshTokens).where(whereClause);
   }
 }

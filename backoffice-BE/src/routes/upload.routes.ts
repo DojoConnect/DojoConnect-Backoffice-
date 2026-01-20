@@ -12,7 +12,7 @@ router.post(
   requireAuth,
   isDojoMemberMiddleware,
   validateReqBody(GetCloudinarySignatureSchema),
-  UploadController.handleGetCloudinarySignature
+  UploadController.handleGetCloudinarySignature,
 );
 
 export default router;

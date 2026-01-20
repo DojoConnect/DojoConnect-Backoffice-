@@ -88,52 +88,39 @@ const otpVerifyIpLimiter = rateLimit({
 
 const router = Router();
 
-router.post(
-  "/login",
-  authLimiter,
-  validateReqBody(LoginSchema),
-  loginUser
-);
+router.post("/login", authLimiter, validateReqBody(LoginSchema), loginUser);
 router.post(
   "/register/dojo-admin",
   authLimiter,
   validateReqBody(RegisterDojoAdminSchema),
-  handleRegisterDojoAdmin
+  handleRegisterDojoAdmin,
 );
 
 router.post(
   "/register/parent",
   authLimiter,
   validateReqBody(RegisterParentSchema),
-  handleRegisterParent
+  handleRegisterParent,
 );
 router.post("/refresh", validateReqBody(RefreshTokenSchema), refreshUserToken);
 router.post("/logout", validateReqBody(RefreshTokenSchema), logoutUser);
 
-router.post(
-  "/google",
-  validateReqBody(FirebaseSignInSchema),
-  handleFirebaseLogin
-);
+router.post("/google", validateReqBody(FirebaseSignInSchema), handleFirebaseLogin);
 
 router.get(
   "/availability/usernames/:username",
   checkAvailabilityRateLimiter,
-  handleIsUsernameAvailable
+  handleIsUsernameAvailable,
 );
 
-router.get(
-  "/availability/dojo-tags/:tag",
-  checkAvailabilityRateLimiter,
-  handleIsDojoTagAvailable
-);
+router.get("/availability/dojo-tags/:tag", checkAvailabilityRateLimiter, handleIsDojoTagAvailable);
 
 router.post(
   "/forgot-password",
   otpRequestLimiter,
   otpIpLimiter,
   validateReqBody(ForgotPasswordSchema),
-  handleInitForgetPassword
+  handleInitForgetPassword,
 );
 
 router.post(
@@ -141,13 +128,9 @@ router.post(
   otpVerifyLimiter,
   otpVerifyIpLimiter,
   validateReqBody(VerifyOtpSchema),
-  handleVerifyOtp
+  handleVerifyOtp,
 );
 
-router.post(
-  "/reset-password",
-  validateReqBody(ResetPasswordSchema),
-  handleResetPassword
-);
+router.post("/reset-password", validateReqBody(ResetPasswordSchema), handleResetPassword);
 
 export default router;

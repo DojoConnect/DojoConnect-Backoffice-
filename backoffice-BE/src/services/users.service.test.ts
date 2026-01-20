@@ -1,11 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Mock, MockInstance } from "vitest";
 
-import {UsersService} from "./users.service.js";
-import {
-  createDrizzleDbSpies,
-  DbServiceSpies,
-} from "../tests/spies/drizzle-db.spies.js";
+import { UsersService } from "./users.service.js";
+import { createDrizzleDbSpies, DbServiceSpies } from "../tests/spies/drizzle-db.spies.js";
 import { userCards, users } from "../db/schema.js";
 import {
   buildNewUserMock,
@@ -22,7 +19,12 @@ import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { buildInstructorMock } from "../tests/factories/instructor.factory.js";
 import { buildParentMock } from "../tests/factories/parent.factory.js";
 import { buildStudentMock } from "../tests/factories/student.factory.js";
-import { DojoAdminUserDTO, InstructorUserDTO, ParentUserDTO, StudentUserDTO } from "../dtos/user.dtos.js";
+import {
+  DojoAdminUserDTO,
+  InstructorUserDTO,
+  ParentUserDTO,
+  StudentUserDTO,
+} from "../dtos/user.dtos.js";
 import { UnauthorizedException } from "../core/errors/UnauthorizedException.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
@@ -147,7 +149,7 @@ describe("Users Service", () => {
 
       expect(getOneUserSpy).toHaveBeenCalledWith(
         { whereClause: eq(users.id, id) },
-        expect.anything() // tx
+        expect.anything(), // tx
       );
       expect(result).toEqual(mockUser);
     });
@@ -170,14 +172,11 @@ describe("Users Service", () => {
 
       logErrorSpy.mockImplementation(() => {});
 
-      await expect(UsersService.getOneUserByID({ userId })).rejects.toThrow(
-        "DB failed"
-      );
+      await expect(UsersService.getOneUserByID({ userId })).rejects.toThrow("DB failed");
 
-      expect(logErrorSpy).toHaveBeenCalledWith(
-        `Error fetching user by ID: ${userId}`,
-        { err: testError }
-      );
+      expect(logErrorSpy).toHaveBeenCalledWith(`Error fetching user by ID: ${userId}`, {
+        err: testError,
+      });
     });
   });
 
@@ -202,7 +201,7 @@ describe("Users Service", () => {
 
       expect(getOneUserSpy).toHaveBeenCalledWith(
         { whereClause: eq(users.email, email), withPassword: false },
-        expect.anything() // tx
+        expect.anything(), // tx
       );
       expect(result).toEqual(mockUser);
     });
@@ -230,7 +229,7 @@ describe("Users Service", () => {
 
       expect(getOneUserSpy).toHaveBeenCalledWith(
         { whereClause: eq(users.email, email), withPassword: true },
-        expect.anything()
+        expect.anything(),
       );
 
       expect(result).toEqual(mockUser);
@@ -272,18 +271,13 @@ describe("Users Service", () => {
       const testError = new Error("DB failed");
       getOneUserSpy.mockRejectedValue(testError);
 
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      await expect(UsersService.getOneUserByEmail({ email })).rejects.toThrow(
-        "DB failed"
-      );
+      await expect(UsersService.getOneUserByEmail({ email })).rejects.toThrow("DB failed");
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        `Error fetching user by Email: ${email}`,
-        { err: testError }
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(`Error fetching user by Email: ${email}`, {
+        err: testError,
+      });
     });
   });
 
@@ -308,7 +302,7 @@ describe("Users Service", () => {
 
       expect(getOneUserSpy).toHaveBeenCalledWith(
         { whereClause: eq(users.username, username) },
-        expect.anything()
+        expect.anything(),
       );
       expect(result).toEqual(mockDojo);
     });
@@ -331,14 +325,11 @@ describe("Users Service", () => {
 
       logErrorSpy.mockImplementation(() => {});
 
-      await expect(
-        UsersService.getOneUserByUserName({ username })
-      ).rejects.toThrow("DB failed");
+      await expect(UsersService.getOneUserByUserName({ username })).rejects.toThrow("DB failed");
 
-      expect(logErrorSpy).toHaveBeenCalledWith(
-        `Error fetching dojo by Username: ${username}`,
-        { err: testError }
-      );
+      expect(logErrorSpy).toHaveBeenCalledWith(`Error fetching dojo by Username: ${username}`, {
+        err: testError,
+      });
     });
   });
 
@@ -349,19 +340,14 @@ describe("Users Service", () => {
 
     it("should return user cards for a given user ID", async () => {
       const userId = "user-1";
-      const mockCards = [
-        buildUserCardMock({ userId }),
-        buildUserCardMock({ userId }),
-      ];
+      const mockCards = [buildUserCardMock({ userId }), buildUserCardMock({ userId })];
       mockExecute.mockResolvedValue(mockCards);
 
       const result = await UsersService.fetchUserCards(userId);
 
       expect(mockSelect).toHaveBeenCalled();
       expect(mockFrom).toHaveBeenCalledWith(userCards);
-      expect(dbSpies.mockWhere).toHaveBeenCalledWith(
-        eq(userCards.userId, userId)
-      );
+      expect(dbSpies.mockWhere).toHaveBeenCalledWith(eq(userCards.userId, userId));
       expect(result).toEqual(mockCards);
     });
 
@@ -379,14 +365,11 @@ describe("Users Service", () => {
       const testError = new Error("DB query failed");
       mockExecute.mockRejectedValue(testError);
 
-      await expect(UsersService.fetchUserCards(userId)).rejects.toThrow(
-        testError
-      );
+      await expect(UsersService.fetchUserCards(userId)).rejects.toThrow(testError);
 
-      expect(logErrorSpy).toHaveBeenCalledWith(
-        `Error fetching user cards for user ID: ${userId}`,
-        { err: testError }
-      );
+      expect(logErrorSpy).toHaveBeenCalledWith(`Error fetching user cards for user ID: ${userId}`, {
+        err: testError,
+      });
     });
   });
 
@@ -399,14 +382,12 @@ describe("Users Service", () => {
       ];
       mockExecute.mockResolvedValue(mockCards);
 
-      const result = await UsersService.fetchUserCardsByPaymentMethod(
-        paymentMethodId
-      );
+      const result = await UsersService.fetchUserCardsByPaymentMethod(paymentMethodId);
 
       expect(mockSelect).toHaveBeenCalled();
       expect(mockFrom).toHaveBeenCalledWith(userCards);
       expect(dbSpies.mockWhere).toHaveBeenCalledWith(
-        eq(userCards.paymentMethodId, paymentMethodId)
+        eq(userCards.paymentMethodId, paymentMethodId),
       );
       expect(result).toEqual(mockCards);
     });
@@ -415,9 +396,7 @@ describe("Users Service", () => {
       const paymentMethodId = "pm_not_found";
       mockExecute.mockResolvedValue([]);
 
-      const result = await UsersService.fetchUserCardsByPaymentMethod(
-        paymentMethodId
-      );
+      const result = await UsersService.fetchUserCardsByPaymentMethod(paymentMethodId);
 
       expect(result).toEqual([]);
     });
@@ -435,10 +414,7 @@ describe("Users Service", () => {
       const paymentMethodId = "pm_123";
       mockExecute.mockResolvedValue([]);
 
-      await UsersService.fetchUserCardsByPaymentMethod(
-        paymentMethodId,
-        dbSpies.mockTx
-      );
+      await UsersService.fetchUserCardsByPaymentMethod(paymentMethodId, dbSpies.mockTx);
 
       expect(dbSpies.runInTransactionSpy).not.toHaveBeenCalled();
     });
@@ -448,13 +424,13 @@ describe("Users Service", () => {
       const testError = new Error("DB query failed");
       mockExecute.mockRejectedValue(testError);
 
-      await expect(
-        UsersService.fetchUserCardsByPaymentMethod(paymentMethodId)
-      ).rejects.toThrow(testError);
+      await expect(UsersService.fetchUserCardsByPaymentMethod(paymentMethodId)).rejects.toThrow(
+        testError,
+      );
 
       expect(logErrorSpy).toHaveBeenCalledWith(
         `Error fetching user cards by payment method: ${paymentMethodId}`,
-        { err: testError }
+        { err: testError },
       );
     });
   });

@@ -2,12 +2,7 @@ import { eq } from "drizzle-orm";
 import * as dbService from "../db/index.js";
 import type { Transaction } from "../db/index.js";
 import { dojos } from "../db/schema.js";
-import {
-  DojoRepository,
-  IDojo,
-  INewDojo,
-  IUpdateDojo,
-} from "../repositories/dojo.repository.js";
+import { DojoRepository, IDojo, INewDojo, IUpdateDojo } from "../repositories/dojo.repository.js";
 import { InviteInstructorDTO } from "../validations/instructors.schemas.js";
 import { IUser } from "../repositories/user.repository.js";
 import { assertDojoOwnership } from "../utils/assertions.utils.js";
@@ -20,28 +15,23 @@ import { InstructorInviteStatus, Role } from "../constants/enums.js";
 import { InstructorService } from "./instructor.service.js";
 import { MailerService } from "./mailer.service.js";
 import { InvitedInstructorDTO } from "../dtos/instructor.dtos.js";
-import { InstructorDetails, InstructorsRepository } from "../repositories/instructors.repository.js";
+import {
+  InstructorDetails,
+  InstructorsRepository,
+} from "../repositories/instructors.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { ClassRepository } from "../repositories/class.repository.js";
 
 export class DojosService {
-  static getOneDojo = async (
-    whereClause: any,
-    txInstance?: Transaction
-  ): Promise<IDojo | null> => {
+  static getOneDojo = async (whereClause: any, txInstance?: Transaction): Promise<IDojo | null> => {
     const execute = async (tx: Transaction) => {
       return await DojoRepository.getOne(whereClause, tx);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static getOneDojoByTag = async (
-    tag: string,
-    txInstance?: Transaction
-  ): Promise<IDojo | null> => {
+  static getOneDojoByTag = async (tag: string, txInstance?: Transaction): Promise<IDojo | null> => {
     const execute = async (tx: Transaction) => {
       try {
         return await DojoRepository.getOneByTag(tag, tx);
@@ -50,14 +40,12 @@ export class DojosService {
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getOneDojoByID = async (
     dojoId: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<IDojo | null> => {
     const execute = async (tx: Transaction) => {
       try {
@@ -67,9 +55,7 @@ export class DojosService {
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getOneDojoByUserId = async ({
@@ -88,14 +74,12 @@ export class DojosService {
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static createDojo = async (
     newDojoDTO: INewDojo,
-    txInstance?: dbService.Transaction
+    txInstance?: dbService.Transaction,
   ): Promise<IDojo> => {
     const execute = async (tx: Transaction) => {
       const newDojoID = await DojoRepository.create(newDojoDTO, tx);
@@ -109,9 +93,7 @@ export class DojosService {
       return (await DojosService.getOneDojoByID(newDojoID, tx))!;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static updateDojo = async ({
@@ -127,9 +109,7 @@ export class DojosService {
       await DojoRepository.update({ dojoId, update, tx });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static inviteInstructor = async ({
@@ -154,36 +134,35 @@ export class DojosService {
       });
 
       if (existingUser) {
-        const existingInstructor =
-          await InstructorService.findInstructorByUserId(existingUser.id, tx);
+        const existingInstructor = await InstructorService.findInstructorByUserId(
+          existingUser.id,
+          tx,
+        );
 
         if (existingInstructor) {
           if (existingInstructor.dojoId === dojo.id) {
             throw new ConflictException(
-              `User with email ${dto.email} is already an instructor for this dojo`
+              `User with email ${dto.email} is already an instructor for this dojo`,
             );
           }
 
           throw new ConflictException(
-            `User with email ${dto.email} is already an instructor for another dojo`
+            `User with email ${dto.email} is already an instructor for another dojo`,
           );
         }
 
-        throw new ConflictException(
-          `User with email ${dto.email} already exists`
-        );
+        throw new ConflictException(`User with email ${dto.email} already exists`);
       }
 
-      const pendingInvite =
-        await InvitesRepository.getOnePendingInviteByEmailAndDojoId(
-          dto.email,
-          dojo.id,
-          tx
-        );
+      const pendingInvite = await InvitesRepository.getOnePendingInviteByEmailAndDojoId(
+        dto.email,
+        dojo.id,
+        tx,
+      );
 
       if (pendingInvite) {
         throw new ConflictException(
-          `An invite has already been sent to ${dto.email} for this dojo`
+          `An invite has already been sent to ${dto.email} for this dojo`,
         );
       }
 
@@ -191,15 +170,11 @@ export class DojosService {
         const existingClass = await ClassRepository.findById(dto.classId, tx);
 
         if (!existingClass) {
-          throw new ConflictException(
-            `Class with ID ${dto.classId} does not exist`
-          );
+          throw new ConflictException(`Class with ID ${dto.classId} does not exist`);
         }
 
         if (existingClass.dojoId !== dojo.id) {
-          throw new ConflictException(
-            `Class with ID ${dto.classId} does not belong to this dojo`
-          );
+          throw new ConflictException(`Class with ID ${dto.classId} does not belong to this dojo`);
         }
       }
 
@@ -220,7 +195,7 @@ export class DojosService {
           status: InstructorInviteStatus.Pending,
           invitedBy: user.id,
         },
-        tx
+        tx,
       );
 
       await MailerService.sendInstructorInviteEmail({
@@ -231,9 +206,7 @@ export class DojosService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static fetchInvitedInstructors = async ({
@@ -244,17 +217,11 @@ export class DojosService {
     txInstance?: Transaction;
   }): Promise<InvitedInstructorDTO[]> => {
     const execute = async (tx: Transaction) => {
-      const invites =
-        await InvitesRepository.fetchDojoUnacceptedInstructorInvites(
-          dojoId,
-          tx
-        );
+      const invites = await InvitesRepository.fetchDojoUnacceptedInstructorInvites(dojoId, tx);
 
       return invites.map((invite) => new InvitedInstructorDTO(invite));
     };
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static fetchInstructors = async ({
@@ -263,7 +230,7 @@ export class DojosService {
   }: {
     dojoId: string;
     txInstance?: Transaction;
-  }):Promise<InstructorDetails[]> => {
+  }): Promise<InstructorDetails[]> => {
     const execute = async (tx: Transaction) => {
       const instructors = await InstructorsRepository.fetchDojoInstructors({
         dojoId,
@@ -273,9 +240,7 @@ export class DojosService {
       return instructors;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static fetchUserDojo = async ({
@@ -307,12 +272,8 @@ export class DojosService {
       return dojo;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-
-  static generateReferralCode = () =>
-    "DOJ" + Math.floor(1000 + Math.random() * 9000); // rand(1000, 9999)
+  static generateReferralCode = () => "DOJ" + Math.floor(1000 + Math.random() * 9000); // rand(1000, 9999)
 }

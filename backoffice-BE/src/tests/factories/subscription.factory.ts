@@ -1,11 +1,8 @@
-
 import { faker } from "@faker-js/faker";
-import { BillingStatus, StripeSubscriptionStatus } from '../../constants/enums.js';
-import { IDojoSub } from '../../repositories/subscription.repository.js';
+import { BillingStatus, StripeSubscriptionStatus } from "../../constants/enums.js";
+import { IDojoSub } from "../../repositories/subscription.repository.js";
 
-export function buildSubscriptionMock(
-  overrides: Partial<IDojoSub> = {}
-): IDojoSub {
+export function buildSubscriptionMock(overrides: Partial<IDojoSub> = {}): IDojoSub {
   return {
     id: faker.string.uuid(),
     dojoId: faker.string.uuid(),

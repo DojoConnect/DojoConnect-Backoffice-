@@ -1,4 +1,4 @@
-name: 'dojo-connect-dev'
+name: "dojo-connect-dev"
 
 services:
   # --- MariaDB Service ---
@@ -22,11 +22,11 @@ services:
     depends_on:
       - db
     environment:
-      PMA_HOST: db              # Must match the service name of the database above ('db')
-      PMA_PORT: 3306            # Default MariaDB port
-      UPLOAD_LIMIT: 64M         # Optional: Increases file upload limit for imports
+      PMA_HOST: db # Must match the service name of the database above ('db')
+      PMA_PORT: 3306 # Default MariaDB port
+      UPLOAD_LIMIT: 64M # Optional: Increases file upload limit for imports
     ports:
-      - "8080:80"               # Access via localhost:8080
+      - "8080:80" # Access via localhost:8080
 
 volumes:
   db_data:

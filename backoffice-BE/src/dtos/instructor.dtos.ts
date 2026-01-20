@@ -1,9 +1,6 @@
 import { InstructorInviteStatus } from "../constants/enums.js";
 import { IDojoInstructor } from "../repositories/instructors.repository.js";
-import {
-  IInstructorInvite,
-  InstructorInviteDetails,
-} from "../repositories/invites.repository.js";
+import { IInstructorInvite, InstructorInviteDetails } from "../repositories/invites.repository.js";
 import { getFullName } from "../utils/text.utils.js";
 
 export class InvitedInstructorDTO implements IInstructorInvite {
@@ -84,24 +81,24 @@ export class InstructorInviteDetailsDTO {
 }
 
 export class DojoInstructorDTO implements IDojoInstructor {
-    id: string;
-    dojoId: string;
-    instructorUserId: string;
-    createdAt: Date;
+  id: string;
+  dojoId: string;
+  instructorUserId: string;
+  createdAt: Date;
 
-    constructor(params: IDojoInstructor) {
-        this.id = params.id;
-        this.dojoId = params.dojoId;
-        this.instructorUserId = params.instructorUserId;
-        this.createdAt = params.createdAt;
-    }
+  constructor(params: IDojoInstructor) {
+    this.id = params.id;
+    this.dojoId = params.dojoId;
+    this.instructorUserId = params.instructorUserId;
+    this.createdAt = params.createdAt;
+  }
 
-    toJSON() {
-        return {
-            id: this.id,
-            dojoId: this.dojoId,
-            userId: this.instructorUserId,
-            createdAt: this.createdAt
-        }
-    }
+  toJSON() {
+    return {
+      id: this.id,
+      dojoId: this.dojoId,
+      userId: this.instructorUserId,
+      createdAt: this.createdAt,
+    };
+  }
 }

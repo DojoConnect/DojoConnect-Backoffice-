@@ -1,19 +1,20 @@
 host: "localhost",
-    user: "root",
-    password: "Trodpen2022*",
-    database: "trial_dojo",
-
-
+user: "root",
+password: "Trodpen2022\*",
+database: "trial_dojo",
 
 # Email Endpoints Testing Guide
 
 ## Quick Setup
+
 1. Replace `your_dojo_tag_here` with an actual dojo_tag from your database
 2. Replace test email addresses with your own email to receive test emails
 3. Make sure your server is running on `http://localhost:5000`
 
 ## ⏰ Time Format Support
+
 The API now supports **both** time formats:
+
 - **12-hour format**: `"10:00 AM"`, `"2:30 PM"` ✅ (Recommended - easier to read)
 - **24-hour format**: `"10:00:00"`, `"14:30:00"` ✅ (Also works)
 
@@ -22,6 +23,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ---
 
 ## 1️⃣ Test Email (Basic Email Configuration)
+
 **Endpoint:** `POST /test-email`
 
 ```json
@@ -35,6 +37,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ---
 
 ## 2️⃣ Appointment Request Confirmation - Physical
+
 **Endpoint:** `POST /appointment-requests`
 
 ```json
@@ -56,6 +59,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ```
 
 **Expected Email:**
+
 - Subject: "Your Appointment Request Has Been Received"
 - Contains: Appointment type, reason, time range, number of children
 
@@ -64,6 +68,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ---
 
 ## 3️⃣ Appointment Request Confirmation - Online
+
 **Endpoint:** `POST /appointment-requests`
 
 ```json
@@ -85,6 +90,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ```
 
 **Expected Email:**
+
 - Subject: "Your Appointment Request Has Been Received"
 - Shows Online appointment type
 
@@ -93,6 +99,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ---
 
 ## 4️⃣ Schedule Physical Appointment
+
 **Endpoint:** `POST /admin/scheduled-appointments`
 
 ```json
@@ -110,6 +117,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ```
 
 **Expected Email:**
+
 - Subject: "Your Appointment Has Been Scheduled"
 - Contains: Date, Time, Physical location address
 
@@ -118,6 +126,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ---
 
 ## 5️⃣ Schedule Online Appointment
+
 **Endpoint:** `POST /admin/scheduled-appointments`
 
 ```json
@@ -135,6 +144,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ```
 
 **Expected Email:**
+
 - Subject: "Your Online Appointment Has Been Scheduled"
 - Contains: Date, Time, Meeting Link (clickable)
 
@@ -143,6 +153,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ---
 
 ## 6️⃣ Cancel Appointment
+
 **Endpoint:** `POST /admin/cancel-appointment`
 
 ```json
@@ -153,12 +164,14 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ```
 
 **Expected Email:**
+
 - Subject: "Appointment Canceled"
 - Contains: Original date/time, link to reschedule
 
 ---
 
 ## 7️⃣ Reschedule Physical Appointment
+
 **Endpoint:** `POST /admin/reschedule-appointment`
 
 ```json
@@ -174,12 +187,14 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ```
 
 **Expected Email:**
+
 - Subject: "Appointment Update – Rescheduled"
 - Contains: New date, new time, new location
 
 ---
 
 ## 8️⃣ Reschedule Online Appointment
+
 **Endpoint:** `POST /admin/reschedule-appointment`
 
 ```json
@@ -195,12 +210,14 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ```
 
 **Expected Email:**
+
 - Subject: "Appointment Update – Rescheduled"
 - Contains: New date, new time, new meeting link
 
 ---
 
 ## 9️⃣ Trial Class Booking Confirmation
+
 **Endpoint:** `POST /trial-class-bookings`
 
 ```json
@@ -221,6 +238,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ```
 
 **Expected Email:**
+
 - Subject: "Your Trial Class Booking Has Been Confirmed"
 - Contains: Class name, instructor, date, number of children, trial fee
 - Includes: What to bring checklist
@@ -232,6 +250,7 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ## Testing Workflow (Recommended Order)
 
 ### Test 1: Complete Physical Appointment Flow
+
 1. **Test basic email** → Test endpoint #1
 2. **Create physical request** → Use endpoint #2 (note the `id`)
 3. **Schedule it** → Use endpoint #4 (use `id` from step 2 as `consultation_request_id`)
@@ -239,12 +258,14 @@ The system automatically converts 12-hour format to 24-hour for database storage
 5. **Cancel it** → Use endpoint #6 (use same `appointment_id`)
 
 ### Test 2: Complete Online Appointment Flow
+
 1. **Create online request** → Use endpoint #3 (note the `id`)
 2. **Schedule it** → Use endpoint #5 (use `id` from step 1 as `consultation_request_id`)
 3. **Reschedule it** → Use endpoint #8 (use `id` from step 2 as `appointment_id`)
 4. **Cancel it** → Use endpoint #6 (use same `appointment_id`)
 
 ### Test 3: Trial Class Booking
+
 1. **Create trial class booking** → Use endpoint #9
 2. **Check email** → Should receive booking confirmation with class details
 
@@ -253,28 +274,33 @@ The system automatically converts 12-hour format to 24-hour for database storage
 ## Important Notes
 
 ⚠️ **Before Testing:**
+
 - Replace `your_dojo_tag_here` with an actual dojo_tag from your database
 - Replace `your-email@example.com` with your real email address
 - Make sure you have a dojo in your database with the tag you're using
 
 ⏰ **Time Format Tips:**
+
 - Use 12-hour format: `"10:00 AM"`, `"2:30 PM"`, `"11:45 PM"` (easier to read)
 - Or 24-hour format: `"10:00:00"`, `"14:30:00"`, `"23:45:00"` (also works)
 - The system handles conversion automatically!
 - Emails will always show times in friendly 12-hour format
 
 🔍 **After Each Request:**
+
 - Check your email inbox for the email
 - Check the server console logs for confirmation messages like `📧 Appointment email sent to...`
 - Note down the `id` values from responses for subsequent tests
 
 ❌ **If Emails Don't Arrive:**
+
 1. Check spam/junk folder
 2. Verify Zoho credentials in `app.js` are correct
 3. Check server console for error messages
 4. Ensure `transporter` configuration is correct
 
 ❌ **If You Get Time Format Errors:**
+
 - This has been fixed! The API now accepts both `"10:00 AM"` and `"10:00:00"` formats
 - If you still see errors, make sure you're using the updated code
 - Times are automatically converted for MySQL compatibility
@@ -292,4 +318,3 @@ DOJO_EMAIL = "dojo@example.com"
 ```
 
 Find and replace these in all the JSON bodies above before testing!
-

@@ -4,7 +4,6 @@ import { formatApiResponse } from "../utils/api.utils.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
 
 export class ClassesController {
-
   static async getClassById(req: Request, res: Response) {
     const classId = req.params.classId as string;
 
@@ -12,9 +11,7 @@ export class ClassesController {
 
     const classDTO = new ClassDTO(classData);
 
-    res
-      .status(200)
-      .json(formatApiResponse({ data: classDTO, message: "Class fetched." }));
+    res.status(200).json(formatApiResponse({ data: classDTO, message: "Class fetched." }));
   }
 
   static async handleViewClassByUnAuthenticatedUser(req: Request, res: Response) {
@@ -24,9 +21,7 @@ export class ClassesController {
 
     const classDTO = new ClassDTO(classData);
 
-    res
-      .status(200)
-      .json(formatApiResponse({ data: classDTO, message: "Class fetched." }));
+    res.status(200).json(formatApiResponse({ data: classDTO, message: "Class fetched." }));
   }
 
   static async updateClass(req: Request, res: Response) {
@@ -41,7 +36,7 @@ export class ClassesController {
       formatApiResponse({
         data: updatedClass,
         message: "Class updated successfully.",
-      })
+      }),
     );
   }
 
@@ -58,11 +53,9 @@ export class ClassesController {
       formatApiResponse({
         data: updatedClass,
         message: "Class instructor updated successfully.",
-      })
+      }),
     );
   }
-
-
 
   static async handleGetClassStudents(req: Request, res: Response) {
     const classId = req.params.classId as string;
@@ -72,7 +65,7 @@ export class ClassesController {
     res.status(200).json(
       formatApiResponse({
         data: students,
-      })
+      }),
     );
   }
 }

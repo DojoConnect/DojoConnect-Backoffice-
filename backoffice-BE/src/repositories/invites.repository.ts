@@ -1,11 +1,4 @@
-import {
-  and,
-  eq,
-  InferInsertModel,
-  InferSelectModel,
-  not,
-  SQL,
-} from "drizzle-orm";
+import { and, eq, InferInsertModel, InferSelectModel, not, SQL } from "drizzle-orm";
 import { Transaction } from "../db/index.js";
 import { classes, dojos, instructorInvites } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
@@ -13,9 +6,7 @@ import { InstructorInviteStatus } from "../constants/enums.js";
 
 export type IInstructorInvite = InferSelectModel<typeof instructorInvites>;
 export type INewInstructorInvite = InferInsertModel<typeof instructorInvites>;
-export type IUpdateInstructorInvite = Partial<
-  Omit<INewInstructorInvite, "id" | "createdAt">
->;
+export type IUpdateInstructorInvite = Partial<Omit<INewInstructorInvite, "id" | "createdAt">>;
 
 export interface InstructorInviteDetails {
   id: string;
@@ -32,10 +23,7 @@ export interface InstructorInviteDetails {
 }
 
 export class InvitesRepository {
-  static createInstructorInvite = async (
-    invite: INewInstructorInvite,
-    tx: Transaction
-  ) => {
+  static createInstructorInvite = async (invite: INewInstructorInvite, tx: Transaction) => {
     const [newInvite] = await tx.insert(instructorInvites).values(invite);
     return newInvite.insertId;
   };
@@ -48,12 +36,7 @@ export class InvitesRepository {
     tx: Transaction;
   }) {
     return returnFirst(
-      await tx
-        .select()
-        .from(instructorInvites)
-        .where(whereClause)
-        .limit(1)
-        .execute()
+      await tx.select().from(instructorInvites).where(whereClause).limit(1).execute(),
     );
   }
 
@@ -67,13 +50,13 @@ export class InvitesRepository {
   static getOnePendingInviteByEmailAndDojoId(
     instructorEmail: string,
     dojoId: string,
-    tx: Transaction
+    tx: Transaction,
   ) {
     return this.findOneInstructorInvite({
       whereClause: and(
         eq(instructorInvites.email, instructorEmail),
         eq(instructorInvites.dojoId, dojoId),
-        eq(instructorInvites.status, InstructorInviteStatus.Pending)
+        eq(instructorInvites.status, InstructorInviteStatus.Pending),
       ),
       tx,
     });
@@ -81,7 +64,7 @@ export class InvitesRepository {
 
   static fetchDojoUnacceptedInstructorInvites = async (
     dojoId: string,
-    tx: Transaction
+    tx: Transaction,
   ): Promise<IInstructorInvite[]> => {
     return await tx
       .select()
@@ -89,15 +72,15 @@ export class InvitesRepository {
       .where(
         and(
           eq(instructorInvites.dojoId, dojoId),
-          not(eq(instructorInvites.status, InstructorInviteStatus.Accepted))
-        )
+          not(eq(instructorInvites.status, InstructorInviteStatus.Accepted)),
+        ),
       )
       .execute();
   };
 
   static getInviteDetails = async (
     tokenHash: string,
-    tx: Transaction
+    tx: Transaction,
   ): Promise<InstructorInviteDetails | null> => {
     const result = await tx
       .select({
@@ -123,10 +106,7 @@ export class InvitesRepository {
     return returnFirst(result);
   };
 
-  static markInviteAsExpired = async (
-    inviteId: string,
-    tx: Transaction
-  ): Promise<void> => {
+  static markInviteAsExpired = async (inviteId: string, tx: Transaction): Promise<void> => {
     await tx
       .update(instructorInvites)
       .set({ status: InstructorInviteStatus.Expired })
@@ -137,7 +117,7 @@ export class InvitesRepository {
   static markInviteAsResponded = async (
     inviteId: string,
     response: InstructorInviteStatus.Accepted | InstructorInviteStatus.Declined,
-    tx: Transaction
+    tx: Transaction,
   ): Promise<void> => {
     await tx
       .update(instructorInvites)

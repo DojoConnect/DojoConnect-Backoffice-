@@ -26,29 +26,18 @@ export type ClassWithSchedulesAndInstructor = IClass & SchedulesAndInstructor;
 
 export class ClassRepository {
   static async create(
-    {
-      classData,
-      schedulesData,
-    }: { classData: INewClass; schedulesData: INewClassSchedule[] },
-    tx: Transaction
+    { classData, schedulesData }: { classData: INewClass; schedulesData: INewClassSchedule[] },
+    tx: Transaction,
   ) {
-    const [insertResult] = await tx
-      .insert(classes)
-      .values(classData)
-      .$returningId();
+    const [insertResult] = await tx.insert(classes).values(classData).$returningId();
 
     await ClassRepository.createSchedules(schedulesData, insertResult.id, tx);
 
     return insertResult.id;
   }
 
-  static async findById(
-    classId: string,
-    tx: Transaction
-  ): Promise<IClass | null> {
-    const result = returnFirst(
-      await tx.select().from(classes).where(eq(classes.id, classId))
-    );
+  static async findById(classId: string, tx: Transaction): Promise<IClass | null> {
+    const result = returnFirst(await tx.select().from(classes).where(eq(classes.id, classId)));
 
     if (!result) {
       return null;
@@ -57,51 +46,29 @@ export class ClassRepository {
     return result;
   }
 
-  static async findClassesByIds(
-    classIds: string[],
-    tx: Transaction
-  ): Promise<IClass[]> {
+  static async findClassesByIds(classIds: string[], tx: Transaction): Promise<IClass[]> {
+    return await tx.select().from(classes).where(inArray(classes.id, classIds));
+  }
+
+  static async fetchClassSchedules(classId: string, tx: Transaction): Promise<IClassSchedule[]> {
+    return await tx.select().from(classSchedules).where(eq(classSchedules.classId, classId));
+  }
+
+  static async findAllByDojoId(dojoId: string, tx: Transaction): Promise<IClass[]> {
     return await tx
       .select()
       .from(classes)
-      .where(inArray(classes.id, classIds));
-  }
-
-  static async fetchClassSchedules(
-    classId: string,
-    tx: Transaction
-  ): Promise<IClassSchedule[]> {
-    return await tx
-      .select()
-      .from(classSchedules)
-      .where(eq(classSchedules.classId, classId));
-  }
-
-  static async findAllByDojoId(
-    dojoId: string,
-    tx: Transaction
-  ): Promise<IClass[]> {
-    return await tx
-      .select()
-      .from(classes)
-      .where(
-        and(eq(classes.dojoId, dojoId), eq(classes.status, ClassStatus.Active))
-      );
+      .where(and(eq(classes.dojoId, dojoId), eq(classes.status, ClassStatus.Active)));
   }
 
   static findAllByInstructorId = async (
     instructorId: string,
-    tx: Transaction
+    tx: Transaction,
   ): Promise<IClass[]> => {
     return await tx
       .select()
       .from(classes)
-      .where(
-        and(
-          eq(classes.instructorId, instructorId),
-          eq(classes.status, ClassStatus.Active)
-        )
-      );
+      .where(and(eq(classes.instructorId, instructorId), eq(classes.status, ClassStatus.Active)));
   };
 
   static update = async ({
@@ -123,7 +90,7 @@ export class ClassRepository {
   static async createSchedules(
     schedulesData: INewClassSchedule[],
     classId: string,
-    tx: Transaction
+    tx: Transaction,
   ) {
     if (schedulesData.length === 0) return;
 

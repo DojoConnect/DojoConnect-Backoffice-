@@ -11,8 +11,7 @@ import { BadRequestException } from "../core/errors/index.js";
  * @returns An Express middleware function.
  */
 export const validateReqBody =
-  (schema: ZodTypeAny) =>
-  async (req: Request, res: Response, next: NextFunction) => {
+  (schema: ZodTypeAny) => async (req: Request, res: Response, next: NextFunction) => {
     try {
       // The `parse` method will throw an error if validation fails.
       // The `parseAsync` method is used to handle schemas with async refinements.
@@ -32,10 +31,7 @@ export const validateReqBody =
         // The `flatten()` method provides a simple, readable error structure.
 
         console.log(error);
-        throw new BadRequestException(
-          "Validation failed",
-          z.treeifyError(error)
-        );
+        throw new BadRequestException("Validation failed", z.treeifyError(error));
       }
 
       // For any other unexpected errors, pass them to the global error handler.
@@ -44,8 +40,7 @@ export const validateReqBody =
   };
 
 export const validateReqQuery =
-  (schema: ZodObject) =>
-  async (req: Request, res: Response, next: NextFunction) => {
+  (schema: ZodObject) => async (req: Request, res: Response, next: NextFunction) => {
     try {
       // Parse req.query instead of req.body
       const parsedQuery = await schema.parseAsync(req.query);
@@ -60,10 +55,7 @@ export const validateReqQuery =
         // Log error for debugging
         console.log(error);
 
-        throw new BadRequestException(
-          "Invalid query parameters",
-          z.treeifyError(error)
-        );
+        throw new BadRequestException("Invalid query parameters", z.treeifyError(error));
       }
       next(error);
     }

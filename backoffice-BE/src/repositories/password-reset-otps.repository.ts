@@ -1,12 +1,4 @@
-import {
-  eq,
-  and,
-  InferSelectModel,
-  InferInsertModel,
-  SQL,
-  sql,
-  gt,
-} from "drizzle-orm";
+import { eq, and, InferSelectModel, InferInsertModel, SQL, sql, gt } from "drizzle-orm";
 import type { Transaction } from "../db/index.js";
 import { passwordResetOTPs } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
@@ -15,18 +7,10 @@ import AppConstants from "../constants/AppConstants.js";
 export type IPasswordResetOTP = InferSelectModel<typeof passwordResetOTPs>;
 export type INewPasswordResetOTP = InferInsertModel<typeof passwordResetOTPs>;
 
-export type IUpdatePasswordResetOTP = Partial<
-  Omit<INewPasswordResetOTP, "id" | "createdAt">
->;
+export type IUpdatePasswordResetOTP = Partial<Omit<INewPasswordResetOTP, "id" | "createdAt">>;
 
 export class PasswordResetOTPRepository {
-  static async createOTP({
-    dto,
-    tx,
-  }: {
-    dto: INewPasswordResetOTP;
-    tx: Transaction;
-  }) {
+  static async createOTP({ dto, tx }: { dto: INewPasswordResetOTP; tx: Transaction }) {
     // Create OAuth link
     await tx.insert(passwordResetOTPs).values(dto);
   }
@@ -58,30 +42,13 @@ export class PasswordResetOTPRepository {
     await this.updateOTP({ whereClause, tx, update });
   }
 
-  static async findOne({
-    whereClause,
-    tx,
-  }: {
-    whereClause: SQL | undefined;
-    tx: Transaction;
-  }) {
+  static async findOne({ whereClause, tx }: { whereClause: SQL | undefined; tx: Transaction }) {
     return returnFirst(
-      await tx
-        .select()
-        .from(passwordResetOTPs)
-        .where(whereClause)
-        .limit(1)
-        .execute()
+      await tx.select().from(passwordResetOTPs).where(whereClause).limit(1).execute(),
     );
   }
 
-  static async incrementActiveOTPsAttempts({
-    tx,
-    userId,
-  }: {
-    userId: string;
-    tx: Transaction;
-  }) {
+  static async incrementActiveOTPsAttempts({ tx, userId }: { userId: string; tx: Transaction }) {
     await tx
       .update(passwordResetOTPs)
       .set({
@@ -92,8 +59,8 @@ export class PasswordResetOTPRepository {
         and(
           eq(passwordResetOTPs.userId, userId),
           eq(passwordResetOTPs.used, false),
-          gt(passwordResetOTPs.expiresAt, new Date())
-        )
+          gt(passwordResetOTPs.expiresAt, new Date()),
+        ),
       );
   }
 }

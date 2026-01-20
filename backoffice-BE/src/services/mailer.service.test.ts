@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, beforeAll, afterAll,vi } from "vitest";
+import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from "vitest";
 import nodemailer from "nodemailer";
-import { MailerService} from "./mailer.service.js";
+import { MailerService } from "./mailer.service.js";
 import AppConfig from "../config/AppConfig.js";
 import { Role } from "../constants/enums.js";
 
@@ -44,9 +44,7 @@ describe("Mailer Service", () => {
         subject: "Welcome to Dojo Connect - Your Admin Dashboard is Ready",
         from: '"Dojo Connect" <support@dojoconnect.app>',
       });
-      expect(mailOptions.html).toContain(
-        "Your admin access has been successfully activated"
-      );
+      expect(mailOptions.html).toContain("Your admin access has been successfully activated");
     });
 
     it("should send welcome email to non-admin user with correct content", async () => {
@@ -66,24 +64,22 @@ describe("Mailer Service", () => {
         from: '"Dojo Connect" <support@dojoconnect.app>',
       });
       expect(mailOptions.html).toContain(
-        `Your account has been successfully created as a <strong>${role}</strong>`
+        `Your account has been successfully created as a <strong>${role}</strong>`,
       );
     });
 
     it("should log error if sending fails", async () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       sendMailMock.mockRejectedValueOnce(new Error("SMTP Error"));
 
       await MailerService.sendDojoAdminWelcomeEmail(
         "fail@example.com",
         "Fail User",
-        Role.DojoAdmin
+        Role.DojoAdmin,
       );
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Welcome email failed to fail@example.com")
+        expect.stringContaining("Welcome email failed to fail@example.com"),
       );
       consoleSpy.mockRestore();
     });
@@ -109,9 +105,7 @@ describe("Mailer Service", () => {
     });
 
     it("should log error if sending fails", async () => {
-      const consoleSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
       sendMailMock.mockRejectedValueOnce(new Error("Network Error"));
 
       await MailerService.sendPasswordResetMail({
@@ -121,9 +115,7 @@ describe("Mailer Service", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "Password reset email failed to fail@example.com"
-        )
+        expect.stringContaining("Password reset email failed to fail@example.com"),
       );
       consoleSpy.mockRestore();
     });

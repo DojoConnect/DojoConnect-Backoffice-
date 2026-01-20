@@ -26,9 +26,7 @@ describe("Assertions Utils", () => {
 
     it("should throw ConflictException if the dojo does not belong to the user", () => {
       const anotherUser = buildUserMock();
-      expect(() => assertDojoOwnership(dojo, anotherUser)).toThrow(
-        ConflictException
-      );
+      expect(() => assertDojoOwnership(dojo, anotherUser)).toThrow(ConflictException);
     });
   });
 });

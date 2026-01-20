@@ -5,11 +5,11 @@ export enum SubscriptionType {
 }
 
 export enum StripeWebhookEvents {
-    CheckoutSessionCompleted = "checkout.session.completed",
-    CustomerSubscriptionCreated = "customer.subscription.created",
-    CustomerSubscriptionUpdated = "customer.subscription.updated",
-    InvoicePaid = "invoice.paid",
-    InvoicePaymentFailed = "invoice.payment_failed",
-    CustomerSubscriptionDeleted = "customer.subscription.deleted",
-    PaymentIntentSucceeded = "payment_intent.succeeded",
+  CheckoutSessionCompleted = "checkout.session.completed",
+  CustomerSubscriptionCreated = "customer.subscription.created",
+  CustomerSubscriptionUpdated = "customer.subscription.updated",
+  InvoicePaid = "invoice.paid",
+  InvoicePaymentFailed = "invoice.payment_failed",
+  CustomerSubscriptionDeleted = "customer.subscription.deleted",
+  PaymentIntentSucceeded = "payment_intent.succeeded",
 }

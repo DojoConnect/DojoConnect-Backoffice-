@@ -43,9 +43,7 @@ describe("Auth Utils", () => {
         toString: vi.fn().mockReturnValue("random_hex_string"),
       };
       // @ts-ignore - mocking internal implementation details of Buffer
-      const spy = vi
-        .spyOn(crypto, "randomBytes")
-        .mockReturnValue(mockBuffer as any);
+      const spy = vi.spyOn(crypto, "randomBytes").mockReturnValue(mockBuffer as any);
 
       const result = authUtils.generateRefreshToken();
 
@@ -58,9 +56,7 @@ describe("Auth Utils", () => {
   describe("generateAccessToken", () => {
     it("should generate a JWT access token", () => {
       const mockToken = "access_token";
-      const spy = vi
-        .spyOn(jwt, "sign")
-        .mockImplementation(() => mockToken as any);
+      const spy = vi.spyOn(jwt, "sign").mockImplementation(() => mockToken as any);
       const payload = { userId: "1", email: "test@example.com", role: "user" };
 
       const result = authUtils.generateAccessToken(payload);
@@ -79,9 +75,7 @@ describe("Auth Utils", () => {
         digest: vi.fn().mockReturnValue("hashed_token_hex"),
       };
       // @ts-ignore - mocking crypto.Hash
-      const spy = vi
-        .spyOn(crypto, "createHash")
-        .mockReturnValue(mockHashObject as any);
+      const spy = vi.spyOn(crypto, "createHash").mockReturnValue(mockHashObject as any);
 
       const result = authUtils.hashToken("raw_token");
 
@@ -107,9 +101,7 @@ describe("Auth Utils", () => {
   describe("generatePasswordResetToken", () => {
     it("should generate a password reset token with correct scope", () => {
       const mockToken = "reset_token";
-      const spy = vi
-        .spyOn(jwt, "sign")
-        .mockImplementation(() => mockToken as any);
+      const spy = vi.spyOn(jwt, "sign").mockImplementation(() => mockToken as any);
       const userId = "user_123";
 
       const result = authUtils.generatePasswordResetToken(userId);
@@ -117,7 +109,7 @@ describe("Auth Utils", () => {
       expect(spy).toHaveBeenCalledWith(
         { userId, scope: authUtils.PASSWORD_RESET_SCOPE },
         "test-secret-key",
-        { expiresIn: "5m" }
+        { expiresIn: "5m" },
       );
       expect(result).toBe(mockToken);
     });
@@ -129,9 +121,7 @@ describe("Auth Utils", () => {
         userId: "user_123",
         scope: authUtils.PASSWORD_RESET_SCOPE,
       };
-      const spy = vi
-        .spyOn(jwt, "verify")
-        .mockImplementation(() => mockPayload as any);
+      const spy = vi.spyOn(jwt, "verify").mockImplementation(() => mockPayload as any);
 
       const result = authUtils.verifyPasswordResetToken("valid_token");
 
@@ -144,22 +134,22 @@ describe("Auth Utils", () => {
         throw new Error("jwt expired");
       });
       expect(() => authUtils.verifyPasswordResetToken("expired_token")).toThrow(
-        BadRequestException
+        BadRequestException,
       );
       expect(() => authUtils.verifyPasswordResetToken("expired_token")).toThrow(
-        "Reset token expired. Please verify OTP again."
+        "Reset token expired. Please verify OTP again.",
       );
     });
 
     it("should throw BadRequestException if token scope is invalid", () => {
       const mockPayload = { userId: "user_123", scope: "wrong_scope" };
       vi.spyOn(jwt, "verify").mockImplementation(() => mockPayload as any);
-      expect(() =>
-        authUtils.verifyPasswordResetToken("wrong_scope_token")
-      ).toThrow(BadRequestException);
-      expect(() =>
-        authUtils.verifyPasswordResetToken("wrong_scope_token")
-      ).toThrow("Invalid token type");
+      expect(() => authUtils.verifyPasswordResetToken("wrong_scope_token")).toThrow(
+        BadRequestException,
+      );
+      expect(() => authUtils.verifyPasswordResetToken("wrong_scope_token")).toThrow(
+        "Invalid token type",
+      );
     });
   });
 });

@@ -9,10 +9,7 @@ import { InstructorsRepository } from "../repositories/instructors.repository.js
 import { InstructorInviteStatus, Role } from "../constants/enums.js";
 import { subDays } from "date-fns";
 import { InstructorInviteDetailsDTO } from "../dtos/instructor.dtos.js";
-import {
-  createDrizzleDbSpies,
-  DbServiceSpies,
-} from "../tests/spies/drizzle-db.spies.js";
+import { createDrizzleDbSpies, DbServiceSpies } from "../tests/spies/drizzle-db.spies.js";
 import {
   buildAcceptInviteDTOMock,
   buildInviteDetailsMock,
@@ -43,12 +40,8 @@ describe("InstructorService", () => {
   beforeEach(() => {
     dbServiceSpies = createDrizzleDbSpies();
     getInviteDetailsSpy = vi.spyOn(InvitesRepository, "getInviteDetails");
-    markAsExpiredSpy = vi
-      .spyOn(InvitesRepository, "markInviteAsExpired")
-      .mockResolvedValue();
-    getOneUserByIDSpy = vi
-      .spyOn(UsersService, "getOneUserByID")
-      .mockResolvedValue(mockUser);
+    markAsExpiredSpy = vi.spyOn(InvitesRepository, "markInviteAsExpired").mockResolvedValue();
+    getOneUserByIDSpy = vi.spyOn(UsersService, "getOneUserByID").mockResolvedValue(mockUser);
   });
 
   afterEach(() => {
@@ -62,10 +55,7 @@ describe("InstructorService", () => {
 
       const result = await InstructorService.getInviteDetails("valid-token");
 
-      expect(getInviteDetailsSpy).toHaveBeenCalledWith(
-        "hashed-valid-token",
-        dbServiceSpies.mockTx
-      );
+      expect(getInviteDetailsSpy).toHaveBeenCalledWith("hashed-valid-token", dbServiceSpies.mockTx);
       expect(result).toBeInstanceOf(InstructorInviteDetailsDTO);
       expect(result?.email).toBe(mockDetails.email);
       expect(markAsExpiredSpy).not.toHaveBeenCalled();
@@ -74,9 +64,9 @@ describe("InstructorService", () => {
     it("should throw NotFoundException for an invalid token", async () => {
       getInviteDetailsSpy.mockResolvedValue(null);
 
-      await expect(
-        InstructorService.getInviteDetails("invalid-token")
-      ).rejects.toThrow(new NotFoundException("Invite not found"));
+      await expect(InstructorService.getInviteDetails("invalid-token")).rejects.toThrow(
+        new NotFoundException("Invite not found"),
+      );
     });
 
     it("should throw HttpException 410 for an expired token", async () => {
@@ -85,14 +75,11 @@ describe("InstructorService", () => {
       });
       getInviteDetailsSpy.mockResolvedValue(mockDetails);
 
-      await expect(
-        InstructorService.getInviteDetails("expired-token")
-      ).rejects.toThrow(new HttpException(410, "Invite has expired"));
-
-      expect(markAsExpiredSpy).toHaveBeenCalledWith(
-        mockDetails.id,
-        dbServiceSpies.mockTx
+      await expect(InstructorService.getInviteDetails("expired-token")).rejects.toThrow(
+        new HttpException(410, "Invite has expired"),
       );
+
+      expect(markAsExpiredSpy).toHaveBeenCalledWith(mockDetails.id, dbServiceSpies.mockTx);
     });
 
     it("should throw ConflictException if invite is not pending", async () => {
@@ -101,10 +88,8 @@ describe("InstructorService", () => {
       });
       getInviteDetailsSpy.mockResolvedValue(mockDetails);
 
-      await expect(
-        InstructorService.getInviteDetails("accepted-token")
-      ).rejects.toThrow(
-        new ConflictException(`Invite has already been ${mockDetails.status}`)
+      await expect(InstructorService.getInviteDetails("accepted-token")).rejects.toThrow(
+        new ConflictException(`Invite has already been ${mockDetails.status}`),
       );
     });
   });
@@ -187,7 +172,7 @@ describe("InstructorService", () => {
           tx: dbServiceSpies.mockTx,
           invite: mockDetails,
           response: InstructorInviteStatus.Accepted,
-        })
+        }),
       ).rejects.toThrow(NotFoundException);
 
       expect(notifyDojoOwnerOfInviteResponseSpy).not.toHaveBeenCalled();
@@ -213,7 +198,7 @@ describe("InstructorService", () => {
       expect(attachInstructorToDojoSpy).toHaveBeenCalledWith(
         instructor.id,
         dojoId,
-        dbServiceSpies.mockTx
+        dbServiceSpies.mockTx,
       );
     });
 
@@ -221,9 +206,9 @@ describe("InstructorService", () => {
       const user = buildUserMock({ role: Role.DojoAdmin });
       const dojoId = "dojo-123";
 
-      await expect(
-        InstructorService.addInstructorToDojo(user, dojoId)
-      ).rejects.toThrow(new ConflictException("User is not an instructor"));
+      await expect(InstructorService.addInstructorToDojo(user, dojoId)).rejects.toThrow(
+        new ConflictException("User is not an instructor"),
+      );
 
       expect(attachInstructorToDojoSpy).not.toHaveBeenCalled();
     });
@@ -234,9 +219,7 @@ describe("InstructorService", () => {
     let notifyDojoOwnerSpy: MockInstance;
 
     beforeEach(() => {
-      markAsRespondedSpy = vi
-        .spyOn(InvitesRepository, "markInviteAsResponded")
-        .mockResolvedValue();
+      markAsRespondedSpy = vi.spyOn(InvitesRepository, "markInviteAsResponded").mockResolvedValue();
 
       notifyDojoOwnerSpy = vi
         .spyOn(InstructorService, "notifyDojoOwnerOfResponse")
@@ -249,14 +232,11 @@ describe("InstructorService", () => {
 
       await InstructorService.declineInvite({ token: "valid-token" });
 
-      expect(getInviteDetailsSpy).toHaveBeenCalledWith(
-        "hashed-valid-token",
-        dbServiceSpies.mockTx
-      );
+      expect(getInviteDetailsSpy).toHaveBeenCalledWith("hashed-valid-token", dbServiceSpies.mockTx);
       expect(markAsRespondedSpy).toHaveBeenCalledWith(
         mockDetails.id,
         InstructorInviteStatus.Declined,
-        dbServiceSpies.mockTx
+        dbServiceSpies.mockTx,
       );
 
       expect(notifyDojoOwnerSpy).toHaveBeenCalledWith(
@@ -264,16 +244,16 @@ describe("InstructorService", () => {
           tx: dbServiceSpies.mockTx,
           invite: mockDetails,
           response: InstructorInviteStatus.Declined,
-        })
+        }),
       );
     });
 
     it("should throw NotFoundException for an invalid token", async () => {
       getInviteDetailsSpy.mockResolvedValue(null);
 
-      await expect(
-        InstructorService.declineInvite({ token: "invalid-token" })
-      ).rejects.toThrow(new NotFoundException("Invite not found"));
+      await expect(InstructorService.declineInvite({ token: "invalid-token" })).rejects.toThrow(
+        new NotFoundException("Invite not found"),
+      );
 
       expect(markAsRespondedSpy).not.toHaveBeenCalled();
     });
@@ -284,10 +264,8 @@ describe("InstructorService", () => {
       });
       getInviteDetailsSpy.mockResolvedValue(mockDetails);
 
-      await expect(
-        InstructorService.declineInvite({ token: "accepted-token" })
-      ).rejects.toThrow(
-        new ConflictException(`Invite has already been ${mockDetails.status}`)
+      await expect(InstructorService.declineInvite({ token: "accepted-token" })).rejects.toThrow(
+        new ConflictException(`Invite has already been ${mockDetails.status}`),
       );
 
       expect(markAsRespondedSpy).not.toHaveBeenCalled();
@@ -308,15 +286,11 @@ describe("InstructorService", () => {
     });
 
     beforeEach(() => {
-      createUserSpy = vi
-        .spyOn(AuthService, "createUser")
-        .mockResolvedValue(mockUser);
+      createUserSpy = vi.spyOn(AuthService, "createUser").mockResolvedValue(mockUser);
       addInstructorToDojoSpy = vi
         .spyOn(InstructorService, "addInstructorToDojo")
         .mockResolvedValue();
-      markAsRespondedSpy = vi
-        .spyOn(InvitesRepository, "markInviteAsResponded")
-        .mockResolvedValue();
+      markAsRespondedSpy = vi.spyOn(InvitesRepository, "markInviteAsResponded").mockResolvedValue();
       notifyDojoOwnerSpy = vi
         .spyOn(InstructorService, "notifyDojoOwnerOfResponse")
         .mockResolvedValue();
@@ -334,10 +308,7 @@ describe("InstructorService", () => {
 
       await InstructorService.acceptInvite(dto);
 
-      expect(getInviteDetailsSpy).toHaveBeenCalledWith(
-        "hashed-valid-token",
-        dbServiceSpies.mockTx
-      );
+      expect(getInviteDetailsSpy).toHaveBeenCalledWith("hashed-valid-token", dbServiceSpies.mockTx);
       expect(createUserSpy).toHaveBeenCalledWith({
         dto: {
           firstName: mockDetails.firstName,
@@ -352,22 +323,19 @@ describe("InstructorService", () => {
       expect(addInstructorToDojoSpy).toHaveBeenCalledWith(
         mockUser,
         mockDetails.dojoId,
-        dbServiceSpies.mockTx
+        dbServiceSpies.mockTx,
       );
       expect(markAsRespondedSpy).toHaveBeenCalledWith(
         mockDetails.id,
         InstructorInviteStatus.Accepted,
-        dbServiceSpies.mockTx
+        dbServiceSpies.mockTx,
       );
       expect(notifyDojoOwnerSpy).toHaveBeenCalledWith({
         tx: dbServiceSpies.mockTx,
         invite: mockDetails,
         response: InstructorInviteStatus.Accepted,
       });
-      expect(sendInviteAcceptedNotificationSpy).toHaveBeenCalledWith(
-        mockUser,
-        mockDetails
-      );
+      expect(sendInviteAcceptedNotificationSpy).toHaveBeenCalledWith(mockUser, mockDetails);
       expect(sendInviteAcceptedEmailSpy).toHaveBeenCalledWith({
         instructor: mockUser,
         inviteDetails: mockDetails,
@@ -377,9 +345,7 @@ describe("InstructorService", () => {
     it("should throw NotFoundException if invite is not found", async () => {
       getInviteDetailsSpy.mockResolvedValue(null);
 
-      await expect(InstructorService.acceptInvite(dto)).rejects.toThrow(
-        NotFoundException
-      );
+      await expect(InstructorService.acceptInvite(dto)).rejects.toThrow(NotFoundException);
     });
 
     it("should throw ConflictException if invite is not pending", async () => {
@@ -388,9 +354,7 @@ describe("InstructorService", () => {
       });
       getInviteDetailsSpy.mockResolvedValue(mockDetails);
 
-      await expect(InstructorService.acceptInvite(dto)).rejects.toThrow(
-        ConflictException
-      );
+      await expect(InstructorService.acceptInvite(dto)).rejects.toThrow(ConflictException);
     });
 
     it("should throw HttpException 410 if invite is expired", async () => {
@@ -399,16 +363,11 @@ describe("InstructorService", () => {
       });
       getInviteDetailsSpy.mockResolvedValue(mockDetails);
 
-      await expect(InstructorService.acceptInvite(dto)).rejects.toThrow(
-        HttpException
-      );
-      expect(markAsExpiredSpy).toHaveBeenCalledWith(
-        mockDetails.id,
-        dbServiceSpies.mockTx
-      );
+      await expect(InstructorService.acceptInvite(dto)).rejects.toThrow(HttpException);
+      expect(markAsExpiredSpy).toHaveBeenCalledWith(mockDetails.id, dbServiceSpies.mockTx);
     });
   });
-  
+
   describe("getInstructorClasses", () => {
     let findAllByInstructorIdSpy: MockInstance;
     let getUserProfileForInstructorSpy: MockInstance;
@@ -428,13 +387,10 @@ describe("InstructorService", () => {
 
       const result = await InstructorService.getInstructorClasses(mockUser.id);
 
-      expect(findAllByInstructorIdSpy).toHaveBeenCalledWith(
-        mockUser.id,
-        dbServiceSpies.mockTx
-      );
+      expect(findAllByInstructorIdSpy).toHaveBeenCalledWith(mockUser.id, dbServiceSpies.mockTx);
       expect(getUserProfileForInstructorSpy).toHaveBeenCalledWith(
         mockUser.id,
-        dbServiceSpies.mockTx
+        dbServiceSpies.mockTx,
       );
       expect(result).toHaveLength(1);
       expect(result[0]).toBeInstanceOf(ClassDTO);
@@ -445,17 +401,13 @@ describe("InstructorService", () => {
     });
 
     it("should throw InternalServerErrorException if classes do not belong to instructor", async () => {
-      const mockClasses = [
-        buildClassMock({ instructorId: "other-instructor" }),
-      ];
+      const mockClasses = [buildClassMock({ instructorId: "other-instructor" })];
       findAllByInstructorIdSpy.mockResolvedValue(mockClasses);
 
-      await expect(
-        InstructorService.getInstructorClasses(mockUser.id)
-      ).rejects.toThrow(
+      await expect(InstructorService.getInstructorClasses(mockUser.id)).rejects.toThrow(
         new InternalServerErrorException(
-          "Classes returned for instructor does not belong to instructor"
-        )
+          "Classes returned for instructor does not belong to instructor",
+        ),
       );
     });
 
@@ -464,10 +416,8 @@ describe("InstructorService", () => {
       findAllByInstructorIdSpy.mockResolvedValue(mockClasses);
       getUserProfileForInstructorSpy.mockResolvedValue(null);
 
-      await expect(
-        InstructorService.getInstructorClasses(mockUser.id)
-      ).rejects.toThrow(
-        new InternalServerErrorException("Instructor User account not found")
+      await expect(InstructorService.getInstructorClasses(mockUser.id)).rejects.toThrow(
+        new InternalServerErrorException("Instructor User account not found"),
       );
     });
   });

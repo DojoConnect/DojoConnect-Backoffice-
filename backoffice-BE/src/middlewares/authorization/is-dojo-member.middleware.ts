@@ -8,11 +8,7 @@ import {
   UnauthorizedException,
 } from "../../core/errors/index.js";
 
-export const isDojoMemberMiddleware = async (
-  req: Request,
-  _: Response,
-  next: NextFunction
-) => {
+export const isDojoMemberMiddleware = async (req: Request, _: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       throw new UnauthorizedException("Unauthenticated");

@@ -1,6 +1,6 @@
 {
   "description": "Test request bodies for all email endpoints",
-  
+
   "1_test_email": {
     "endpoint": "POST /test-email",
     "description": "Basic test email to verify email configuration",
@@ -206,17 +206,17 @@
 
   "curl_examples": {
     "description": "cURL commands for testing (replace YOUR_API_URL with your actual API URL)",
-    
+
     "test_email": "curl -X POST http://localhost:5000/test-email -H \"Content-Type: application/json\" -d '{\"email\":\"your-email@example.com\"}'",
-    
+
     "appointment_request": "curl -X POST http://localhost:5000/appointment-requests -H \"Content-Type: application/json\" -d '{\"dojo_tag\":\"your_dojo_tag\",\"dojo_email\":\"dojo@example.com\",\"parent_name\":\"Sarah Johnson\",\"email_address\":\"sarah@example.com\",\"contact_details\":\"+1-555-0123\",\"reason_for_consultation\":\"Interested in classes\",\"preferred_contact_method\":\"email\",\"preferred_time_range\":\"Morning\",\"number_of_children\":2,\"consent_acknowledged\":true,\"appointment_type\":\"Physical\"}'",
-    
+
     "schedule_appointment": "curl -X POST http://localhost:5000/admin/scheduled-appointments -H \"Content-Type: application/json\" -d '{\"consultation_request_id\":1,\"dojo_tag\":\"your_dojo_tag\",\"scheduled_date\":\"2025-10-15\",\"start_time\":\"10:00 AM\",\"end_time\":\"11:00 AM\",\"address_text\":\"123 Dojo Street\",\"parent_email\":\"sarah@example.com\",\"parent_name\":\"Sarah Johnson\"}'",
-    
+
     "cancel_appointment": "curl -X POST http://localhost:5000/admin/cancel-appointment -H \"Content-Type: application/json\" -d '{\"appointment_id\":1,\"dojo_tag\":\"your_dojo_tag\"}'",
-    
+
     "reschedule_appointment": "curl -X POST http://localhost:5000/admin/reschedule-appointment -H \"Content-Type: application/json\" -d '{\"appointment_id\":1,\"dojo_tag\":\"your_dojo_tag\",\"new_scheduled_date\":\"2025-10-20\",\"new_start_time\":\"11:00 AM\",\"new_end_time\":\"12:00 PM\",\"new_address_text\":\"456 New Street\"}'",
-    
+
     "trial_class_booking": "curl -X POST http://localhost:5000/trial-class-bookings -H \"Content-Type: application/json\" -d '{\"class_id\":1,\"parent_name\":\"Jennifer Martinez\",\"email\":\"your-email@example.com\",\"phone\":\"+1-555-0789\",\"appointment_date\":\"2025-10-25\",\"dojo_tag\":\"your_dojo_tag\",\"status\":\"pending\",\"number_of_children\":2,\"class_name\":\"Beginner Karate\",\"instructor_name\":\"Sensei John Smith\",\"trial_fee\":25}'"
   },
 
@@ -230,4 +230,3 @@
     "Check server console logs for email send confirmations"
   ]
 }
-

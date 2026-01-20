@@ -39,18 +39,18 @@ export class InstructorController {
 
     res.status(200).json({
       data: classes,
-      message: 'Instructor classes fetched successfully',
+      message: "Instructor classes fetched successfully",
     });
   }
 
   static async handleFetchInstructorStudents(req: Request, res: Response) {
-    const instructorId  = req.params.instructorId as string;
+    const instructorId = req.params.instructorId as string;
 
     const students = await StudentService.fetchAllInstructorStudents(instructorId);
 
     res.status(200).json({
-        data: students.map((s) => s.toJSON()),
-        message: "Instructor students fetched successfully",
+      data: students.map((s) => s.toJSON()),
+      message: "Instructor students fetched successfully",
     });
   }
 }

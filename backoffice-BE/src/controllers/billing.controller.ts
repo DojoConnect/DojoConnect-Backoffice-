@@ -10,7 +10,7 @@ export class BillingController {
       formatApiResponse({
         data: undefined,
         message: "Successful",
-      })
+      }),
     );
   }
 }

@@ -28,6 +28,5 @@ export const getDB = () => {
 
 export type Transaction = ReturnType<typeof getDB>;
 
-export const runInTransaction = async <T>(
-  fn: (tx: Transaction) => Promise<T>
-): Promise<T> => getDB().transaction(fn);
+export const runInTransaction = async <T>(fn: (tx: Transaction) => Promise<T>): Promise<T> =>
+  getDB().transaction(fn);
