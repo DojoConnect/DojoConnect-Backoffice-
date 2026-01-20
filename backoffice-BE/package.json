@@ -14,7 +14,14 @@
     "build": "rm -rf dist && tsc -b",
     "test": "vitest",
     "db:generate": "tsx node_modules/drizzle-kit/bin.cjs generate",
-    "db:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate"
+    "db:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,js,mjs,cjs}": [
+      "oxfmt --no-error-on-unmatched-pattern",
+      "npm run lint:fix"
+    ]
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -47,6 +54,8 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
     "drizzle-kit": "^0.31.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "oxfmt": "^0.26.0",
     "oxlint": "^1.41.0",
     "supertest": "^7.1.4",
