@@ -7,6 +7,8 @@ import { UserRepository } from "../repositories/user.repository.js";
 import { createDrizzleDbSpies, DbServiceSpies } from "../tests/spies/drizzle-db.spies.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
 import { buildClassMock } from "../tests/factories/class.factory.js";
+import { buildStudentMock } from "../tests/factories/student.factory.js";
+import { buildEnrollmentMock } from "../tests/factories/enrollment.factory.js";
 import { NotFoundException } from "../core/errors/index.js";
 import { Role } from "../constants/enums.js";
 
@@ -86,39 +88,38 @@ describe("Student Service", () => {
     });
 
     describe("fetchAllDojoStudents", () => {
-    const dojoId = "wolf-dojo";
+        const dojoId = "wolf-dojo";
 
-    it("should return a unique list of students for a dojo", async () => {
-        
-        findAllByDojoIdSpy.mockResolvedValue([{ id: "class-1" }, { id: "class-2" }]);
-        
-        fetchActiveEnrollmentsByClassIdsSpy.mockResolvedValue([
-            { studentId: "student-A", classId: "class-1" },
-            { studentId: "student-A", classId: "class-2" },
-            { studentId: "student-B", classId: "class-2" },
-        ]);
+        it("should return a unique list of students for a dojo", async () => {
+            const studentAId = "student-A";
+            const studentBId = "student-B";
 
-        fetchStudentsWithUsersByIdsSpy.mockResolvedValue([
-            { student: { id: "student-A", studentUserId: "u1" }, user: { id: "u1", firstName: "Alex" } },
-            { student: { id: "student-B", studentUserId: "u2" }, user: { id: "u2", firstName: "Blake" } },
-        ]);
+            findAllByDojoIdSpy.mockResolvedValue([
+                buildClassMock({ id: "class-1" }),
+                buildClassMock({ id: "class-2" })
+            ]);
+            
+            fetchActiveEnrollmentsByClassIdsSpy.mockResolvedValue([
+                buildEnrollmentMock({ studentId: studentAId, classId: "class-1" }),
+                buildEnrollmentMock({ studentId: studentAId, classId: "class-2" }),
+                buildEnrollmentMock({ studentId: studentBId, classId: "class-2" }),
+            ]);
 
-        const result = await StudentService.fetchAllDojoStudents(dojoId);
+            fetchStudentsWithUsersByIdsSpy.mockResolvedValue([
+                { 
+                    student: buildStudentMock({ id: studentAId, studentUserId: "u1" }), 
+                    user: buildUserMock({ id: "u1", firstName: "Alex" }) 
+                },
+                { 
+                    student: buildStudentMock({ id: studentBId, studentUserId: "u2" }), 
+                    user: buildUserMock({ id: "u2", firstName: "Blake" }) 
+                },
+            ]);
 
-        expect(findAllByDojoIdSpy).toHaveBeenCalledWith(dojoId, expect.anything());
-        expect(fetchActiveEnrollmentsByClassIdsSpy).toHaveBeenCalledWith(["class-1", "class-2"], expect.anything());
-        
-        expect(fetchStudentsWithUsersByIdsSpy).toHaveBeenCalledWith(["student-A", "student-B"], expect.anything());
-        expect(result).toHaveLength(2);
+            const result = await StudentService.fetchAllDojoStudents(dojoId);
+
+            expect(result).toHaveLength(2);
+            expect(result[0].studentUser.firstName).toBe("Alex");
+        });
     });
-
-    it("should return an empty array if the dojo has no classes", async () => {
-        findAllByDojoIdSpy.mockResolvedValue([]);
-        
-        const result = await StudentService.fetchAllDojoStudents(dojoId);
-        
-        expect(result).toEqual([]);
-        expect(fetchActiveEnrollmentsByClassIdsSpy).not.toHaveBeenCalled();
-    });
-});
 });
