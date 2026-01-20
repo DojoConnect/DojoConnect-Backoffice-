@@ -80,6 +80,7 @@ describe("Auth Service", () => {
     getOneDojoByTagSpy = vi.spyOn(DojosService, "getOneDojoByTag");
     saveUserSpy = vi.spyOn(UsersService, "saveUser");
     getUserDojoSpy = vi.spyOn(DojosService, "fetchUserDojo").mockResolvedValue(mockDojo);
+    vi.spyOn(UsersService, "getUserDTO").mockImplementation(async (user: any) => new UserDTO(user) as any);
 
     createStripeCustomerSpy = vi
       .spyOn(StripeService, "createCustomer")
@@ -184,12 +185,12 @@ describe("Auth Service", () => {
         txInstance: dbSpies.mockTx,
       });
       expect(generateAuthTokensSpy).toHaveBeenCalled();
+      expect(result).toBeInstanceOf(AuthResponseDTO);
       expect(result.toJSON()).toEqual({
         accessToken: "access",
         refreshToken: "refresh",
         user: new UserDTO({
           ...mockUser,
-          dojo: mockDojoDTO
         }).toJSON(),
       });
     });
@@ -226,6 +227,34 @@ describe("Auth Service", () => {
       await expect(AuthService.loginUser({ dto: loginDTO })).rejects.toThrow(
         UnauthorizedException
       );
+    });
+  });
+
+  describe("getAuthResponseDTO", () => {
+    const mockUser = buildUserMock({ id: "user-123" });
+    const authTokens = { accessToken: "access", refreshToken: "refresh" };
+
+    beforeEach(() => {
+      vi.spyOn(AuthService, "generateAuthTokens").mockResolvedValue(authTokens);
+    });
+
+    it("should return an AuthResponseDTO with correct data", async () => {
+      const result = await AuthService.getAuthResponseDTO({ user: mockUser });
+
+      expect(result).toBeInstanceOf(AuthResponseDTO);
+      expect(result.accessToken).toBe(authTokens.accessToken);
+      expect(result.refreshToken).toBe(authTokens.refreshToken);
+      expect(result.userDto.id).toBe(mockUser.id);
+    });
+
+    it("should use provided transaction instance", async () => {
+      const tx = {} as any;
+      await AuthService.getAuthResponseDTO({ user: mockUser, txInstance: tx });
+
+      expect(AuthService.generateAuthTokens).toHaveBeenCalledWith(
+        expect.objectContaining({ txInstance: tx })
+      );
+      expect(UsersService.getUserDTO).toHaveBeenCalledWith(mockUser, tx);
     });
   });
 
@@ -351,12 +380,12 @@ describe("Auth Service", () => {
       expect(getOneUserByIDSpy).toHaveBeenCalledWith({
         userId: mockUser.id,
       });
+      expect(result).toBeInstanceOf(AuthResponseDTO);
       expect(result.toJSON()).toEqual({
         accessToken: "new_access",
         refreshToken: "new_refresh",
         user: new UserDTO({
           ...mockUser,
-          dojo: mockDojoDTO
         }).toJSON(),
       });
     });
@@ -509,7 +538,6 @@ describe("Auth Service", () => {
         refreshToken: "refresh",
         user: new UserDTO({
           ...mockSavedUser,
-          dojo: mockDojoDTO,
         }).toJSON(),
       });
     });
@@ -776,7 +804,7 @@ describe("Auth Service", () => {
       });
 
       expect(updateSpy).toHaveBeenCalled();
-      expect(result.user).toBeInstanceOf(UserDTO);
+      expect(result.userDto).toBeInstanceOf(UserDTO);
     });
 
     it("should pass userIp and userAgent to generateAuthTokens", async () => {
@@ -1097,8 +1125,8 @@ describe("Auth Service", () => {
       );
       expect(sendParentSignUpNotificationSpy).toHaveBeenCalled();
 
-      expect(result.user.role).toBe(Role.Parent);
-      expect(result.user.dojo).toBeUndefined();
+      expect(result).toBeInstanceOf(AuthResponseDTO);
+      expect(result.userDto.role).toBe(Role.Parent);
     });
 
     it("should throw ConflictException if email exists", async () => {
