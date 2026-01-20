@@ -1,6 +1,6 @@
 // src/middlewares/require-role.ts
 import { Request, Response, NextFunction } from "express";
-import {DojosService} from "../../services/dojos.service.js";
+import { DojosService } from "../../services/dojos.service.js";
 import {
   BadRequestException,
   ForbiddenException,
@@ -10,11 +10,7 @@ import {
 } from "../../core/errors/index.js";
 import { ClassService } from "../../services/class.service.js";
 
-export const isDojoOwnerMiddleware = async (
-  req: Request,
-  _: Response,
-  next: NextFunction
-) => {
+export const isDojoOwnerMiddleware = async (req: Request, _: Response, next: NextFunction) => {
   try {
     if (!req.user) {
       throw new UnauthorizedException("Unauthenticated");

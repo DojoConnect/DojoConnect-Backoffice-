@@ -125,8 +125,7 @@ export function createDrizzleDbSpies() {
   });
 
   // Build Mock Insert chain
-  const { mockInsert, mockValues, mockReturningId, mockInsertChain } =
-    buildMockInsertChain();
+  const { mockInsert, mockValues, mockReturningId, mockInsertChain } = buildMockInsertChain();
 
   // build Mock Delete Chain
   const { mockDelete, mockDeleteChain } = buildMockDeleteChain({
@@ -151,9 +150,7 @@ export function createDrizzleDbSpies() {
     return await txCallback(mockDB);
   });
 
-  const getDbSpy = vi
-    .spyOn(dbService, "getDB")
-    .mockReturnValue(mockDB as any);
+  const getDbSpy = vi.spyOn(dbService, "getDB").mockReturnValue(mockDB as any);
 
   const runInTransactionSpy = vi
     .spyOn(dbService, "runInTransaction")

@@ -9,24 +9,18 @@ export type IUpdateParent = Partial<Omit<INewParent, "id" | "createdAt">>;
 
 export class ParentRepository {
   static create = async (parent: INewParent, tx: Transaction) => {
-    const [insertResult] = await tx
-      .insert(parents)
-      .values(parent)
-      .$returningId();
+    const [insertResult] = await tx.insert(parents).values(parent).$returningId();
 
     return insertResult.id;
   };
 
-  static async getOne(
-      whereClause: any,
-      tx: Transaction
-    ): Promise<IParent | null> {
-      const parent = returnFirst(
-        await tx.select().from(parents).where(whereClause).limit(1).execute()
-      );
-  
-      return parent || null;
-    }
+  static async getOne(whereClause: any, tx: Transaction): Promise<IParent | null> {
+    const parent = returnFirst(
+      await tx.select().from(parents).where(whereClause).limit(1).execute(),
+    );
+
+    return parent || null;
+  }
 
   static getOneParentByUserId = async (userId: string, tx: Transaction) => {
     return await this.getOne(eq(parents.userId, userId), tx);
@@ -41,9 +35,6 @@ export class ParentRepository {
     update: IUpdateParent;
     tx: Transaction;
   }) => {
-    return await tx
-      .update(parents)
-      .set(update)
-      .where(eq(parents.id, parentId));
+    return await tx.update(parents).set(update).where(eq(parents.id, parentId));
   };
 }

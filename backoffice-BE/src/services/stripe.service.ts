@@ -15,9 +15,7 @@ export const StripePriceIDsMap = {
   [StripePlans.Yearly]: "price_1Sg2AkRbZzajfaIInUpYkpcw",
 };
 
-type CreateStripeCustRes = Awaited<
-  ReturnType<typeof StripeService.createCustomer>
->;
+type CreateStripeCustRes = Awaited<ReturnType<typeof StripeService.createCustomer>>;
 export type StripePaymentMethodRes = Awaited<
   ReturnType<typeof StripeService.retrievePaymentMethod>
 >;
@@ -34,19 +32,20 @@ export class StripeService {
     return stripeInstance;
   };
 
-  static verifyEventSig = (eventBody: any, signature: string|string[]) => {
+  static verifyEventSig = (eventBody: any, signature: string | string[]) => {
     try {
-      return StripeService.getStripeInstance().webhooks.constructEvent(eventBody, signature, AppConfig.STRIPE_WEBHOOK_SECRET!);
+      return StripeService.getStripeInstance().webhooks.constructEvent(
+        eventBody,
+        signature,
+        AppConfig.STRIPE_WEBHOOK_SECRET!,
+      );
     } catch (error) {
       console.error("Error verifying webhook signature:", error);
       throw new BadRequestException("Invalid webhook signature");
     }
-  }
+  };
 
-  static createCustomer = async (
-    user: IUser,
-    metadata?: { dojoId?: string }
-  ) => {
+  static createCustomer = async (user: IUser, metadata?: { dojoId?: string }) => {
     return await StripeService.getStripeInstance().customers.create({
       name: getFullName(user.firstName, user.lastName),
       email: user.email,
@@ -58,12 +57,16 @@ export class StripeService {
     });
   };
 
-  static createDojoSubSetupIntent = async (stripeCustId: string, dojoId: string, ownerUserId: string) => {
+  static createDojoSubSetupIntent = async (
+    stripeCustId: string,
+    dojoId: string,
+    ownerUserId: string,
+  ) => {
     return await StripeService.setupIntent(stripeCustId, {
       type: SubscriptionType.DojoSub,
       dojoId,
-      ownerUserId
-    })
+      ownerUserId,
+    });
   };
 
   static setupIntent = async (stripeCustId: string, metadata?: Stripe.MetadataParam) => {
@@ -81,7 +84,7 @@ export class StripeService {
     grantTrial = false,
     idempotencyKey,
     dojoId,
-    ownerUserId
+    ownerUserId,
   }: {
     custId: string;
     plan: StripePlans;
@@ -94,14 +97,14 @@ export class StripeService {
     const metadata: DojoSubStripeMetadata = {
       type: SubscriptionType.DojoSub,
       dojoId,
-    }
+    };
     return await StripeService.createSubscription({
       custId,
       plan,
       paymentMethodId,
       grantTrial,
       idempotencyKey,
-      metadata
+      metadata,
     });
   };
 
@@ -111,7 +114,7 @@ export class StripeService {
     paymentMethodId,
     grantTrial = false,
     idempotencyKey,
-    metadata
+    metadata,
   }: {
     custId: string;
     plan: StripePlans;
@@ -133,28 +136,32 @@ export class StripeService {
       },
       {
         idempotencyKey,
-      }
+      },
     );
   };
 
   static retrievePaymentMethod = async (paymentMethod: string) => {
-    return await StripeService.getStripeInstance().paymentMethods.retrieve(
-      paymentMethod
-    );
+    return await StripeService.getStripeInstance().paymentMethods.retrieve(paymentMethod);
   };
 
   static retrieveSetupIntent = async (setupIntentId: string) => {
-    return await StripeService.getStripeInstance().setupIntents.retrieve(
-      setupIntentId
-    );
+    return await StripeService.getStripeInstance().setupIntents.retrieve(setupIntentId);
   };
 
-  static createClassProduct = async ({className, dojoId, classId}: {className: string, dojoId: string, classId: string}) => {
+  static createClassProduct = async ({
+    className,
+    dojoId,
+    classId,
+  }: {
+    className: string;
+    dojoId: string;
+    classId: string;
+  }) => {
     return await StripeService.getStripeInstance().products.create({
       name: `DJC-${dojoId}-${className}`,
       metadata: {
         dojoId,
-        classId
+        classId,
       },
     });
   };
@@ -181,13 +188,12 @@ export class StripeService {
   static createEnrollmentPaymentIntent = async ({
     customerId,
     dojoClass,
-    students
+    students,
   }: {
     customerId: string;
     dojoClass: IClass;
     students: IStudent[];
   }) => {
-
     if (!dojoClass.stripePriceId) {
       throw new BadRequestException("Class price not found");
     }
@@ -200,29 +206,29 @@ export class StripeService {
     const unitAmount = (price.unit_amount || 0) / 100; // Stripe amounts are in cents
     const totalAmount = unitAmount * students.length;
 
-    const childrenData = students.map(s => {
-      return { id: s.id,  };
+    const childrenData = students.map((s) => {
+      return { id: s.id };
     });
 
     const metadata = {
-      enrollment_type: 'dojo_class', 
+      enrollment_type: "dojo_class",
       child_count: students.length,
       price_id: dojoClass.stripePriceId,
       class_id: dojoClass.id,
-      children_data: JSON.stringify(childrenData)
-    }
+      children_data: JSON.stringify(childrenData),
+    };
 
     const params: Stripe.PaymentIntentCreateParams = {
       amount: Math.round(totalAmount * 100),
       currency: "gbp",
       customer: customerId,
       metadata,
-      setup_future_usage: 'off_session',
+      setup_future_usage: "off_session",
     };
 
     if (AppConfig.NODE_ENV === NodeEnv.Development) {
       console.log("Development mode, setting payment method types to card");
-      params.payment_method_types = ['card'];
+      params.payment_method_types = ["card"];
     }
 
     return await StripeService.getStripeInstance().paymentIntents.create(params);
@@ -239,42 +245,52 @@ export class StripeService {
       customer: customerId,
       items: [{ price: priceId }],
       trial_period_days: 30,
-      payment_behavior: 'default_incomplete',
-       // We rely on the customer's default payment method which should be set up by the PI
+      payment_behavior: "default_incomplete",
+      // We rely on the customer's default payment method which should be set up by the PI
     });
   };
 
-  static createClassSubCheckOut = async ({dojoClass, parent, students}: {dojoClass: IClass, parent: IParent, students: IStudent[]}) => {
+  static createClassSubCheckOut = async ({
+    dojoClass,
+    parent,
+    students,
+  }: {
+    dojoClass: IClass;
+    parent: IParent;
+    students: IStudent[];
+  }) => {
     if (!dojoClass.stripePriceId) {
       throw new BadRequestException("Class Stripe price not found");
     }
-    
-    const studentIds = students.map(s => s.id);
+
+    const studentIds = students.map((s) => s.id);
 
     // Limit metadata size if necessary.
     if (studentIds.join(",").length > 500) {
-        throw new BadRequestException("Too many students for one checkout session. Please enroll in smaller batches.");
+      throw new BadRequestException(
+        "Too many students for one checkout session. Please enroll in smaller batches.",
+      );
     }
 
-    const metadatas: ClassSubStripeMetadata[] = students.map(student => ({
+    const metadatas: ClassSubStripeMetadata[] = students.map((student) => ({
       type: SubscriptionType.ClassSub,
       classId: dojoClass.id,
       studentId: student.id,
-    }));   
+    }));
 
     return await StripeService.getStripeInstance().checkout.sessions.create({
       payment_method_types: ["card"],
-       mode: "subscription",
+      mode: "subscription",
       customer: parent.stripeCustomerId,
-      line_items: metadatas.map(metadata => ({
+      line_items: metadatas.map((metadata) => ({
         price: dojoClass.stripePriceId!,
         quantity: 1,
         subscription_data: {
-          metadata
-        }
+          metadata,
+        },
       })),
       success_url: `${AppConfig.WEB_URL}/success`,
       cancel_url: `${AppConfig.WEB_URL}/cancel`,
     });
-  }
+  };
 }

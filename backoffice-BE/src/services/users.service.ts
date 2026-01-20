@@ -2,12 +2,7 @@ import { eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
 import { userCards, users } from "../db/schema.js";
 import * as dbService from "../db/index.js";
 import type { Transaction } from "../db/index.js";
-import {
-  INewUser,
-  IUpdateUser,
-  IUser,
-  UserRepository,
-} from "../repositories/user.repository.js";
+import { INewUser, IUpdateUser, IUser, UserRepository } from "../repositories/user.repository.js";
 import { InstructorService } from "./instructor.service.js";
 import { StudentService } from "./student.service.js";
 import { ParentService } from "./parent.service.js";
@@ -16,7 +11,12 @@ import { Role } from "../constants/enums.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { DojosService } from "./dojos.service.js";
-import { DojoAdminUserDTO, InstructorUserDTO, ParentUserDTO, StudentUserDTO } from "../dtos/user.dtos.js";
+import {
+  DojoAdminUserDTO,
+  InstructorUserDTO,
+  ParentUserDTO,
+  StudentUserDTO,
+} from "../dtos/user.dtos.js";
 
 export type IUserCard = InferSelectModel<typeof userCards>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
@@ -30,7 +30,7 @@ export class UsersService {
       whereClause: SQL;
       withPassword?: boolean;
     },
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<IUser | null> => {
     const execute = async (tx: Transaction) => {
       let user = await UserRepository.getOne({ whereClause, withPassword, tx });
@@ -47,9 +47,7 @@ export class UsersService {
       return user;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getOneUserByID = async ({
@@ -61,19 +59,14 @@ export class UsersService {
   }): Promise<IUser | null> => {
     const execute = async (tx: Transaction) => {
       try {
-        return await UsersService.getOneUser(
-          { whereClause: eq(users.id, userId) },
-          tx
-        );
+        return await UsersService.getOneUser({ whereClause: eq(users.id, userId) }, tx);
       } catch (err: any) {
         console.error(`Error fetching user by ID: ${userId}`, { err });
         throw err;
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getOneUserByEmail = async ({
@@ -92,7 +85,7 @@ export class UsersService {
             whereClause: eq(users.email, email),
             withPassword,
           },
-          tx
+          tx,
         );
       } catch (err: any) {
         console.error(`Error fetching user by Email: ${email}`, { err });
@@ -100,9 +93,7 @@ export class UsersService {
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getOneUserByUserName = async ({
@@ -118,7 +109,7 @@ export class UsersService {
           {
             whereClause: eq(users.username, username),
           },
-          tx
+          tx,
         );
       } catch (err: any) {
         console.error(`Error fetching dojo by Username: ${username}`, { err });
@@ -126,14 +117,12 @@ export class UsersService {
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static fetchUserCards = async (
     userId: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<IUserCard[]> => {
     const execute = async (tx: Transaction) => {
       try {
@@ -152,14 +141,12 @@ export class UsersService {
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static fetchUserCardsByPaymentMethod = async (
     paymentMethod: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<IUserCard[]> => {
     const execute = async (tx: Transaction) => {
       try {
@@ -171,17 +158,12 @@ export class UsersService {
 
         return cards;
       } catch (err: any) {
-        console.error(
-          `Error fetching user cards by payment method: ${paymentMethod}`,
-          { err }
-        );
+        console.error(`Error fetching user cards by payment method: ${paymentMethod}`, { err });
         throw err;
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static saveUser = async (user: INewUser, txInstance?: Transaction) => {
@@ -194,9 +176,7 @@ export class UsersService {
       }))!;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static updateUser = async ({
@@ -212,22 +192,15 @@ export class UsersService {
       await UserRepository.update({ userId, update, tx });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static saveUserCard = async (
-    userCard: INewUserCard,
-    txInstance?: Transaction
-  ) => {
+  static saveUserCard = async (userCard: INewUserCard, txInstance?: Transaction) => {
     const execute = async (tx: Transaction) => {
       await tx.insert(userCards).values(userCard);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getUserDTO = async (user: IUser, txInstance?: Transaction) => {
@@ -242,118 +215,99 @@ export class UsersService {
         case Role.Child:
           return UsersService.getStudentUserDto(user, tx);
         default:
-          throw new InternalServerErrorException("User is not a DojoAdmin, Instructor, Parent or Child");
+          throw new InternalServerErrorException(
+            "User is not a DojoAdmin, Instructor, Parent or Child",
+          );
       }
-    }
+    };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
-    }
-  
-    static getDojoAdminUserDTO = async (user: IUser, txInstance?: Transaction) => {
-      const execute = async (tx: Transaction) => {
-        if (user.role !== Role.DojoAdmin) {
-          throw new UnauthorizedException("User is not a DojoOwner");
-        }
-    
-        const dojo = await DojosService.fetchUserDojo({
-          user,
-          txInstance: tx,
-        });
-    
-        if (!dojo) {
-          throw new NotFoundException("Dojo not found for DojoOwner");
-        }
-    
-        return new DojoAdminUserDTO({
-          ...user,
-          dojo,
-        });
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static getDojoAdminUserDTO = async (user: IUser, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
+      if (user.role !== Role.DojoAdmin) {
+        throw new UnauthorizedException("User is not a DojoOwner");
       }
 
-      return txInstance
-        ? execute(txInstance)
-        : dbService.runInTransaction(execute);
-      
-    }
-  
-    static getInstructorUserDto = async (user: IUser, txInstance?: Transaction) => {
-      const execute = async (tx: Transaction) => {
-        if (user.role !== Role.Instructor) {
-          throw new UnauthorizedException("User is not an Instructor");
-        }
-  
-        const instructor = await InstructorService.findInstructorByUserId(
-        user.id,
-        tx,
-      );
-  
+      const dojo = await DojosService.fetchUserDojo({
+        user,
+        txInstance: tx,
+      });
+
+      if (!dojo) {
+        throw new NotFoundException("Dojo not found for DojoOwner");
+      }
+
+      return new DojoAdminUserDTO({
+        ...user,
+        dojo,
+      });
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static getInstructorUserDto = async (user: IUser, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
+      if (user.role !== Role.Instructor) {
+        throw new UnauthorizedException("User is not an Instructor");
+      }
+
+      const instructor = await InstructorService.findInstructorByUserId(user.id, tx);
+
       if (!instructor) {
         throw new NotFoundException("Instructor not found for Instructor");
       }
-  
+
       return new InstructorUserDTO({
         ...user,
         instructor,
       });
-    }
+    };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
-    }
-  
-    static getParentUserDto = async (user: IUser, txInstance?: Transaction) => {
-      const execute = async (tx: Transaction) => {
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static getParentUserDto = async (user: IUser, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
       if (user.role !== Role.Parent) {
         throw new UnauthorizedException("User is not a Parent");
       }
-  
-      const parent = await ParentService.getOneParentByUserId(
-        user.id,
-        tx
-      );
-  
+
+      const parent = await ParentService.getOneParentByUserId(user.id, tx);
+
       if (!parent) {
         throw new NotFoundException("Parent not found for Parent");
       }
-  
+
       return new ParentUserDTO({
         ...user,
         parent,
       });
-    }
+    };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
-    }
-  
-    static getStudentUserDto = async (user: IUser, txInstance?: Transaction) => {
-      const execute = async (tx: Transaction) => {
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static getStudentUserDto = async (user: IUser, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
       if (user.role !== Role.Child) {
         throw new UnauthorizedException("User is not a Student");
       }
-  
-      const student = await StudentService.findStudentByUserId(
-        user.id,
-        tx
-      );
-  
+
+      const student = await StudentService.findStudentByUserId(user.id, tx);
+
       if (!student) {
         throw new NotFoundException("Student not found for Student");
       }
-  
+
       return new StudentUserDTO({
         ...user,
         student,
       });
-    }
+    };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
-    }
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
 }
-

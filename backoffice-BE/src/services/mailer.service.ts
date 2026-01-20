@@ -53,12 +53,10 @@ export class MailerService {
     reason,
     timeRange,
     numberOfChildren,
-    dojoName
+    dojoName,
   ) => {
     const mailOptions = {
-      from: `"Dojo Connect" <${
-        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-      }>`,
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
       to,
       subject: "Your Appointment Request Has Been Received",
       html: `
@@ -70,9 +68,7 @@ export class MailerService {
         <li><b>Appointment Type:</b> ${appointmentType}</li>
         <li><b>Reason for Consultation:</b> ${reason || "Not provided"}</li>
         <li><b>Preferred Time Range:</b> ${timeRange || "Not provided"}</li>
-        <li><b>Number of Children:</b> ${
-          numberOfChildren || "Not provided"
-        }</li>
+        <li><b>Number of Children:</b> ${numberOfChildren || "Not provided"}</li>
       </ul>
       
       <p>We will get back to you shortly with the confirmed date, time, and meeting details.</p>
@@ -97,7 +93,7 @@ export class MailerService {
     startTime,
     dojoName,
     dojoAddress,
-    preferredContactMethod
+    preferredContactMethod,
   ) => {
     const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
       weekday: "long",
@@ -107,9 +103,7 @@ export class MailerService {
     });
 
     const mailOptions = {
-      from: `"Dojo Connect" <${
-        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-      }>`,
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
       to,
       subject: "Your Appointment Has Been Scheduled",
       html: `
@@ -150,7 +144,7 @@ export class MailerService {
     startTime,
     dojoName,
     meetingLink,
-    preferredContactMethod
+    preferredContactMethod,
   ) => {
     const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
       weekday: "long",
@@ -160,9 +154,7 @@ export class MailerService {
     });
 
     const mailOptions = {
-      from: `"Dojo Connect" <${
-        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-      }>`,
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
       to,
       subject: "Your Online Appointment Has Been Scheduled",
       html: `
@@ -201,7 +193,7 @@ export class MailerService {
     scheduledDate,
     startTime,
     dojoName,
-    dojoWebPageUrl
+    dojoWebPageUrl,
   ) => {
     const formattedDate = new Date(scheduledDate).toLocaleDateString("en-US", {
       weekday: "long",
@@ -211,9 +203,7 @@ export class MailerService {
     });
 
     const mailOptions = {
-      from: `"Dojo Connect" <${
-        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-      }>`,
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
       to,
       subject: "Appointment Canceled",
       html: `
@@ -247,7 +237,7 @@ export class MailerService {
     newDate,
     newTime,
     dojoName,
-    newMeetingLink
+    newMeetingLink,
   ) => {
     const formattedDate = new Date(newDate).toLocaleDateString("en-US", {
       weekday: "long",
@@ -257,9 +247,7 @@ export class MailerService {
     });
 
     const mailOptions = {
-      from: `"Dojo Connect" <${
-        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-      }>`,
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
       to,
       subject: "Appointment Update – Rescheduled",
       html: `
@@ -294,7 +282,7 @@ export class MailerService {
     newDate,
     newTime,
     dojoName,
-    newAddress
+    newAddress,
   ) => {
     const formattedDate = new Date(newDate).toLocaleDateString("en-US", {
       weekday: "long",
@@ -304,9 +292,7 @@ export class MailerService {
     });
 
     const mailOptions = {
-      from: `"Dojo Connect" <${
-        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-      }>`,
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
       to,
       subject: "Appointment Update – Rescheduled",
       html: `
@@ -343,22 +329,17 @@ export class MailerService {
     appointmentDate,
     numberOfChildren,
     trialFee,
-    dojoName
+    dojoName,
   ) => {
-    const formattedDate = new Date(appointmentDate).toLocaleDateString(
-      "en-US",
-      {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      }
-    );
+    const formattedDate = new Date(appointmentDate).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
 
     const mailOptions = {
-      from: `"Dojo Connect" <${
-        AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"
-      }>`,
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
       to,
       subject: "Your Trial Class Booking Has Been Confirmed",
       html: `
@@ -462,7 +443,7 @@ export class MailerService {
     parentEmail: string,
     parentName: string,
     childName: string,
-    childEmail: string
+    childEmail: string,
   ) => {
     try {
       const subject = "Child Account Created - Dojo Connect";
@@ -483,16 +464,14 @@ export class MailerService {
 
       await MailerService.getTransporter().sendMail(mailOptions);
     } catch (error: any) {
-      console.error(
-        `Child added email to parent failed to ${parentEmail}: ${error.message}`
-      );
+      console.error(`Child added email to parent failed to ${parentEmail}: ${error.message}`);
     }
   };
 
   static sendChildWelcomeEmail = async (
     childEmail: string,
     childName: string,
-    parentName: string
+    parentName: string,
   ) => {
     try {
       const subject = "Welcome to Dojo Connect!";
@@ -513,9 +492,7 @@ export class MailerService {
 
       await MailerService.getTransporter().sendMail(mailOptions);
     } catch (error: any) {
-      console.error(
-        `Child welcome email failed to ${childEmail}: ${error.message}`
-      );
+      console.error(`Child welcome email failed to ${childEmail}: ${error.message}`);
     }
   };
 
@@ -582,10 +559,7 @@ export class MailerService {
     inviteDetails: InstructorInviteDetails;
     response: InstructorInviteStatus.Accepted | InstructorInviteStatus.Declined;
   }) => {
-    const instructorFullName = getFullName(
-      inviteDetails.firstName,
-      inviteDetails.lastName
-    );
+    const instructorFullName = getFullName(inviteDetails.firstName, inviteDetails.lastName);
 
     const fragment = `${instructorFullName} has ${response} your invite to become an instructor for ${inviteDetails.dojoName}`;
 
@@ -605,8 +579,13 @@ export class MailerService {
     await this.getTransporter().sendMail(mailOptions);
   };
 
-  static sendInviteAcceptedEmail = async ({instructor, inviteDetails}: {instructor: IUser, inviteDetails: InstructorInviteDetails}) => {
-
+  static sendInviteAcceptedEmail = async ({
+    instructor,
+    inviteDetails,
+  }: {
+    instructor: IUser;
+    inviteDetails: InstructorInviteDetails;
+  }) => {
     const fragment = `You accepted the invite to become an instructor for ${inviteDetails.dojoName}.`;
 
     const mailOptions = {

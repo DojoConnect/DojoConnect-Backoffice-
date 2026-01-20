@@ -1,10 +1,7 @@
 import { Router } from "express";
 import { InstructorController } from "../controllers/instructor.controller.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
-import {
-  AcceptInviteSchema,
-  DeclineInviteSchema,
-} from "../validations/instructors.schemas.js";
+import { AcceptInviteSchema, DeclineInviteSchema } from "../validations/instructors.schemas.js";
 import { requireAuth } from "../middlewares/require-auth.middleware.js";
 import { requireRole } from "../middlewares/authorization/require-role.middleware.js";
 import { Role } from "../constants/enums.js";
@@ -15,13 +12,13 @@ const router = Router();
 router.post(
   "/invites/decline",
   validateReqBody(DeclineInviteSchema),
-  InstructorController.handleDeclineInvite
+  InstructorController.handleDeclineInvite,
 );
 
 router.post(
   "/invites/accept",
   validateReqBody(AcceptInviteSchema),
-  InstructorController.handleAcceptInvite
+  InstructorController.handleAcceptInvite,
 );
 
 router.get("/invites/:token", InstructorController.handleFetchInviteDetails);
@@ -29,9 +26,9 @@ router.get("/invites/:token", InstructorController.handleFetchInviteDetails);
 router.get(
   "/:instructorId/classes",
   requireAuth,
-  requireRole(Role.DojoAdmin, Role.Instructor),    
-  isMemberOfInstructorDojoMiddleware,  
-  InstructorController.getInstructorClasses
+  requireRole(Role.DojoAdmin, Role.Instructor),
+  isMemberOfInstructorDojoMiddleware,
+  InstructorController.getInstructorClasses,
 );
 
 router.get(
@@ -39,7 +36,7 @@ router.get(
   requireAuth,
   requireRole(Role.DojoAdmin, Role.Instructor),
   isMemberOfInstructorDojoMiddleware,
-  InstructorController.handleFetchInstructorStudents
+  InstructorController.handleFetchInstructorStudents,
 );
 
 export default router;

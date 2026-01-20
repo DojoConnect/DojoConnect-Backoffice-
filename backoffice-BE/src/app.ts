@@ -12,7 +12,7 @@ import fs from "fs";
 import path from "path";
 
 import * as dbService from "./services/db.service.js";
-import {MailerService} from "./services/mailer.service.js";
+import { MailerService } from "./services/mailer.service.js";
 import { notFound } from "./middlewares/notFound.middleware.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import routes from "./routes/index.js";
@@ -30,7 +30,7 @@ const corsOptions = {
 const app: Express = express();
 
 // Set because we are deployed on Cpanel
-// On cPanel, a Node app is always behind a proxy (Apache + often LiteSpeed). 
+// On cPanel, a Node app is always behind a proxy (Apache + often LiteSpeed).
 // cPanel injects X-Forwarded-For automatically, so Express must trust the proxy.
 // We use 1 instead of true to prevent spoofed headers
 app.set("trust proxy", 1);
@@ -41,7 +41,7 @@ app.use(helmet());
 // Stripe Webhook Requires the raw buffer of the request body to validate signature
 app.use(
   "/api/webhooks",
-  webhooksRouter // must use express.raw internally
+  webhooksRouter, // must use express.raw internally
 );
 
 app.use(express.json()); // bodyParser not needed
@@ -71,15 +71,7 @@ function getDateRange(period, start_date = null, end_date = null) {
       break;
     case "this_month":
       startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      endDate = new Date(
-        now.getFullYear(),
-        now.getMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999
-      );
+      endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
       break;
     case "custom":
       if (!start_date || !end_date) {
@@ -205,7 +197,7 @@ function formatResponse(
   success: boolean,
   data: any = null,
   message: string | null = null,
-  error: any = null
+  error: any = null,
 ) {
   const response: any = { success };
   if (data !== null) response.data = data;
@@ -232,7 +224,7 @@ async function generateUniqueSlug(name) {
     const connection = await dbService.getBackOfficeDB();
     const [rows]: any = await connection.execute(
       "SELECT COUNT(*) as count FROM dojos WHERE slug = ?",
-      [slug]
+      [slug],
     );
     if (rows[0].count === 0) return slug;
     slug = `${baseSlug}-${counter++}`;
@@ -254,7 +246,7 @@ async function generateUniqueDojoTag(name) {
     const connection = await dbService.getBackOfficeDB();
     const [rows]: any = await connection.execute(
       "SELECT COUNT(*) as count FROM users WHERE dojo_tag = ?",
-      [tag]
+      [tag],
     );
     if (rows[0].count === 0) return tag;
     tag = `${baseTag}_${counter++}`;
@@ -285,9 +277,7 @@ function convertTo24Hour(time12h) {
   // If already in 24-hour format (HH:MM or HH:MM:SS), return as is
   if (!/AM|PM|am|pm/i.test(time12h)) {
     // Add seconds if not present
-    return time12h.includes(":") && time12h.split(":").length === 2
-      ? `${time12h}:00`
-      : time12h;
+    return time12h.includes(":") && time12h.split(":").length === 2 ? `${time12h}:00` : time12h;
   }
 
   // Parse 12-hour format
@@ -385,36 +375,24 @@ app.post("/export/users", async (req, res) => {
       }
       case "xlsx":
         filepath = await exportToExcel(users, `${filename}.xlsx`, "Users");
-        contentType =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         break;
       case "pdf":
-        filepath = await exportToPDF(
-          users,
-          `${filename}.pdf`,
-          "Users Export Report"
-        );
+        filepath = await exportToPDF(users, `${filename}.pdf`, "Users Export Report");
         contentType = "application/pdf";
         break;
       default:
-        return res
-          .status(400)
-          .json(formatResponse(false, null, null, "Invalid format"));
+        return res.status(400).json(formatResponse(false, null, null, "Invalid format"));
     }
 
     res.setHeader("Content-Type", contentType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${path.basename(filepath)}"`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(filepath)}"`);
 
     res.sendFile(filepath, (err) => {
       if (err) {
         console.error("Download error:", err);
         if (!res.headersSent) {
-          res
-            .status(500)
-            .json(formatResponse(false, null, null, "Error downloading file"));
+          res.status(500).json(formatResponse(false, null, null, "Error downloading file"));
         }
       } else {
         fs.unlink(filepath, (unlinkErr) => {
@@ -436,19 +414,16 @@ app.get("/class_profile/:class_uid", async (req, res) => {
     const dbConnection = await dbService.getMobileApiDb();
     const [classInfo]: any[] = await dbConnection.query(
       'SELECT * FROM classes WHERE class_uid = ? AND status != "deleted"',
-      [class_uid]
+      [class_uid],
     );
     if (classInfo.length === 0) {
-      return res
-        .status(404)
-        .json(formatResponse(false, null, null, "Class not found"));
+      return res.status(404).json(formatResponse(false, null, null, "Class not found"));
     }
     const classData = classInfo[0];
 
-    const [schedule] = await dbConnection.query(
-      "SELECT * FROM class_schedule WHERE class_id = ?",
-      [classData.id]
-    );
+    const [schedule] = await dbConnection.query("SELECT * FROM class_schedule WHERE class_id = ?", [
+      classData.id,
+    ]);
 
     const [enrolledStudents] = await dbConnection.query(
       `
@@ -459,7 +434,7 @@ app.get("/class_profile/:class_uid", async (req, res) => {
       LEFT JOIN users u ON s.added_by = u.email
       WHERE s.class_id = ?
     `,
-      [class_uid, class_uid]
+      [class_uid, class_uid],
     );
 
     const [attendanceSummary] = await dbConnection.query(
@@ -472,7 +447,7 @@ app.get("/class_profile/:class_uid", async (req, res) => {
       FROM attendance_records
       WHERE class_id = ?
     `,
-      [class_uid]
+      [class_uid],
     );
 
     const [recentAttendance] = await dbConnection.query(
@@ -484,12 +459,12 @@ app.get("/class_profile/:class_uid", async (req, res) => {
       ORDER BY a.attendance_date DESC
       LIMIT 20
     `,
-      [class_uid]
+      [class_uid],
     );
 
     const [enrollmentCount] = await dbConnection.query(
       "SELECT COUNT(*) as count FROM enrollments WHERE class_id = ?",
-      [class_uid]
+      [class_uid],
     );
 
     const [recentActivities] = await dbConnection.query(
@@ -502,7 +477,7 @@ app.get("/class_profile/:class_uid", async (req, res) => {
       ORDER BY e.created_at DESC
       LIMIT 10
     `,
-      [class_uid]
+      [class_uid],
     );
 
     const response = {
@@ -522,9 +497,7 @@ app.get("/class_profile/:class_uid", async (req, res) => {
       recent_activities: recentActivities,
     };
 
-    res.json(
-      formatResponse(true, response, "Class profile retrieved successfully")
-    );
+    res.json(formatResponse(true, response, "Class profile retrieved successfully"));
   } catch (error: any) {
     console.error("Class profile error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
@@ -537,14 +510,9 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
     const { email } = req.params;
 
     const dbConnection = await dbService.getMobileApiDb();
-    const [users]: any[] = await dbConnection.query(
-      "SELECT * FROM users WHERE email = ?",
-      [email]
-    );
+    const [users]: any[] = await dbConnection.query("SELECT * FROM users WHERE email = ?", [email]);
     if (users.length === 0) {
-      return res
-        .status(404)
-        .json(formatResponse(false, null, null, "User not found"));
+      return res.status(404).json(formatResponse(false, null, null, "User not found"));
     }
     const user = users[0];
     let profileData = { ...user };
@@ -557,7 +525,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           FROM students s
           WHERE s.added_by = ?
         `,
-          [email]
+          [email],
         );
 
         const [enrolledClasses] = await dbConnection.query(
@@ -567,7 +535,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           JOIN classes c ON e.class_id = c.class_uid
           WHERE e.parent_email = ? AND c.status = 'active'
         `,
-          [email]
+          [email],
         );
 
         const [subscriptions] = await dbConnection.query(
@@ -578,7 +546,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           JOIN classes c ON e.class_id = c.class_uid
           WHERE e.parent_email = ?
         `,
-          [email]
+          [email],
         );
 
         const [activities] = await dbConnection.query(
@@ -591,7 +559,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           ORDER BY created_at DESC
           LIMIT 20
         `,
-          [email, email]
+          [email, email],
         );
 
         profileData = {
@@ -615,7 +583,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           JOIN classes c ON s.class_id = c.class_uid
           WHERE s.email = ? AND c.status = 'active'
         `,
-          [email]
+          [email],
         );
 
         const [attendanceSummary] = await dbConnection.query(
@@ -629,7 +597,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           FROM attendance_records
           WHERE email = ?
         `,
-          [email]
+          [email],
         );
 
         const [recentSessions] = await dbConnection.query(
@@ -641,7 +609,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           ORDER BY a.attendance_date DESC
           LIMIT 10
         `,
-          [email]
+          [email],
         );
 
         const [studentActivities] = await dbConnection.query(
@@ -652,7 +620,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           ORDER BY attendance_date DESC
           LIMIT 20
         `,
-          [email]
+          [email],
         );
 
         profileData = {
@@ -671,7 +639,7 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           FROM classes c
           WHERE c.instructor = ? AND c.status = 'active'
         `,
-          [email]
+          [email],
         );
 
         const [instructorActivities] = await dbConnection.query(
@@ -682,12 +650,12 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
           ORDER BY created_at DESC
           LIMIT 20
         `,
-          [email]
+          [email],
         );
 
         const [instructorInfo] = await dbConnection.query(
           "SELECT * FROM instructors_tbl WHERE instructor_email = ?",
-          [email]
+          [email],
         );
 
         profileData = {
@@ -706,31 +674,31 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
       }
       case "admin": {
         const [instructorCount] = await dbConnection.query(
-          'SELECT COUNT(*) as count FROM users WHERE role = "instructor"'
+          'SELECT COUNT(*) as count FROM users WHERE role = "instructor"',
         );
         const [parentCount] = await dbConnection.query(
-          'SELECT COUNT(*) as count FROM users WHERE role = "parent"'
+          'SELECT COUNT(*) as count FROM users WHERE role = "parent"',
         );
         const [studentCount] = await dbConnection.query(
-          'SELECT COUNT(*) as count FROM users WHERE role = "child"'
+          'SELECT COUNT(*) as count FROM users WHERE role = "child"',
         );
         const [classCount] = await dbConnection.query(
-          'SELECT COUNT(*) as count FROM classes WHERE status = "active"'
+          'SELECT COUNT(*) as count FROM classes WHERE status = "active"',
         );
 
         const [assignedTasks] = await dbConnection.query(
           "SELECT * FROM tasks WHERE created_by = ? ORDER BY due_date DESC LIMIT 10",
-          [email]
+          [email],
         );
 
         const [ownedClasses] = await dbConnection.query(
           'SELECT * FROM classes WHERE owner_email = ? AND status = "active"',
-          [email]
+          [email],
         );
 
         const [events] = await dbConnection.query(
           "SELECT * FROM events WHERE created_by = ? AND event_date >= CURDATE() ORDER BY event_date ASC LIMIT 10",
-          [email]
+          [email],
         );
 
         profileData = {
@@ -754,14 +722,10 @@ app.get("/user_profile_detailed/:email", async (req, res) => {
         break;
       }
       default:
-        return res
-          .status(400)
-          .json(formatResponse(false, null, null, "Invalid user role"));
+        return res.status(400).json(formatResponse(false, null, null, "Invalid user role"));
     }
 
-    res.json(
-      formatResponse(true, profileData, "User profile retrieved successfully")
-    );
+    res.json(formatResponse(true, profileData, "User profile retrieved successfully"));
   } catch (error: any) {
     console.error("User profile error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
@@ -823,36 +787,24 @@ app.post("/export/classes", async (req, res) => {
       }
       case "xlsx":
         filepath = await exportToExcel(classes, `${filename}.xlsx`, "Classes");
-        contentType =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         break;
       case "pdf":
-        filepath = await exportToPDF(
-          classes,
-          `${filename}.pdf`,
-          "Classes Export Report"
-        );
+        filepath = await exportToPDF(classes, `${filename}.pdf`, "Classes Export Report");
         contentType = "application/pdf";
         break;
       default:
-        return res
-          .status(400)
-          .json(formatResponse(false, null, null, "Invalid format"));
+        return res.status(400).json(formatResponse(false, null, null, "Invalid format"));
     }
 
     res.setHeader("Content-Type", contentType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${path.basename(filepath)}"`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(filepath)}"`);
 
     res.sendFile(filepath, (err) => {
       if (err) {
         console.error("Download error:", err);
         if (!res.headersSent) {
-          res
-            .status(500)
-            .json(formatResponse(false, null, null, "Error downloading file"));
+          res.status(500).json(formatResponse(false, null, null, "Error downloading file"));
         }
       } else {
         fs.unlink(filepath, (unlinkErr) => {
@@ -913,50 +865,30 @@ app.post("/export/transactions", async (req, res) => {
           { id: "class_name", title: "Class" },
           { id: "date", title: "Date" },
         ];
-        filepath = await exportToCSV(
-          transactions,
-          `${filename}.csv`,
-          csvHeaders
-        );
+        filepath = await exportToCSV(transactions, `${filename}.csv`, csvHeaders);
         contentType = "text/csv";
         break;
       }
       case "xlsx":
-        filepath = await exportToExcel(
-          transactions,
-          `${filename}.xlsx`,
-          "Transactions"
-        );
-        contentType =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        filepath = await exportToExcel(transactions, `${filename}.xlsx`, "Transactions");
+        contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         break;
       case "pdf":
-        filepath = await exportToPDF(
-          transactions,
-          `${filename}.pdf`,
-          "Transactions Export Report"
-        );
+        filepath = await exportToPDF(transactions, `${filename}.pdf`, "Transactions Export Report");
         contentType = "application/pdf";
         break;
       default:
-        return res
-          .status(400)
-          .json(formatResponse(false, null, null, "Invalid format"));
+        return res.status(400).json(formatResponse(false, null, null, "Invalid format"));
     }
 
     res.setHeader("Content-Type", contentType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${path.basename(filepath)}"`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(filepath)}"`);
 
     res.sendFile(filepath, (err) => {
       if (err) {
         console.error("Download error:", err);
         if (!res.headersSent) {
-          res
-            .status(500)
-            .json(formatResponse(false, null, null, "Error downloading file"));
+          res.status(500).json(formatResponse(false, null, null, "Error downloading file"));
         }
       } else {
         fs.unlink(filepath, (unlinkErr) => {
@@ -1026,41 +958,25 @@ app.post("/export/attendance", async (req, res) => {
         break;
       }
       case "xlsx":
-        filepath = await exportToExcel(
-          attendance,
-          `${filename}.xlsx`,
-          "Attendance"
-        );
-        contentType =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        filepath = await exportToExcel(attendance, `${filename}.xlsx`, "Attendance");
+        contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         break;
       case "pdf":
-        filepath = await exportToPDF(
-          attendance,
-          `${filename}.pdf`,
-          "Attendance Export Report"
-        );
+        filepath = await exportToPDF(attendance, `${filename}.pdf`, "Attendance Export Report");
         contentType = "application/pdf";
         break;
       default:
-        return res
-          .status(400)
-          .json(formatResponse(false, null, null, "Invalid format"));
+        return res.status(400).json(formatResponse(false, null, null, "Invalid format"));
     }
 
     res.setHeader("Content-Type", contentType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${path.basename(filepath)}"`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(filepath)}"`);
 
     res.sendFile(filepath, (err) => {
       if (err) {
         console.error("Download error:", err);
         if (!res.headersSent) {
-          res
-            .status(500)
-            .json(formatResponse(false, null, null, "Error downloading file"));
+          res.status(500).json(formatResponse(false, null, null, "Error downloading file"));
         }
       } else {
         fs.unlink(filepath, (unlinkErr) => {
@@ -1124,50 +1040,30 @@ app.post("/export/enrollments", async (req, res) => {
           { id: "child_email", title: "Child Email" },
           { id: "created_at", title: "Enrolled At" },
         ];
-        filepath = await exportToCSV(
-          enrollments,
-          `${filename}.csv`,
-          csvHeaders
-        );
+        filepath = await exportToCSV(enrollments, `${filename}.csv`, csvHeaders);
         contentType = "text/csv";
         break;
       }
       case "xlsx":
-        filepath = await exportToExcel(
-          enrollments,
-          `${filename}.xlsx`,
-          "Enrollments"
-        );
-        contentType =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        filepath = await exportToExcel(enrollments, `${filename}.xlsx`, "Enrollments");
+        contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         break;
       case "pdf":
-        filepath = await exportToPDF(
-          enrollments,
-          `${filename}.pdf`,
-          "Enrollments Export Report"
-        );
+        filepath = await exportToPDF(enrollments, `${filename}.pdf`, "Enrollments Export Report");
         contentType = "application/pdf";
         break;
       default:
-        return res
-          .status(400)
-          .json(formatResponse(false, null, null, "Invalid format"));
+        return res.status(400).json(formatResponse(false, null, null, "Invalid format"));
     }
 
     res.setHeader("Content-Type", contentType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${path.basename(filepath)}"`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(filepath)}"`);
 
     res.sendFile(filepath, (err) => {
       if (err) {
         console.error("Download error:", err);
         if (!res.headersSent) {
-          res
-            .status(500)
-            .json(formatResponse(false, null, null, "Error downloading file"));
+          res.status(500).json(formatResponse(false, null, null, "Error downloading file"));
         }
       } else {
         fs.unlink(filepath, (unlinkErr) => {
@@ -1201,14 +1097,7 @@ app.post("/trial-class-bookings", async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (
-      !class_id ||
-      !parent_name ||
-      !email ||
-      !phone ||
-      !appointment_date ||
-      !dojo_tag
-    ) {
+    if (!class_id || !parent_name || !email || !phone || !appointment_date || !dojo_tag) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -1230,13 +1119,13 @@ app.post("/trial-class-bookings", async (req, res) => {
         instructor_name || null,
         class_image || null,
         trial_fee || 0,
-      ]
+      ],
     );
 
     // Get dojo name for email
     const [dojoRows]: any = await connection.execute(
       "SELECT dojo_name FROM users WHERE dojo_tag = ? LIMIT 1",
-      [dojo_tag]
+      [dojo_tag],
     );
     const dojoName = dojoRows.length > 0 ? dojoRows[0].dojo_name : "Trial Dojo";
 
@@ -1249,7 +1138,7 @@ app.post("/trial-class-bookings", async (req, res) => {
       appointment_date,
       number_of_children || 1,
       trial_fee || 0,
-      dojoName
+      dojoName,
     );
 
     res.status(201).json({
@@ -1287,7 +1176,7 @@ app.get("/trial-class-bookings/:dojo_tag", async (req, res) => {
        FROM trial_class_bookings
        WHERE dojo_tag = ?
        ORDER BY created_at DESC`,
-      [dojo_tag]
+      [dojo_tag],
     );
     res.json(rows);
   } catch (err: any) {
@@ -1308,7 +1197,7 @@ app.get("/trial-class-bookings/details/:id", async (req, res) => {
               created_at, updated_at
        FROM trial_class_bookings
        WHERE id = ?`,
-      [id]
+      [id],
     );
 
     if (rows.length === 0) {
@@ -1332,7 +1221,7 @@ app.get("/admin/appointment-requests/tag/:dojo_tag", async (req, res) => {
     // Get dojo_id from the dojo_tag
     const [dojoRows]: any = await connection.execute(
       "SELECT dojo_id FROM users WHERE dojo_tag = ? LIMIT 1",
-      [dojo_tag]
+      [dojo_tag],
     );
 
     if (dojoRows.length === 0) {
@@ -1349,15 +1238,13 @@ app.get("/admin/appointment-requests/tag/:dojo_tag", async (req, res) => {
        FROM consultation_requests
        WHERE dojo_tag = ?
        ORDER BY created_at DESC`,
-      [dojo_tag]
+      [dojo_tag],
     );
 
     res.json(rows);
   } catch (err: any) {
     console.error("Error fetching consultation requests by dojo_tag:", err);
-    res
-      .status(500)
-      .json({ error: "Internal Server Error", detail: err.message });
+    res.status(500).json({ error: "Internal Server Error", detail: err.message });
   }
 });
 
@@ -1376,13 +1263,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
       parent_name,
     } = req.body || {};
 
-    if (
-      !consultation_request_id ||
-      !scheduled_date ||
-      !start_time ||
-      !end_time ||
-      !parent_email
-    ) {
+    if (!consultation_request_id || !scheduled_date || !start_time || !end_time || !parent_email) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -1406,7 +1287,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
         meeting_link || null,
         parent_email,
         parent_name || null,
-      ]
+      ],
     );
 
     // Update consultation request status to 'upcoming'
@@ -1414,25 +1295,22 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
       `UPDATE consultation_requests
        SET status = 'upcoming'
        WHERE id = ?`,
-      [consultation_request_id]
+      [consultation_request_id],
     );
 
     // Get appointment type and preferred contact method from consultation request
     const [requestRows]: any = await connection.execute(
       `SELECT appointment_type, preferred_contact_method FROM consultation_requests WHERE id = ?`,
-      [consultation_request_id]
+      [consultation_request_id],
     );
-    const appointmentType =
-      requestRows.length > 0 ? requestRows[0].appointment_type : "Online";
+    const appointmentType = requestRows.length > 0 ? requestRows[0].appointment_type : "Online";
     const preferredContactMethod =
-      requestRows.length > 0
-        ? requestRows[0].preferred_contact_method
-        : "email";
+      requestRows.length > 0 ? requestRows[0].preferred_contact_method : "email";
 
     // Get dojo name for email
     const [dojoRows]: any = await connection.execute(
       "SELECT dojo_name FROM users WHERE dojo_tag = ? LIMIT 1",
-      [dojo_tag]
+      [dojo_tag],
     );
     const dojoName = dojoRows.length > 0 ? dojoRows[0].dojo_name : "Trial Dojo";
 
@@ -1448,7 +1326,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
         displayTime,
         dojoName,
         address_text,
-        preferredContactMethod
+        preferredContactMethod,
       );
     } else if (meeting_link) {
       await MailerService.sendOnlineAppointmentScheduled(
@@ -1458,7 +1336,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
         displayTime,
         dojoName,
         meeting_link,
-        preferredContactMethod
+        preferredContactMethod,
       );
     }
 
@@ -1478,7 +1356,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
         "appointment", // type
         result.insertId.toString(), // event_id = appointment id
         "pending", // status
-      ]
+      ],
     );
 
     res.status(201).json({
@@ -1496,9 +1374,7 @@ app.post("/admin/scheduled-appointments", async (req, res) => {
     });
   } catch (err: any) {
     console.error("Error creating scheduled appointment:", err);
-    res
-      .status(500)
-      .json({ error: "Internal Server Error", detail: err.message });
+    res.status(500).json({ error: "Internal Server Error", detail: err.message });
   }
 });
 
@@ -1531,9 +1407,7 @@ app.get("/admin/scheduled-appointments", async (req, res) => {
     res.json(rows);
   } catch (err: any) {
     console.error("Error fetching scheduled appointments:", err);
-    res
-      .status(500)
-      .json({ error: "Internal Server Error", detail: err.message });
+    res.status(500).json({ error: "Internal Server Error", detail: err.message });
   }
 });
 
@@ -1553,46 +1427,35 @@ app.post("/admin/cancel-appointment", async (req, res) => {
       `SELECT sa.scheduled_date, sa.start_time, sa.parent_email, sa.parent_name, sa.consultation_request_id
        FROM scheduled_appointments sa
        WHERE sa.id = ?`,
-      [appointment_id]
+      [appointment_id],
     );
 
     if (appointmentRows.length === 0) {
       return res.status(404).json({ error: "Appointment not found" });
     }
 
-    const {
-      scheduled_date,
-      start_time,
-      parent_email,
-      parent_name,
-      consultation_request_id,
-    } = appointmentRows[0];
+    const { scheduled_date, start_time, parent_email, parent_name, consultation_request_id } =
+      appointmentRows[0];
 
     // Get dojo name and web page URL
     const [dojoRows]: any = await connection.execute(
       "SELECT dojo_name, dojo_tag FROM users WHERE dojo_tag = ? LIMIT 1",
-      [dojo_tag]
+      [dojo_tag],
     );
     const dojoName = dojoRows.length > 0 ? dojoRows[0].dojo_name : "Trial Dojo";
     const dojoWebPageUrl =
-      dojoRows.length > 0
-        ? `https://dojoconnect.app/dojo/${dojoRows[0].dojo_tag}`
-        : null;
+      dojoRows.length > 0 ? `https://dojoconnect.app/dojo/${dojoRows[0].dojo_tag}` : null;
 
     // Convert time to 12-hour format for display in email
     const displayTime = convertTo12Hour(start_time);
 
     // Delete the appointment
-    await connection.execute(
-      `DELETE FROM scheduled_appointments WHERE id = ?`,
-      [appointment_id]
-    );
+    await connection.execute(`DELETE FROM scheduled_appointments WHERE id = ?`, [appointment_id]);
 
     // Update consultation request status to 'pending'
-    await connection.execute(
-      `UPDATE consultation_requests SET status = 'pending' WHERE id = ?`,
-      [consultation_request_id]
-    );
+    await connection.execute(`UPDATE consultation_requests SET status = 'pending' WHERE id = ?`, [
+      consultation_request_id,
+    ]);
 
     // Send cancellation email
     await MailerService.sendAppointmentCancellation(
@@ -1601,7 +1464,7 @@ app.post("/admin/cancel-appointment", async (req, res) => {
       scheduled_date,
       displayTime,
       dojoName,
-      dojoWebPageUrl
+      dojoWebPageUrl,
     );
 
     res.json({
@@ -1610,9 +1473,7 @@ app.post("/admin/cancel-appointment", async (req, res) => {
     });
   } catch (err: any) {
     console.error("Error canceling appointment:", err);
-    res
-      .status(500)
-      .json({ error: "Internal Server Error", detail: err.message });
+    res.status(500).json({ error: "Internal Server Error", detail: err.message });
   }
 });
 
@@ -1629,13 +1490,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
       new_meeting_link,
     } = req.body || {};
 
-    if (
-      !appointment_id ||
-      !dojo_tag ||
-      !new_scheduled_date ||
-      !new_start_time ||
-      !new_end_time
-    ) {
+    if (!appointment_id || !dojo_tag || !new_scheduled_date || !new_start_time || !new_end_time) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
@@ -1649,28 +1504,26 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
       `SELECT sa.parent_email, sa.parent_name, sa.consultation_request_id
        FROM scheduled_appointments sa
        WHERE sa.id = ?`,
-      [appointment_id]
+      [appointment_id],
     );
 
     if (appointmentRows.length === 0) {
       return res.status(404).json({ error: "Appointment not found" });
     }
 
-    const { parent_email, parent_name, consultation_request_id } =
-      appointmentRows[0];
+    const { parent_email, parent_name, consultation_request_id } = appointmentRows[0];
 
     // Get appointment type from consultation request
     const [requestRows]: any = await connection.execute(
       `SELECT appointment_type FROM consultation_requests WHERE id = ?`,
-      [consultation_request_id]
+      [consultation_request_id],
     );
-    const appointmentType =
-      requestRows.length > 0 ? requestRows[0].appointment_type : "Online";
+    const appointmentType = requestRows.length > 0 ? requestRows[0].appointment_type : "Online";
 
     // Get dojo name
     const [dojoRows]: any = await connection.execute(
       "SELECT dojo_name FROM users WHERE dojo_tag = ? LIMIT 1",
-      [dojo_tag]
+      [dojo_tag],
     );
     const dojoName = dojoRows.length > 0 ? dojoRows[0].dojo_name : "Trial Dojo";
 
@@ -1686,7 +1539,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
         new_address_text || null,
         new_meeting_link || null,
         appointment_id,
-      ]
+      ],
     );
 
     // Send appropriate reschedule email based on type
@@ -1700,7 +1553,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
         new_scheduled_date,
         displayTime,
         dojoName,
-        new_address_text
+        new_address_text,
       );
     } else if (new_meeting_link) {
       await MailerService.sendOnlineAppointmentReschedule(
@@ -1709,7 +1562,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
         new_scheduled_date,
         displayTime,
         dojoName,
-        new_meeting_link
+        new_meeting_link,
       );
     }
 
@@ -1723,9 +1576,7 @@ app.post("/admin/reschedule-appointment", async (req, res) => {
     });
   } catch (err: any) {
     console.error("Error rescheduling appointment:", err);
-    res
-      .status(500)
-      .json({ error: "Internal Server Error", detail: err.message });
+    res.status(500).json({ error: "Internal Server Error", detail: err.message });
   }
 });
 
@@ -1748,7 +1599,7 @@ app.post("/users", async (req, res) => {
       // check if dojo already exists
       const [dojoRows]: any = await connection.execute(
         "SELECT id, name, slug FROM dojos WHERE name = ? LIMIT 1",
-        [dojo_name]
+        [dojo_name],
       );
 
       if (dojoRows.length > 0) {
@@ -1760,7 +1611,7 @@ app.post("/users", async (req, res) => {
         const slug = await generateUniqueSlug(dojo_name);
         const [dojoResult]: any = await connection.execute(
           "INSERT INTO dojos (name, slug) VALUES (?, ?)",
-          [dojo_name, slug]
+          [dojo_name, slug],
         );
         dojoId = dojoResult.insertId;
         finalDojoName = dojo_name;
@@ -1783,7 +1634,7 @@ app.post("/users", async (req, res) => {
         "", // stripe_account_id placeholder
         tagline || null, // tagline first
         description || null, // description second
-      ]
+      ],
     );
 
     res.status(201).json({
@@ -1799,9 +1650,7 @@ app.post("/users", async (req, res) => {
     });
   } catch (err: any) {
     console.error("Error creating user:", err.message);
-    res
-      .status(500)
-      .json({ error: "Internal Server Error", detail: err.message });
+    res.status(500).json({ error: "Internal Server Error", detail: err.message });
   }
 });
 
@@ -1810,38 +1659,21 @@ app.post("/users", async (req, res) => {
 // Create User
 app.post("/admin/users/create", async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      role,
-      password,
-      referred_by,
-      save_as_draft = false,
-    } = req.body;
+    const { name, email, role, password, referred_by, save_as_draft = false } = req.body;
 
     if (!name || !email || !role) {
       return res
         .status(400)
-        .json(
-          formatResponse(
-            false,
-            null,
-            null,
-            "Name, email, and role are required"
-          )
-        );
+        .json(formatResponse(false, null, null, "Name, email, and role are required"));
     }
 
     const dbConnection = await dbService.getMobileApiDb();
 
-    const [existing]: any[] = await dbConnection.query(
-      "SELECT id FROM users WHERE email = ?",
-      [email]
-    );
+    const [existing]: any[] = await dbConnection.query("SELECT id FROM users WHERE email = ?", [
+      email,
+    ]);
     if (existing.length > 0) {
-      return res
-        .status(400)
-        .json(formatResponse(false, null, null, "User already exists"));
+      return res.status(400).json(formatResponse(false, null, null, "User already exists"));
     }
 
     const bcrypt = require("bcrypt");
@@ -1858,7 +1690,7 @@ app.post("/admin/users/create", async (req, res) => {
         hashedPassword,
         referred_by || null,
         "DOJ" + Math.floor(Math.random() * 10000),
-      ]
+      ],
     );
 
     res.json(
@@ -1871,8 +1703,8 @@ app.post("/admin/users/create", async (req, res) => {
           plain_password: plainPassword,
           saved_as_draft: save_as_draft,
         },
-        "User created successfully"
-      )
+        "User created successfully",
+      ),
     );
   } catch (error: any) {
     console.error("Create user error:", error);
@@ -1911,7 +1743,7 @@ app.post("/metrics/revenue", async (req, res) => {
       FROM transactions t
       WHERE 1=1 ${dateFilter} ${classFilter}
     `,
-      params
+      params,
     );
 
     const [byClass] = await dbConnection.query(
@@ -1923,7 +1755,7 @@ app.post("/metrics/revenue", async (req, res) => {
       GROUP BY c.id
       ORDER BY revenue DESC
     `,
-      params
+      params,
     );
 
     const [timeSeries] = await dbConnection.query(
@@ -1934,7 +1766,7 @@ app.post("/metrics/revenue", async (req, res) => {
       GROUP BY DATE(date)
       ORDER BY date ASC
     `,
-      params
+      params,
     );
 
     res.json(
@@ -1945,13 +1777,10 @@ app.post("/metrics/revenue", async (req, res) => {
           by_class: byClass,
           time_series: timeSeries,
           period: period,
-          date_range:
-            period !== "all"
-              ? getDateRange(period, start_date, end_date)
-              : null,
+          date_range: period !== "all" ? getDateRange(period, start_date, end_date) : null,
         },
-        "Revenue metrics retrieved successfully"
-      )
+        "Revenue metrics retrieved successfully",
+      ),
     );
   } catch (error: any) {
     console.error("Revenue metrics error:", error);
@@ -1980,7 +1809,7 @@ app.post("/metrics/enrollment", async (req, res) => {
       WHERE 1=1 ${dateFilter}
       GROUP BY role
     `,
-      params
+      params,
     );
 
     const [activeUsers] = await dbConnection.query(`
@@ -1995,7 +1824,7 @@ app.post("/metrics/enrollment", async (req, res) => {
       FROM enrollments
       WHERE 1=1 ${dateFilter}
     `,
-      params
+      params,
     );
 
     const [enrollmentsByClass] = await dbConnection.query(
@@ -2007,7 +1836,7 @@ app.post("/metrics/enrollment", async (req, res) => {
       GROUP BY c.class_uid
       ORDER BY enrollment_count DESC
     `,
-      params
+      params,
     );
 
     const [timeSeries] = await dbConnection.query(
@@ -2018,7 +1847,7 @@ app.post("/metrics/enrollment", async (req, res) => {
       GROUP BY DATE(created_at)
       ORDER BY date ASC
     `,
-      params
+      params,
     );
 
     res.json(
@@ -2032,8 +1861,8 @@ app.post("/metrics/enrollment", async (req, res) => {
           time_series: timeSeries,
           period: period,
         },
-        "Enrollment metrics retrieved successfully"
-      )
+        "Enrollment metrics retrieved successfully",
+      ),
     );
   } catch (error: any) {
     console.error("Enrollment metrics error:", error);
@@ -2071,7 +1900,7 @@ app.post("/metrics/attendance", async (req, res) => {
       FROM attendance_records
       WHERE 1=1 ${dateFilter} ${classFilter}
     `,
-      params
+      params,
     );
 
     const [byClass] = await dbConnection.query(
@@ -2088,7 +1917,7 @@ app.post("/metrics/attendance", async (req, res) => {
       GROUP BY a.class_id
       ORDER BY attendance_rate DESC
     `,
-      params
+      params,
     );
 
     const [attendanceSeries] = await dbConnection.query(
@@ -2102,7 +1931,7 @@ app.post("/metrics/attendance", async (req, res) => {
       GROUP BY DATE(attendance_date)
       ORDER BY date ASC
     `,
-      params
+      params,
     );
 
     res.json(
@@ -2114,8 +1943,8 @@ app.post("/metrics/attendance", async (req, res) => {
           time_series: attendanceSeries,
           period: period,
         },
-        "Attendance metrics retrieved successfully"
-      )
+        "Attendance metrics retrieved successfully",
+      ),
     );
   } catch (error: any) {
     console.error("Attendance metrics error:", error);
@@ -2170,8 +1999,8 @@ app.post("/metrics/subscriptions", async (req, res) => {
           children_subscriptions: childrenSubs,
           total_revenue: revenue[0].total_subscription_revenue || 0,
         },
-        "Subscription metrics retrieved successfully"
-      )
+        "Subscription metrics retrieved successfully",
+      ),
     );
   } catch (error: any) {
     console.error("Subscription metrics error:", error);
@@ -2224,7 +2053,7 @@ app.post("/metrics/overview", async (req, res) => {
       FROM enrollments
       WHERE 1=1 ${dateFilter}
     `,
-      params
+      params,
     );
 
     const [activeSubs] = await dbConnection.query(`
@@ -2233,12 +2062,8 @@ app.post("/metrics/overview", async (req, res) => {
       WHERE subscription_status IN ('active', 'trialing')
     `);
 
-    const [feedbackCount] = await dbConnection.query(
-      "SELECT COUNT(*) as count FROM feedback"
-    );
-    const [waitlistCount] = await dbConnection.query(
-      "SELECT COUNT(*) as count FROM waitlist"
-    );
+    const [feedbackCount] = await dbConnection.query("SELECT COUNT(*) as count FROM feedback");
+    const [waitlistCount] = await dbConnection.query("SELECT COUNT(*) as count FROM waitlist");
 
     res.json(
       formatResponse(
@@ -2253,8 +2078,8 @@ app.post("/metrics/overview", async (req, res) => {
           waitlist_count: waitlistCount[0].count,
           period: period,
         },
-        "Overview metrics retrieved successfully"
-      )
+        "Overview metrics retrieved successfully",
+      ),
     );
   } catch (error: any) {
     console.error("Overview metrics error:", error);
@@ -2271,9 +2096,7 @@ app.put("/admin/users/:email", async (req, res) => {
     delete updates.email;
     delete updates.id;
     if (Object.keys(updates).length === 0) {
-      return res
-        .status(400)
-        .json(formatResponse(false, null, null, "No valid fields to update"));
+      return res.status(400).json(formatResponse(false, null, null, "No valid fields to update"));
     }
     const fields = Object.keys(updates)
       .map((key) => `${key} = ?`)
@@ -2282,10 +2105,7 @@ app.put("/admin/users/:email", async (req, res) => {
 
     const dbConnection = await dbService.getMobileApiDb();
 
-    await dbConnection.query(
-      `UPDATE users SET ${fields} WHERE email = ?`,
-      values
-    );
+    await dbConnection.query(`UPDATE users SET ${fields} WHERE email = ?`, values);
     res.json(formatResponse(true, null, "User updated successfully"));
   } catch (error: any) {
     console.error("Update user error:", error);
@@ -2301,28 +2121,21 @@ app.patch("/admin/users/:email/status", async (req, res) => {
     if (!status || !["active", "inactive"].includes(status)) {
       return res
         .status(400)
-        .json(
-          formatResponse(
-            false,
-            null,
-            null,
-            "Valid status required (active/inactive)"
-          )
-        );
+        .json(formatResponse(false, null, null, "Valid status required (active/inactive)"));
     }
 
     const dbConnection = await dbService.getMobileApiDb();
 
-    await dbConnection.query(
-      "UPDATE users SET subscription_status = ? WHERE email = ?",
-      [status, email]
-    );
+    await dbConnection.query("UPDATE users SET subscription_status = ? WHERE email = ?", [
+      status,
+      email,
+    ]);
     res.json(
       formatResponse(
         true,
         null,
-        `User ${status === "active" ? "activated" : "deactivated"} successfully`
-      )
+        `User ${status === "active" ? "activated" : "deactivated"} successfully`,
+      ),
     );
   } catch (error: any) {
     console.error("Update user status error:", error);
@@ -2338,22 +2151,15 @@ app.delete("/admin/users/:email", async (req, res) => {
     if (!confirm) {
       return res
         .status(400)
-        .json(
-          formatResponse(
-            false,
-            null,
-            null,
-            "Confirmation required for deletion"
-          )
-        );
+        .json(formatResponse(false, null, null, "Confirmation required for deletion"));
     }
 
     const dbConnection = await dbService.getMobileApiDb();
 
-    await dbConnection.query(
-      "UPDATE users SET subscription_status = ? WHERE email = ?",
-      ["deleted", email]
-    );
+    await dbConnection.query("UPDATE users SET subscription_status = ? WHERE email = ?", [
+      "deleted",
+      email,
+    ]);
     res.json(formatResponse(true, null, "User soft deleted successfully"));
   } catch (error: any) {
     console.error("Soft delete user error:", error);
@@ -2369,14 +2175,7 @@ app.delete("/admin/users/:email/hard", async (req, res) => {
     if (!confirm || !admin_password) {
       return res
         .status(400)
-        .json(
-          formatResponse(
-            false,
-            null,
-            null,
-            "Confirmation and admin password required"
-          )
-        );
+        .json(formatResponse(false, null, null, "Confirmation and admin password required"));
     }
     const dbConnection = await dbService.getMobileApiDb();
 
@@ -2411,12 +2210,7 @@ app.post("/admin/classes/create", async (req, res) => {
       return res
         .status(400)
         .json(
-          formatResponse(
-            false,
-            null,
-            null,
-            "Owner email, class name, and capacity are required"
-          )
+          formatResponse(false, null, null, "Owner email, class name, and capacity are required"),
         );
     }
     const class_uid = Math.random().toString(36).substr(2, 10);
@@ -2440,7 +2234,7 @@ app.post("/admin/classes/create", async (req, res) => {
         city,
         subscription,
         price || 0,
-      ]
+      ],
     );
     const class_id = result.insertId;
     if (schedule && Array.isArray(schedule) && schedule.length > 0) {
@@ -2455,15 +2249,11 @@ app.post("/admin/classes/create", async (req, res) => {
 
       await dbConnection.query(
         "INSERT INTO class_schedule (class_id, day, start_time, end_time, schedule_date) VALUES ?",
-        [scheduleValues]
+        [scheduleValues],
       );
     }
     res.json(
-      formatResponse(
-        true,
-        { class_id, class_uid, class_name },
-        "Class created successfully"
-      )
+      formatResponse(true, { class_id, class_uid, class_name }, "Class created successfully"),
     );
   } catch (error: any) {
     console.error("Create class error:", error);
@@ -2480,9 +2270,7 @@ app.put("/admin/classes/:class_uid", async (req, res) => {
     delete updates.id;
     delete updates.schedule;
     if (Object.keys(updates).length === 0) {
-      return res
-        .status(400)
-        .json(formatResponse(false, null, null, "No valid fields to update"));
+      return res.status(400).json(formatResponse(false, null, null, "No valid fields to update"));
     }
     const fields = Object.keys(updates)
       .map((key) => `${key} = ?`)
@@ -2490,10 +2278,7 @@ app.put("/admin/classes/:class_uid", async (req, res) => {
     const values = [...Object.values(updates), class_uid];
     const dbConnection = await dbService.getMobileApiDb();
 
-    await dbConnection.query(
-      `UPDATE classes SET ${fields} WHERE class_uid = ?`,
-      values
-    );
+    await dbConnection.query(`UPDATE classes SET ${fields} WHERE class_uid = ?`, values);
     res.json(formatResponse(true, null, "Class updated successfully"));
   } catch (error: any) {
     console.error("Update class error:", error);
@@ -2509,21 +2294,14 @@ app.delete("/admin/classes/:class_uid", async (req, res) => {
     if (!confirm) {
       return res
         .status(400)
-        .json(
-          formatResponse(
-            false,
-            null,
-            null,
-            "Confirmation required for deletion"
-          )
-        );
+        .json(formatResponse(false, null, null, "Confirmation required for deletion"));
     }
     const dbConnection = await dbService.getMobileApiDb();
 
-    await dbConnection.query(
-      "UPDATE classes SET status = ? WHERE class_uid = ?",
-      ["deleted", class_uid]
-    );
+    await dbConnection.query("UPDATE classes SET status = ? WHERE class_uid = ?", [
+      "deleted",
+      class_uid,
+    ]);
     res.json(formatResponse(true, null, "Class soft deleted successfully"));
   } catch (error: any) {
     console.error("Soft delete class error:", error);
@@ -2535,34 +2313,24 @@ app.delete("/admin/classes/:class_uid", async (req, res) => {
 app.post("/admin/classes/:class_uid/enroll", async (req, res) => {
   try {
     const { class_uid } = req.params;
-    const { parent_email, child_name, child_email, experience_level } =
-      req.body;
+    const { parent_email, child_name, child_email, experience_level } = req.body;
     if (!parent_email || !child_email) {
       return res
         .status(400)
-        .json(
-          formatResponse(
-            false,
-            null,
-            null,
-            "Parent email and child email are required"
-          )
-        );
+        .json(formatResponse(false, null, null, "Parent email and child email are required"));
     }
     const enrollment_id =
-      "enr_" +
-      Date.now().toString(16) +
-      Math.random().toString(16).substr(2, 5);
+      "enr_" + Date.now().toString(16) + Math.random().toString(16).substr(2, 5);
     const dbConnection = await dbService.getMobileApiDb();
 
     await dbConnection.query(
       "INSERT INTO enrollments (enrollment_id, class_id, parent_email, created_at) VALUES (?, ?, ?, NOW())",
-      [enrollment_id, class_uid, parent_email]
+      [enrollment_id, class_uid, parent_email],
     );
     if (child_name) {
       await dbConnection.query(
         "INSERT INTO enrolled_children (enrollment_id, child_name, child_email, experience_level) VALUES (?, ?, ?, ?)",
-        [enrollment_id, child_name, child_email, experience_level || "beginner"]
+        [enrollment_id, child_name, child_email, experience_level || "beginner"],
       );
     }
     await dbConnection.query(
@@ -2572,11 +2340,9 @@ app.post("/admin/classes/:class_uid/enroll", async (req, res) => {
         enrollment_id = CONCAT(enrollment_id, ',', VALUES(enrollment_id)),
         class_id = CONCAT(class_id, ',', VALUES(class_id))
     `,
-      [parent_email, enrollment_id, class_uid]
+      [parent_email, enrollment_id, class_uid],
     );
-    res.json(
-      formatResponse(true, { enrollment_id }, "Student enrolled successfully")
-    );
+    res.json(formatResponse(true, { enrollment_id }, "Student enrolled successfully"));
   } catch (error: any) {
     console.error("Enroll student error:", error);
     res.status(500).json(formatResponse(false, null, null, error.message));
@@ -2584,28 +2350,25 @@ app.post("/admin/classes/:class_uid/enroll", async (req, res) => {
 });
 
 // Unenroll Student from Class
-app.delete(
-  "/admin/classes/:class_uid/unenroll/:student_email",
-  async (req, res) => {
-    try {
-      const { class_uid, student_email } = req.params;
-      const dbConnection = await dbService.getMobileApiDb();
+app.delete("/admin/classes/:class_uid/unenroll/:student_email", async (req, res) => {
+  try {
+    const { class_uid, student_email } = req.params;
+    const dbConnection = await dbService.getMobileApiDb();
 
-      await dbConnection.query(
-        "DELETE FROM students WHERE email = ? AND class_id = ?",
-        [student_email, class_uid]
-      );
-      await dbConnection.query(
-        "DELETE FROM enrollments WHERE class_id = ? AND parent_email IN (SELECT added_by FROM students WHERE email = ?)",
-        [class_uid, student_email]
-      );
-      res.json(formatResponse(true, null, "Student unenrolled successfully"));
-    } catch (error: any) {
-      console.error("Unenroll student error:", error);
-      res.status(500).json(formatResponse(false, null, null, error.message));
-    }
+    await dbConnection.query("DELETE FROM students WHERE email = ? AND class_id = ?", [
+      student_email,
+      class_uid,
+    ]);
+    await dbConnection.query(
+      "DELETE FROM enrollments WHERE class_id = ? AND parent_email IN (SELECT added_by FROM students WHERE email = ?)",
+      [class_uid, student_email],
+    );
+    res.json(formatResponse(true, null, "Student unenrolled successfully"));
+  } catch (error: any) {
+    console.error("Unenroll student error:", error);
+    res.status(500).json(formatResponse(false, null, null, error.message));
   }
-);
+});
 
 // Export Class Attendance
 app.post("/admin/classes/:class_uid/attendance/export", async (req, res) => {
@@ -2621,7 +2384,7 @@ app.post("/admin/classes/:class_uid/attendance/export", async (req, res) => {
       WHERE a.class_id = ?
       ORDER BY a.attendance_date DESC
     `,
-      [class_uid]
+      [class_uid],
     );
     const timestamp = Date.now();
     const filename = `class_${class_uid}_attendance_${timestamp}`;
@@ -2640,39 +2403,27 @@ app.post("/admin/classes/:class_uid/attendance/export", async (req, res) => {
         break;
       }
       case "xlsx":
-        filepath = await exportToExcel(
-          attendance,
-          `${filename}.xlsx`,
-          "Attendance"
-        );
-        contentType =
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+        filepath = await exportToExcel(attendance, `${filename}.xlsx`, "Attendance");
+        contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
         break;
       case "pdf":
         filepath = await exportToPDF(
           attendance,
           `${filename}.pdf`,
-          `Class Attendance Report - ${class_uid}`
+          `Class Attendance Report - ${class_uid}`,
         );
         contentType = "application/pdf";
         break;
       default:
-        return res
-          .status(400)
-          .json(formatResponse(false, null, null, "Invalid format"));
+        return res.status(400).json(formatResponse(false, null, null, "Invalid format"));
     }
     res.setHeader("Content-Type", contentType);
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${path.basename(filepath)}"`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(filepath)}"`);
     res.sendFile(filepath, (err) => {
       if (err) {
         console.error("Download error:", err);
         if (!res.headersSent) {
-          res
-            .status(500)
-            .json(formatResponse(false, null, null, "Error downloading file"));
+          res.status(500).json(formatResponse(false, null, null, "Error downloading file"));
         }
       } else {
         fs.unlink(filepath, (unlinkErr) => {
@@ -2702,9 +2453,7 @@ app.post("/test-email", async (req, res) => {
     }
 
     const mailOptions = {
-      from: `"Dojo Connect" <${
-        process.env.ZOHO_EMAIL || "hello@dojoconnect.app"
-      }>`,
+      from: `"Dojo Connect" <${process.env.ZOHO_EMAIL || "hello@dojoconnect.app"}>`,
       to: email,
       subject: "Test Email from Trial Dojo API",
       html: `
@@ -2762,7 +2511,7 @@ app.get("/notifications/:user_email", async (req, res) => {
     const [notifications]: any[] = await dbConnection.query(query, params);
     const [unreadCount] = await dbConnection.query(
       "SELECT COUNT(*) as count FROM notifications WHERE user_email = ? AND is_read = 0",
-      [user_email]
+      [user_email],
     );
     res.json(
       formatResponse(
@@ -2772,8 +2521,8 @@ app.get("/notifications/:user_email", async (req, res) => {
           unread_count: unreadCount[0].count,
           total: notifications.length,
         },
-        "Notifications retrieved successfully"
-      )
+        "Notifications retrieved successfully",
+      ),
     );
   } catch (error: any) {
     console.error("Get notifications error:", error);
@@ -2784,38 +2533,25 @@ app.get("/notifications/:user_email", async (req, res) => {
 // Create Notification
 app.post("/notifications", async (req, res) => {
   try {
-    const {
-      user_email,
-      title,
-      message,
-      type = "message",
-      event_id = null,
-    } = req.body;
+    const { user_email, title, message, type = "message", event_id = null } = req.body;
     if (!user_email || !title || !message) {
       return res
         .status(400)
-        .json(
-          formatResponse(
-            false,
-            null,
-            null,
-            "User email, title, and message are required"
-          )
-        );
+        .json(formatResponse(false, null, null, "User email, title, and message are required"));
     }
 
     const dbConnection = await dbService.getMobileApiDb();
     const [result]: any[] = await dbConnection.query(
       `INSERT INTO notifications (user_email, title, message, type, event_id, is_read, created_at, status)
        VALUES (?, ?, ?, ?, ?, 0, NOW(), 'pending')`,
-      [user_email, title, message, type, event_id]
+      [user_email, title, message, type, event_id],
     );
     res.json(
       formatResponse(
         true,
         { notification_id: result.insertId, user_email, title },
-        "Notification created successfully"
-      )
+        "Notification created successfully",
+      ),
     );
   } catch (error: any) {
     console.error("Create notification error:", error);
@@ -2829,10 +2565,7 @@ app.patch("/notifications/:id/read", async (req, res) => {
     const { id } = req.params;
     const dbConnection = await dbService.getMobileApiDb();
 
-    await dbConnection.query(
-      "UPDATE notifications SET is_read = 1 WHERE id = ?",
-      [id]
-    );
+    await dbConnection.query("UPDATE notifications SET is_read = 1 WHERE id = ?", [id]);
     res.json(formatResponse(true, null, "Notification marked as read"));
   } catch (error: any) {
     console.error("Mark notification read error:", error);
@@ -2847,14 +2580,14 @@ app.patch("/notifications/read_all/:user_email", async (req, res) => {
     const dbConnection = await dbService.getMobileApiDb();
     const [result]: any[] = await dbConnection.query(
       "UPDATE notifications SET is_read = 1 WHERE user_email = ? AND is_read = 0",
-      [user_email]
+      [user_email],
     );
     res.json(
       formatResponse(
         true,
         { updated_count: result.affectedRows },
-        "All notifications marked as read"
-      )
+        "All notifications marked as read",
+      ),
     );
   } catch (error: any) {
     console.error("Mark all notifications read error:", error);
@@ -2890,10 +2623,7 @@ app.get("/backoffice", (req, res) => {
         "POST /export/attendance",
         "POST /export/enrollments",
       ],
-      profiles: [
-        "GET /class_profile/:class_uid",
-        "GET /user_profile_detailed/:email",
-      ],
+      profiles: ["GET /class_profile/:class_uid", "GET /user_profile_detailed/:email"],
       admin: [
         "POST /admin/users/create",
         "PUT /admin/users/:email",

@@ -7,9 +7,11 @@ A new email notification system for trial class bookings that sends a confirmati
 ## Email Template Details
 
 ### Subject
+
 **"Your Trial Class Booking Has Been Confirmed"**
 
 ### Email Content Includes:
+
 - ✅ Personalized greeting with parent name
 - ✅ Trial class details:
   - Class name
@@ -31,9 +33,11 @@ A new email notification system for trial class bookings that sends a confirmati
 **File:** `app.js`
 
 1. **New Email Function** (lines ~388-437)
+
    ```javascript
-   sendTrialClassBookingConfirmation()
+   sendTrialClassBookingConfirmation();
    ```
+
    - Accepts: email, parent name, class details, date, children, fee, dojo name
    - Formats date in user-friendly format
    - Handles optional fields (instructor, fee)
@@ -99,6 +103,7 @@ The [Dojo Name] Team
 ## Testing
 
 ### Quick Test
+
 ```bash
 curl -X POST http://localhost:5000/trial-class-bookings \
   -H "Content-Type: application/json" \
@@ -117,6 +122,7 @@ curl -X POST http://localhost:5000/trial-class-bookings \
 ```
 
 ### What to Check
+
 1. ✅ API returns 201 status with booking details
 2. ✅ Email arrives in parent's inbox
 3. ✅ Email shows correct class details
@@ -128,12 +134,14 @@ curl -X POST http://localhost:5000/trial-class-bookings \
 ## Features
 
 ### Smart Handling
+
 - **Optional Fields:** Instructor name only shows if provided
 - **Free Classes:** Shows "Free" instead of "$0" when trial_fee is 0
 - **Date Formatting:** Converts `2025-10-25` to "Wednesday, October 25, 2025"
 - **Dojo Branding:** Uses actual dojo name from database
 
 ### User-Friendly
+
 - Clean, professional email design
 - Helpful "What to Bring" checklist
 - Reminder to arrive early
@@ -165,4 +173,3 @@ curl -X POST http://localhost:5000/trial-class-bookings \
 ---
 
 **Status:** ✅ Implemented and Ready to Test
-

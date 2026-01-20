@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import AppConfig from "../config/AppConfig.js";
-import {UsersService} from "../services/users.service.js";
+import { UsersService } from "../services/users.service.js";
 import { NotFoundException } from "../core/errors/index.js";
 import type { TokenPayload } from "../utils/auth.utils.js";
 import { UnauthorizedException } from "../core/errors/index.js";
@@ -28,11 +28,7 @@ declare global {
   }
 }
 
-export const requireAuth = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -42,10 +38,7 @@ export const requireAuth = async (
 
     const token = authHeader.substring(7);
 
-    const decoded = jwt.verify(
-      token,
-      AppConfig.JWT_ACCESS_SECRET
-    ) as TokenPayload;
+    const decoded = jwt.verify(token, AppConfig.JWT_ACCESS_SECRET) as TokenPayload;
 
     // Optionally: check if user still exists and is active
     const user = await UsersService.getOneUserByID({ userId: decoded.userId });

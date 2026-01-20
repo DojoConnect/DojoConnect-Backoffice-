@@ -1,11 +1,4 @@
-import {
-  eq,
-  getTableColumns,
-  inArray,
-  InferInsertModel,
-  InferSelectModel,
-  SQL,
-} from "drizzle-orm";
+import { eq, getTableColumns, inArray, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
 import { dojoInstructors, dojos, users } from "../db/schema.js";
 import { Transaction } from "../db/index.js";
 import { returnFirst } from "../utils/db.utils.js";
@@ -28,9 +21,7 @@ export class UserRepository {
     withPassword?: boolean;
     tx: Transaction;
   }): Promise<IUser | null> => {
-    let user = returnFirst(
-      await tx.select().from(users).where(whereClause).limit(1).execute()
-    );
+    let user = returnFirst(await tx.select().from(users).where(whereClause).limit(1).execute());
 
     if (!user) {
       return null;
@@ -100,33 +91,27 @@ export class UserRepository {
 
   static getUserProfileByInstructorIds = async (
     instructorIds: string[],
-    tx: Transaction
+    tx: Transaction,
   ): Promise<InstructorUserDetails[]> => {
     return await tx
       .select({ ...getTableColumns(users), instructorId: dojoInstructors.id })
       .from(users)
-      .innerJoin(
-        dojoInstructors,
-        eq(dojoInstructors.instructorUserId, users.id)
-      )
+      .innerJoin(dojoInstructors, eq(dojoInstructors.instructorUserId, users.id))
       .where(inArray(dojoInstructors.id, instructorIds));
   };
 
   static getUserProfileForInstructor = async (
     instructorId: string,
-    tx: Transaction
+    tx: Transaction,
   ): Promise<IUser | null> => {
     const user = returnFirst(
       await tx
         .select({ ...getTableColumns(users) })
         .from(users)
-        .innerJoin(
-          dojoInstructors,
-          eq(dojoInstructors.instructorUserId, users.id)
-        )
+        .innerJoin(dojoInstructors, eq(dojoInstructors.instructorUserId, users.id))
         .where(eq(dojoInstructors.id, instructorId))
         .limit(1)
-        .execute()
+        .execute(),
     );
 
     return user;
@@ -134,7 +119,7 @@ export class UserRepository {
 
   static getUserProfileForDojoOwner = async (
     dojoId: string,
-    tx: Transaction
+    tx: Transaction,
   ): Promise<IUser | null> => {
     const user = returnFirst(
       await tx
@@ -143,7 +128,7 @@ export class UserRepository {
         .innerJoin(dojos, eq(dojos.ownerUserId, users.id))
         .where(eq(dojos.id, dojoId))
         .limit(1)
-        .execute()
+        .execute(),
     );
 
     return user;

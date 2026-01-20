@@ -1,7 +1,7 @@
 import { CreateAppointmentDto } from "../dtos/appointments.dtos.js";
 import * as dbService from "./db.service.js";
-import  {MailerService} from "./mailer.service.js";
-import  {DojosService} from "./dojos.service.js";
+import { MailerService } from "./mailer.service.js";
+import { DojosService } from "./dojos.service.js";
 import { NotFoundException } from "../core/errors/index.js";
 
 export interface IAppointment {
@@ -75,7 +75,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
         consent,
         appointment_type,
         status,
-      ]
+      ],
     );
 
     // Send confirmation email to parent
@@ -86,7 +86,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
       reason_for_consultation,
       preferred_time_range,
       children,
-      dojo.name
+      dojo.name,
     );
 
     // Insert notification for dojo owner
@@ -102,7 +102,7 @@ export const createAppointment = async (data: CreateAppointmentDto) => {
         "consultation_request",
         result.insertId.toString(),
         "pending",
-      ]
+      ],
     );
 
     return {
@@ -136,7 +136,7 @@ export const getAllAppointments = async (): Promise<IAppointment[]> => {
               preferred_contact_method, preferred_time_range, number_of_children,
               additional_notes, consent_acknowledged, appointment_type, status, created_at
        FROM consultation_requests
-       ORDER BY created_at DESC`
+       ORDER BY created_at DESC`,
     );
     return rows as IAppointment[];
   } catch (err: any) {
@@ -155,7 +155,7 @@ export const getAppointmentRequestById = async (appointmentReqId: number) => {
               additional_notes, consent_acknowledged, appointment_type, status, created_at
        FROM consultation_requests
        WHERE id = ?`,
-      [appointmentReqId]
+      [appointmentReqId],
     );
 
     if (rows.length === 0) {

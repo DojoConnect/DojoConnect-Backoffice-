@@ -4,10 +4,7 @@ import { requireAuth } from "../middlewares/require-auth.middleware.js";
 import { requireRole } from "../middlewares/authorization/require-role.middleware.js";
 import { Role } from "../constants/enums.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
-import {
-  UpdateClassInstructorSchema,
-  UpdateClassSchema,
-} from "../validations/classes.schemas.js";
+import { UpdateClassInstructorSchema, UpdateClassSchema } from "../validations/classes.schemas.js";
 import { isClassDojoOwnerMiddleware } from "../middlewares/authorization/is-dojo-owner.middleware.js";
 import { EnrollmentController } from "../controllers/enrollment.controller.js";
 import { EnrollStudentSchema } from "../validations/classes.schemas.js";
@@ -16,22 +13,15 @@ import { isClassInstructorOrDojoOwnerMiddleware } from "../middlewares/authoriza
 
 const router = Router({ mergeParams: true });
 
-router.get(
-  "/:classId",
-  requireAuth,
-  ClassesController.getClassById
-);
+router.get("/:classId", requireAuth, ClassesController.getClassById);
 
-router.get(
-  "/:classId/view",
-  ClassesController.getClassById
-);
+router.get("/:classId/view", ClassesController.getClassById);
 
 router.get(
   "/:classId/students",
   requireAuth,
   isClassInstructorOrDojoOwnerMiddleware,
-  ClassesController.handleGetClassStudents
+  ClassesController.handleGetClassStudents,
 );
 
 router.patch(
@@ -40,7 +30,7 @@ router.patch(
   requireRole(Role.DojoAdmin),
   isClassDojoOwnerMiddleware,
   validateReqBody(UpdateClassSchema),
-  ClassesController.updateClass
+  ClassesController.updateClass,
 );
 
 router.patch(
@@ -49,7 +39,7 @@ router.patch(
   requireRole(Role.DojoAdmin),
   isClassDojoOwnerMiddleware,
   validateReqBody(UpdateClassInstructorSchema),
-  ClassesController.updateClassInstructor
+  ClassesController.updateClassInstructor,
 );
 
 router.post(
@@ -58,7 +48,7 @@ router.post(
   requireRole(Role.Parent),
   isParentOfStudentMiddleware,
   validateReqBody(EnrollStudentSchema),
-  EnrollmentController.enrollStudent
+  EnrollmentController.enrollStudent,
 );
 
 export default router;

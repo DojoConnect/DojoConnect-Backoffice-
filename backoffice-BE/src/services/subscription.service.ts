@@ -1,8 +1,6 @@
 import * as dbService from "../db/index.js";
-import  {StripeService} from "./stripe.service.js";
-import { DojosService} from "./dojos.service.js";
-import {UsersService} from "./users.service.js";
-import { ConflictException } from "../core/errors/index.js";
+import { StripeService } from "./stripe.service.js";
+import { DojosService } from "./dojos.service.js";
 import { DojoRepository, IDojo } from "../repositories/dojo.repository.js";
 import { Transaction } from "../db/index.js";
 import {
@@ -13,10 +11,7 @@ import {
 } from "../constants/enums.js";
 import { IUser } from "../repositories/user.repository.js";
 import { SubscriptionRepository } from "../repositories/subscription.repository.js";
-import {
-  BadRequestException,
-  NotFoundException,
-} from "../core/errors/index.js";
+import { BadRequestException, NotFoundException } from "../core/errors/index.js";
 import Stripe from "stripe";
 import { assertDojoOwnership } from "../utils/assertions.utils.js";
 import { ClassSubStripeMetadata } from "../types/subscription.types.js";
@@ -38,9 +33,7 @@ export class SubscriptionService {
         return dojo.stripeCustomerId;
       }
 
-      const customer = await StripeService.createCustomer(
-        user
-      );
+      const customer = await StripeService.createCustomer(user);
 
       await DojosService.updateDojo({
         dojoId: dojo.id,
@@ -53,9 +46,7 @@ export class SubscriptionService {
       return customer.id;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static setupDojoAdminBilling = async ({
@@ -79,10 +70,7 @@ export class SubscriptionService {
       });
 
       // 2. Check for existing incomplete setup
-      let subscription = await SubscriptionRepository.findLatestDojoAdminSub(
-        dojo.id,
-        tx
-      );
+      let subscription = await SubscriptionRepository.findLatestDojoAdminSub(dojo.id, tx);
 
       if (
         subscription &&
@@ -90,7 +78,7 @@ export class SubscriptionService {
         subscription.stripeSetupIntentId
       ) {
         const setupIntent = await StripeService.retrieveSetupIntent(
-          subscription.stripeSetupIntentId
+          subscription.stripeSetupIntentId,
         );
 
         if (setupIntent.status !== StripeSetupIntentStatus.Canceled) {
@@ -101,7 +89,11 @@ export class SubscriptionService {
       }
 
       // 3. Create new SetupIntent
-      const setupIntent = await StripeService.createDojoSubSetupIntent(stripeCustomerId, dojo.id, user.id);
+      const setupIntent = await StripeService.createDojoSubSetupIntent(
+        stripeCustomerId,
+        dojo.id,
+        user.id,
+      );
 
       await SubscriptionRepository.createDojoAdminSub(
         {
@@ -109,7 +101,7 @@ export class SubscriptionService {
           stripeSetupIntentId: setupIntent.id,
           billingStatus: BillingStatus.SetupIntentCreated,
         },
-        tx
+        tx,
       );
 
       await DojosService.updateDojo({
@@ -125,9 +117,7 @@ export class SubscriptionService {
       };
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static confirmDojoAdminBilling = async ({
@@ -147,10 +137,7 @@ export class SubscriptionService {
         throw new NotFoundException("No dojo found for user");
       }
 
-      let sub = await SubscriptionRepository.findLatestDojoAdminSub(
-        dojo.id,
-        tx
-      );
+      let sub = await SubscriptionRepository.findLatestDojoAdminSub(dojo.id, tx);
 
       if (!dojo.stripeCustomerId || !sub || !sub.stripeSetupIntentId) {
         throw new BadRequestException("No setup in progress");
@@ -161,9 +148,7 @@ export class SubscriptionService {
         return;
       }
 
-      const setupIntent = await StripeService.retrieveSetupIntent(
-        sub.stripeSetupIntentId
-      );
+      const setupIntent = await StripeService.retrieveSetupIntent(sub.stripeSetupIntentId);
 
       if (setupIntent.status !== StripeSetupIntentStatus.Succeeded) {
         throw new BadRequestException("Setup not complete");
@@ -207,14 +192,10 @@ export class SubscriptionService {
       ]);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static mapStripeSubStatus(
-    stripeStatus: Stripe.Subscription.Status
-  ): BillingStatus {
+  static mapStripeSubStatus(stripeStatus: Stripe.Subscription.Status): BillingStatus {
     switch (stripeStatus) {
       case "trialing":
         return BillingStatus.Trialing;
@@ -260,7 +241,11 @@ export class SubscriptionService {
     }
   }
 
-  static handleClassSubPaid = async (session: Stripe.Checkout.Session, metadata: ClassSubStripeMetadata, tx: Transaction) => {
+  static handleClassSubPaid = async (
+    session: Stripe.Checkout.Session,
+    metadata: ClassSubStripeMetadata,
+    tx: Transaction,
+  ) => {
     if (!session.subscription) {
       throw new BadRequestException("Subscription not found");
     }
@@ -278,18 +263,20 @@ export class SubscriptionService {
       {
         classId: metadata.classId,
         studentId: metadata.studentId,
-        stripeCustomerId: typeof session.customer === "string" ? session.customer : session.customer.id,
-        stripeSubId: typeof session.subscription === "string" ? session.subscription : session.subscription.id,
+        stripeCustomerId:
+          typeof session.customer === "string" ? session.customer : session.customer.id,
+        stripeSubId:
+          typeof session.subscription === "string" ? session.subscription : session.subscription.id,
         status: BillingStatus.Trialing,
       },
-      tx
+      tx,
     );
 
     // Create Enrollment if not exists
     const existingEnrollment = await EnrollmentRepository.findOneByClassIdAndStudentId(
       metadata.classId,
       metadata.studentId,
-      tx
+      tx,
     );
 
     if (!existingEnrollment) {
@@ -297,24 +284,22 @@ export class SubscriptionService {
         {
           classId: metadata.classId,
           studentId: metadata.studentId,
-          active: true
+          active: true,
         },
-        tx
+        tx,
       );
 
       return;
     }
 
     if (!existingEnrollment.active) {
-      await EnrollmentRepository.update(
-        {
-          classEnrollmentId: existingEnrollment.id,
-          update: {active: true},
-          tx
-        },
-      );
+      await EnrollmentRepository.update({
+        classEnrollmentId: existingEnrollment.id,
+        update: { active: true },
+        tx,
+      });
     }
-  }
+  };
 
   static syncClassSub = async (subscription: Stripe.Subscription, tx: Transaction) => {
     const status = this.mapStripeSubStatus(subscription.status);
@@ -326,113 +311,111 @@ export class SubscriptionService {
       endedAt = new Date(subscription.canceled_at * 1000);
     }
 
-    await SubscriptionRepository.updateClassSubByStripeSubId(
-      {
-        stripeSubId: subscription.id,
-        update: {
-          status,
-          endedAt:endedAt
-        },
-        tx
+    await SubscriptionRepository.updateClassSubByStripeSubId({
+      stripeSubId: subscription.id,
+      update: {
+        status,
+        endedAt: endedAt,
       },
-    );
-}
+      tx,
+    });
+  };
 
-static markClassSubPastDue = async (subId: string, tx: Transaction) => {
-  await SubscriptionRepository.updateClassSubByStripeSubId(
-    {
+  static markClassSubPastDue = async (subId: string, tx: Transaction) => {
+    await SubscriptionRepository.updateClassSubByStripeSubId({
       stripeSubId: subId,
       update: {
         status: BillingStatus.PastDue,
       },
-      tx
-    },
-  );
-}
+      tx,
+    });
+  };
 
-static markClassSubActive = async (subId: string, tx: Transaction) => {
-  await SubscriptionRepository.updateClassSubByStripeSubId(
-    {
+  static markClassSubActive = async (subId: string, tx: Transaction) => {
+    await SubscriptionRepository.updateClassSubByStripeSubId({
       stripeSubId: subId,
       update: {
         status: BillingStatus.Active,
       },
-      tx
-    },
-  );
-}
+      tx,
+    });
+  };
 
-static markClassSubCancelled = async (subscription: Stripe.Subscription, tx: Transaction) => {
-  const status = this.mapStripeSubStatus(subscription.status);
+  static markClassSubCancelled = async (subscription: Stripe.Subscription, tx: Transaction) => {
+    const status = this.mapStripeSubStatus(subscription.status);
 
-  if (status !== BillingStatus.Cancelled) {
-    return;
-  }
+    if (status !== BillingStatus.Cancelled) {
+      return;
+    }
 
-  const classSub = await SubscriptionRepository.findOneClassSubByStripeSubId(subscription.id, tx);
+    const classSub = await SubscriptionRepository.findOneClassSubByStripeSubId(subscription.id, tx);
 
-  if (!classSub) {
-    throw new BadRequestException("Class subscription not found");
-  }
+    if (!classSub) {
+      throw new BadRequestException("Class subscription not found");
+    }
 
-  await Promise.all([SubscriptionRepository.updateClassSubByStripeSubId(
-    {
-      stripeSubId: subscription.id,
-      update: {
-        status,
-      },
-      tx
-    },
-    ), EnrollmentRepository.updateByClassIdAndStudentId({
-      classId: classSub.classId,
-      studentId: classSub.studentId,
-      update: {
-      active: false,
-      revokedAt: new Date(),
-    },
-    tx
-  })])
-}
-    
-  static createClassSubscriptionsFromPaymentIntent = async (paymentIntent: Stripe.PaymentIntent, txInstance?: Transaction) => {
+    await Promise.all([
+      SubscriptionRepository.updateClassSubByStripeSubId({
+        stripeSubId: subscription.id,
+        update: {
+          status,
+        },
+        tx,
+      }),
+      EnrollmentRepository.updateByClassIdAndStudentId({
+        classId: classSub.classId,
+        studentId: classSub.studentId,
+        update: {
+          active: false,
+          revokedAt: new Date(),
+        },
+        tx,
+      }),
+    ]);
+  };
+
+  static createClassSubscriptionsFromPaymentIntent = async (
+    paymentIntent: Stripe.PaymentIntent,
+    txInstance?: Transaction,
+  ) => {
     const execute = async (tx: Transaction) => {
       const { customer, metadata } = paymentIntent;
       if (!customer) {
         throw new BadRequestException("Customer not found in payment intent");
       }
       if (!metadata.children_data || !metadata.price_id || !metadata.class_id) {
-          throw new BadRequestException("Missing metadata in payment intent");
+        throw new BadRequestException("Missing metadata in payment intent");
       }
-      
-      const childrenData = JSON.parse(metadata.children_data) as { id: string; }[];
+
+      const childrenData = JSON.parse(metadata.children_data) as { id: string }[];
       const priceId = metadata.price_id;
       const classId = metadata.class_id;
-      const customerId = typeof customer === 'string' ? customer : customer.id;
+      const customerId = typeof customer === "string" ? customer : customer.id;
 
       for (const child of childrenData) {
         // 1. Create Stripe Subscription
         const subscription = await StripeService.createClassSubscription({
-           customerId,
-           priceId,
+          customerId,
+          priceId,
         });
 
         // 2. Create Class Subscription Record
         await SubscriptionRepository.createClassSub(
-           {
-             classId,
-             studentId: child.id,
-             stripeCustomerId: customerId,
-             stripeSubId: subscription.id,
-             status: BillingStatus.Active,
-           },
-           tx
+          {
+            classId,
+            studentId: child.id,
+            stripeCustomerId: customerId,
+            stripeSubId: subscription.id,
+            status: BillingStatus.Active,
+          },
+          tx,
         );
 
         // 3. Create/Update Enrollment
         const existingEnrollment = await EnrollmentRepository.findOneByClassIdAndStudentId(
           classId,
           child.id,
-          tx
+          tx,
         );
 
         if (!existingEnrollment) {
@@ -440,24 +423,20 @@ static markClassSubCancelled = async (subscription: Stripe.Subscription, tx: Tra
             {
               classId,
               studentId: child.id,
-              active: true
+              active: true,
             },
-            tx
+            tx,
           );
         } else if (!existingEnrollment.active) {
-           await EnrollmentRepository.update(
-            {
-              classEnrollmentId: existingEnrollment.id,
-              update: { active: true },
-              tx
-            }
-           );
+          await EnrollmentRepository.update({
+            classEnrollmentId: existingEnrollment.id,
+            update: { active: true },
+            tx,
+          });
         }
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
-  }
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
 }

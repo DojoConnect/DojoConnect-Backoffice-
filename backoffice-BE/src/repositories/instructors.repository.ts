@@ -5,9 +5,7 @@ import { returnFirst } from "../utils/db.utils.js";
 
 export type IDojoInstructor = InferSelectModel<typeof dojoInstructors>;
 export type INewDojoInstructor = InferInsertModel<typeof dojoInstructors>;
-export type IUpdateDojoInstructor = Partial<
-  Omit<INewDojoInstructor, "id" | "createdAt">
->;
+export type IUpdateDojoInstructor = Partial<Omit<INewDojoInstructor, "id" | "createdAt">>;
 
 export interface InstructorDetails {
   id: string;
@@ -19,20 +17,9 @@ export interface InstructorDetails {
 }
 
 export class InstructorsRepository {
-  static async findOne({
-    whereClause,
-    tx,
-  }: {
-    whereClause: SQL | undefined;
-    tx: Transaction;
-  }) {
+  static async findOne({ whereClause, tx }: { whereClause: SQL | undefined; tx: Transaction }) {
     return returnFirst(
-      await tx
-        .select()
-        .from(dojoInstructors)
-        .where(whereClause)
-        .limit(1)
-        .execute()
+      await tx.select().from(dojoInstructors).where(whereClause).limit(1).execute(),
     );
   }
 
@@ -49,7 +36,7 @@ export class InstructorsRepository {
       .from(dojoInstructors)
       .where(inArray(dojoInstructors.id, ids))
       .execute();
-  }
+  };
 
   static findOneByUserId = async (userId: string, tx: Transaction) => {
     return this.findOne({
@@ -61,26 +48,19 @@ export class InstructorsRepository {
   static findOneByIdAndDojoId = async (
     id: string,
     dojoId: string,
-    tx: Transaction
+    tx: Transaction,
   ): Promise<IDojoInstructor | null> => {
     return this.findOne({
-      whereClause: and(
-        eq(dojoInstructors.id, id),
-        eq(dojoInstructors.dojoId, dojoId)
-      ),
+      whereClause: and(eq(dojoInstructors.id, id), eq(dojoInstructors.dojoId, dojoId)),
       tx,
     });
   };
 
-  static findOneByUserIdAndDojoId(
-    userId: string,
-    dojoId: string,
-    tx: Transaction
-  ) {
+  static findOneByUserIdAndDojoId(userId: string, dojoId: string, tx: Transaction) {
     return this.findOne({
       whereClause: and(
         eq(dojoInstructors.instructorUserId, userId),
-        eq(dojoInstructors.dojoId, dojoId)
+        eq(dojoInstructors.dojoId, dojoId),
       ),
       tx,
     });
@@ -112,7 +92,7 @@ export class InstructorsRepository {
   static attachInstructorToDojo = async (
     instructorUserId: string,
     dojoId: string,
-    tx: Transaction
+    tx: Transaction,
   ) => {
     await tx
       .insert(dojoInstructors)

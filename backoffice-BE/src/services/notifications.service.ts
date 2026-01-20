@@ -1,7 +1,4 @@
-import {
-  InstructorInviteStatus,
-  NotificationType,
-} from "../constants/enums.js";
+import { InstructorInviteStatus, NotificationType } from "../constants/enums.js";
 import { InstructorInviteDetails } from "../repositories/invites.repository.js";
 import { NotificationRepository } from "../repositories/notification.repository.js";
 import { IUser } from "../repositories/user.repository.js";
@@ -14,9 +11,7 @@ export type SignUpSuccessfulNotificationData = {
   screen: string;
 };
 
-export type NotificationData =
-  | BaseNotificationData
-  | SignUpSuccessfulNotificationData;
+export type NotificationData = BaseNotificationData | SignUpSuccessfulNotificationData;
 
 export class NotificationService {
   static sendAndSaveNotification = async ({
@@ -51,9 +46,7 @@ export class NotificationService {
         notification: { title, body },
       };
 
-      const response = await FirebaseService.getFirebaseMessaging().send(
-        message
-      );
+      const response = await FirebaseService.getFirebaseMessaging().send(message);
       console.log(`Successfully sent ${type} notification:`, response);
     } catch (error) {
       console.log(`Error sending ${type} notification:`, error);
@@ -104,10 +97,8 @@ export class NotificationService {
     const title = `Instructor Invite ${capitalize(status)}`;
     const body = `${getFullName(
       inviteDetails.firstName,
-      inviteDetails.lastName
-    )} has ${status} your invite to become an instructor for ${
-      inviteDetails.dojoName
-    }.`;
+      inviteDetails.lastName,
+    )} has ${status} your invite to become an instructor for ${inviteDetails.dojoName}.`;
 
     await this.sendAndSaveNotification({
       type: NotificationType.InvitationResponse,
@@ -120,7 +111,7 @@ export class NotificationService {
 
   static sendInviteAcceptedNotification = async (
     user: IUser,
-    inviteDetails: InstructorInviteDetails
+    inviteDetails: InstructorInviteDetails,
   ) => {
     const title = "Invite Accepted";
     const body = `You accepted the invite to become an instructor for ${inviteDetails.dojoName}.`;

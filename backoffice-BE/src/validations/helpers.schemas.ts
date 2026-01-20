@@ -3,8 +3,8 @@ import z from "zod";
 
 // Helper for date transformation
 export const isoDateSchema = z.iso
-    .date()
-    .transform((v) => (typeof v === "string" ? new Date(v) : v))
+  .date()
+  .transform((v) => (typeof v === "string" ? new Date(v) : v));
 
 // -------------------
 // DATE-ONLY SCHEMA

@@ -5,14 +5,11 @@ import {
   IInstructorInvite,
   InstructorInviteDetails,
 } from "../../repositories/invites.repository.js";
-import {
-  AcceptInviteDTO,
-  InviteInstructorDTO,
-} from "../../validations/instructors.schemas.js";
+import { AcceptInviteDTO, InviteInstructorDTO } from "../../validations/instructors.schemas.js";
 import { addDays } from "date-fns";
 
 export const buildInstructorInviteMock = (
-  overrides?: Partial<IInstructorInvite>
+  overrides?: Partial<IInstructorInvite>,
 ): IInstructorInvite => {
   return {
     id: faker.string.uuid(),
@@ -31,9 +28,7 @@ export const buildInstructorInviteMock = (
   };
 };
 
-export const buildInstructorMock = (
-  overrides?: Partial<IDojoInstructor>
-): IDojoInstructor => {
+export const buildInstructorMock = (overrides?: Partial<IDojoInstructor>): IDojoInstructor => {
   return {
     id: faker.string.uuid(),
     instructorUserId: faker.string.uuid(),
@@ -44,7 +39,7 @@ export const buildInstructorMock = (
 };
 
 export const buildInviteInstructorDtoMock = (
-  overrides?: Partial<InviteInstructorDTO>
+  overrides?: Partial<InviteInstructorDTO>,
 ): InviteInstructorDTO => {
   return {
     email: faker.internet.email(),
@@ -56,7 +51,7 @@ export const buildInviteInstructorDtoMock = (
 };
 
 export const buildInviteDetailsMock = (
-  overrides?: Partial<InstructorInviteDetails>
+  overrides?: Partial<InstructorInviteDetails>,
 ): InstructorInviteDetails => ({
   id: faker.string.uuid(),
   firstName: faker.person.firstName(),
@@ -72,9 +67,7 @@ export const buildInviteDetailsMock = (
   ...overrides,
 });
 
-export const buildAcceptInviteDTOMock = (
-  overrides: Partial<AcceptInviteDTO>
-): AcceptInviteDTO => {
+export const buildAcceptInviteDTOMock = (overrides: Partial<AcceptInviteDTO>): AcceptInviteDTO => {
   return {
     token: faker.string.alphanumeric(32),
     password: faker.internet.password(),

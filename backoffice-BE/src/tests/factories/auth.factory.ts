@@ -1,14 +1,8 @@
 import { faker } from "@faker-js/faker";
 import { StripePlans, SupportedOAuthProviders } from "../../constants/enums.js";
-import {
-  AuthResponseDTO,
-  AuthResponseDTOParams,
-} from "../../dtos/auth.dtos.js";
+import { AuthResponseDTO, AuthResponseDTOParams } from "../../dtos/auth.dtos.js";
 import { IOAuthAcct } from "../../repositories/oauth-providers.repository.js";
-import {
-  INewRefreshToken,
-  IRefreshToken,
-} from "../../repositories/refresh-token.repository.js";
+import { INewRefreshToken, IRefreshToken } from "../../repositories/refresh-token.repository.js";
 import {
   LoginDTO,
   RefreshTokenDTO,
@@ -18,7 +12,7 @@ import {
 import { buildUserDtoMock } from "./user.factory.js";
 
 export const buildRegisterDojoAdminDTOMock = (
-  overrides?: Partial<RegisterDojoAdminDTO>
+  overrides?: Partial<RegisterDojoAdminDTO>,
 ): RegisterDojoAdminDTO => {
   return {
     firstName: faker.person.firstName(),
@@ -35,7 +29,9 @@ export const buildRegisterDojoAdminDTOMock = (
   };
 };
 
-export const buildRegisterParentDTOMock = (overrides: Partial<RegisterParentDTO>): RegisterParentDTO => {
+export const buildRegisterParentDTOMock = (
+  overrides: Partial<RegisterParentDTO>,
+): RegisterParentDTO => {
   return {
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
@@ -43,12 +39,12 @@ export const buildRegisterParentDTOMock = (overrides: Partial<RegisterParentDTO>
     email: "john.doe@example.com",
     password: "Password123!",
     fcmToken: "fcm-token",
-    ...overrides
-  }
-}
+    ...overrides,
+  };
+};
 
 export const buildNewRefreshTokenMock = (
-  overrides: Partial<INewRefreshToken>
+  overrides: Partial<INewRefreshToken>,
 ): INewRefreshToken => {
   return {
     userId: "user-1",
@@ -60,9 +56,7 @@ export const buildNewRefreshTokenMock = (
   };
 };
 
-export const buildRefreshTokenMock = (
-  overrides: Partial<IRefreshToken>
-): IRefreshToken => {
+export const buildRefreshTokenMock = (overrides: Partial<IRefreshToken>): IRefreshToken => {
   return {
     id: "token-id",
     userId: "user-1",
@@ -87,7 +81,7 @@ export const buildLoginDTOMock = (overrides: Partial<LoginDTO>): LoginDTO => {
 };
 
 const buildAuthResponseDTOParamsMMock = (
-  overrides?: Partial<AuthResponseDTOParams>
+  overrides?: Partial<AuthResponseDTOParams>,
 ): AuthResponseDTOParams => {
   return {
     accessToken: "access",
@@ -98,27 +92,23 @@ const buildAuthResponseDTOParamsMMock = (
 };
 
 export const buildAuthResponseDTOMock = (
-  overrides?: Partial<AuthResponseDTOParams>
+  overrides?: Partial<AuthResponseDTOParams>,
 ): AuthResponseDTO => {
   return new AuthResponseDTO(
     buildAuthResponseDTOParamsMMock({
       ...overrides,
-    })
+    }),
   );
 };
 
-export const buildRefreshTokenDtoMock = (
-  overrides?: Partial<RefreshTokenDTO>
-): RefreshTokenDTO => {
+export const buildRefreshTokenDtoMock = (overrides?: Partial<RefreshTokenDTO>): RefreshTokenDTO => {
   return {
     refreshToken: "refresh",
     ...overrides,
   };
 };
 
-export const buildOAuthAcctMock = (
-  overrides?: Partial<IOAuthAcct>
-): IOAuthAcct => {
+export const buildOAuthAcctMock = (overrides?: Partial<IOAuthAcct>): IOAuthAcct => {
   return {
     id: "oauth-id",
     userId: "user-1",

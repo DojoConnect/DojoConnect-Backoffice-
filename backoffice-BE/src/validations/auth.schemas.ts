@@ -21,7 +21,7 @@ export const PasswordSchema = z
   // at least one lowercase, one uppercase, one digit, one special char, no spaces
   .regex(
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_\-+={}[\]|\\:;"'<>,.?/~`])\S+$/,
-    "Password must contain uppercase, lowercase, number, and special character; and contain no spaces"
+    "Password must contain uppercase, lowercase, number, and special character; and contain no spaces",
   );
 
 export const CreateUserBaseSchema = z.object({
@@ -32,7 +32,6 @@ export const CreateUserBaseSchema = z.object({
   password: PasswordSchema,
   fcmToken: z.string().trim().optional().nullable(),
 });
-
 
 export const RegisterDojoAdminSchema = CreateUserBaseSchema.extend({
   referredBy: z.string().trim().optional().default(""),
@@ -69,7 +68,7 @@ export const ResetPasswordSchema = z.object({
 
 export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> & {
   dob?: z.infer<typeof DateOnlySchema>;
-}
+};
 export type RegisterParentDTO = z.infer<typeof RegisterParentSchema>;
 export type RegisterDojoAdminDTO = z.infer<typeof RegisterDojoAdminSchema>;
 export type LoginDTO = z.infer<typeof LoginSchema>;

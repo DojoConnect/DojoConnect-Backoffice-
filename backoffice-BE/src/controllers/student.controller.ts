@@ -4,11 +4,7 @@ import { formatApiResponse } from "../utils/api.utils.js";
 import { UnauthorizedException } from "../core/errors/UnauthorizedException.js";
 
 export class StudentController {
-  static handleGetEnrolledClasses = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-  ) => {
+  static handleGetEnrolledClasses = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       throw new UnauthorizedException("Unauthorized");
     }
@@ -20,8 +16,7 @@ export class StudentController {
     res.status(200).json(
       formatApiResponse({
         data: result,
-      })
+      }),
     );
-    
   };
 }

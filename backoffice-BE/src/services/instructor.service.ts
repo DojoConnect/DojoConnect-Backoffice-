@@ -3,21 +3,12 @@ import { NotFoundException } from "../core/errors/NotFoundException.js";
 import * as dbService from "../db/index.js";
 import { Transaction } from "../db/index.js";
 import { InstructorInviteDetailsDTO } from "../dtos/instructor.dtos.js";
-import {
-  IDojoInstructor,
-  InstructorsRepository,
-} from "../repositories/instructors.repository.js";
-import {
-  InstructorInviteDetails,
-  InvitesRepository,
-} from "../repositories/invites.repository.js";
+import { IDojoInstructor, InstructorsRepository } from "../repositories/instructors.repository.js";
+import { InstructorInviteDetails, InvitesRepository } from "../repositories/invites.repository.js";
 import { HttpException } from "../core/errors/HttpException.js";
 import { InstructorInviteStatus, Role } from "../constants/enums.js";
 import { hashToken } from "../utils/auth.utils.js";
-import {
-  AcceptInviteDTO,
-  DeclineInviteDTO,
-} from "../validations/instructors.schemas.js";
+import { AcceptInviteDTO, DeclineInviteDTO } from "../validations/instructors.schemas.js";
 import { ConflictException } from "../core/errors/ConflictException.js";
 import { UsersService } from "./users.service.js";
 import { NotificationService } from "./notifications.service.js";
@@ -29,35 +20,28 @@ import { ClassDTO } from "../dtos/class.dtos.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 
 export class InstructorService {
-  static getOneById = async (
-    instructorId: string,
-    txInstance?: Transaction
-  ) => {
+  static getOneById = async (instructorId: string, txInstance?: Transaction) => {
     const execute = async (tx: Transaction) => {
       return await InstructorsRepository.findOneById(instructorId, tx);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static findInstructorByUserId = async (
     userId: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<IDojoInstructor | null> => {
     const execute = async (tx: Transaction) => {
       return await InstructorsRepository.findOneByUserId(userId, tx);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getInviteDetails = async (
     token: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<InstructorInviteDetailsDTO | null> => {
     const execute = async (tx: Transaction) => {
       const tokenHash = hashToken(token);
@@ -80,15 +64,10 @@ export class InstructorService {
       return new InstructorInviteDetailsDTO(invite);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static declineInvite = async (
-    dto: DeclineInviteDTO,
-    txInstance?: Transaction
-  ): Promise<void> => {
+  static declineInvite = async (dto: DeclineInviteDTO, txInstance?: Transaction): Promise<void> => {
     const execute = async (tx: Transaction) => {
       const tokenHash = hashToken(dto.token);
       const invite = await InvitesRepository.getInviteDetails(tokenHash, tx);
@@ -101,11 +80,7 @@ export class InstructorService {
         throw new ConflictException(`Invite has already been ${invite.status}`);
       }
 
-      await InvitesRepository.markInviteAsResponded(
-        invite.id,
-        InstructorInviteStatus.Declined,
-        tx
-      );
+      await InvitesRepository.markInviteAsResponded(invite.id, InstructorInviteStatus.Declined, tx);
 
       // Notify the inviter about the decline
       await this.notifyDojoOwnerOfResponse({
@@ -115,15 +90,10 @@ export class InstructorService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static acceptInvite = async (
-    dto: AcceptInviteDTO,
-    txInstance?: Transaction
-  ): Promise<void> => {
+  static acceptInvite = async (dto: AcceptInviteDTO, txInstance?: Transaction): Promise<void> => {
     const execute = async (tx: Transaction) => {
       const tokenHash = hashToken(dto.token);
       const invite = await InvitesRepository.getInviteDetails(tokenHash, tx);
@@ -155,52 +125,43 @@ export class InstructorService {
         tx,
       });
 
-      await Promise.all([ this.addInstructorToDojo(newUser, invite.dojoId, tx),
-      InvitesRepository.markInviteAsResponded(
-        invite.id,
-        InstructorInviteStatus.Accepted,
-        tx
-      )]);
+      await Promise.all([
+        this.addInstructorToDojo(newUser, invite.dojoId, tx),
+        InvitesRepository.markInviteAsResponded(invite.id, InstructorInviteStatus.Accepted, tx),
+      ]);
 
       // Notify the inviter about the acceptance
-      Promise.allSettled([ this.notifyDojoOwnerOfResponse({
-        tx,
-        invite,
-        response: InstructorInviteStatus.Accepted,
-      }),
-      // Notify Instructor
-      this.notifyInstructorOfInviteAcceptance({
-        instructor: newUser,
-        invite,
-      })
-    ]);
+      Promise.allSettled([
+        this.notifyDojoOwnerOfResponse({
+          tx,
+          invite,
+          response: InstructorInviteStatus.Accepted,
+        }),
+        // Notify Instructor
+        this.notifyInstructorOfInviteAcceptance({
+          instructor: newUser,
+          invite,
+        }),
+      ]);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static addInstructorToDojo = async (
     instructor: IUser,
     dojoId: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<void> => {
     const execute = async (tx: Transaction) => {
       if (instructor.role !== Role.Instructor) {
         throw new ConflictException("User is not an instructor");
       }
 
-      await InstructorsRepository.attachInstructorToDojo(
-        instructor.id,
-        dojoId,
-        tx
-      );
+      await InstructorsRepository.attachInstructorToDojo(instructor.id, dojoId, tx);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static notifyDojoOwnerOfResponse = async ({
@@ -235,26 +196,29 @@ export class InstructorService {
     ]);
   };
 
-  static notifyInstructorOfInviteAcceptance = async ({instructor, invite}:{instructor: IUser, invite: InstructorInviteDetails}) => {
+  static notifyInstructorOfInviteAcceptance = async ({
+    instructor,
+    invite,
+  }: {
+    instructor: IUser;
+    invite: InstructorInviteDetails;
+  }) => {
     await Promise.allSettled([
-        NotificationService.sendInviteAcceptedNotification(instructor, invite),
+      NotificationService.sendInviteAcceptedNotification(instructor, invite),
       MailerService.sendInviteAcceptedEmail({
         instructor,
         inviteDetails: invite,
-      })
+      }),
     ]);
-  } 
+  };
 
   static async getInstructorClasses(
     instructorId: string,
-    txInstance?: Transaction
+    txInstance?: Transaction,
   ): Promise<ClassDTO[]> {
     const execute = async (tx: Transaction) => {
       // TODO: Add pagination
-      const classes = await ClassRepository.findAllByInstructorId(
-        instructorId,
-        tx
-      );
+      const classes = await ClassRepository.findAllByInstructorId(instructorId, tx);
 
       const allBelongsToInstructor = classes
         .map((c) => c.instructorId)
@@ -262,17 +226,17 @@ export class InstructorService {
 
       if (!allBelongsToInstructor) {
         throw new InternalServerErrorException(
-          `Classes returned for instructor does not belong to instructor`
+          `Classes returned for instructor does not belong to instructor`,
         );
       }
 
-      const instructorUserDetails =
-        await UserRepository.getUserProfileForInstructor(instructorId, tx);
+      const instructorUserDetails = await UserRepository.getUserProfileForInstructor(
+        instructorId,
+        tx,
+      );
 
       if (!instructorUserDetails) {
-        throw new InternalServerErrorException(
-          "Instructor User account not found"
-        );
+        throw new InternalServerErrorException("Instructor User account not found");
       }
 
       return classes.map((c) => {
@@ -286,18 +250,18 @@ export class InstructorService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   }
 
-  static findOneByUserIdAndDojoId = async (userId: string, dojoId: string, txInstance?: Transaction) => {
+  static findOneByUserIdAndDojoId = async (
+    userId: string,
+    dojoId: string,
+    txInstance?: Transaction,
+  ) => {
     const execute = async (tx: Transaction) => {
       return await InstructorsRepository.findOneByUserIdAndDojoId(userId, dojoId, tx);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
-  }
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
 }

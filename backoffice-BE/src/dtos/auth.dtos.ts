@@ -29,8 +29,7 @@ export class AuthResponseDTO implements AuthResponseDTOParams {
   }
 }
 
-export interface RegisterDojoAdminResponseDTOParams
-  extends AuthResponseDTOParams {
+export interface RegisterDojoAdminResponseDTOParams extends AuthResponseDTOParams {
   stripeClientSecret: string;
 }
 

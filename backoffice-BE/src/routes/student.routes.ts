@@ -10,7 +10,7 @@ router.get(
   "/classes",
   requireAuth,
   requireRole(Role.Child),
-  StudentController.handleGetEnrolledClasses
+  StudentController.handleGetEnrolledClasses,
 );
 
 export default router;

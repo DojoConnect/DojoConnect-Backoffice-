@@ -39,7 +39,6 @@ export interface StudentUserDTOParams extends UserDTOParams {
   student: IStudent;
 }
 
-
 export class UserDTO implements UserDTOParams {
   id: string;
   firstName: string;
@@ -53,7 +52,6 @@ export class UserDTO implements UserDTOParams {
   city: string | null;
   street: string | null;
   createdAt: Date;
-
 
   constructor(params: UserDTOParams) {
     this.id = params.id;
@@ -91,7 +89,7 @@ export class UserDTO implements UserDTOParams {
 export class DojoAdminUserDTO extends UserDTO implements DojoOwnerUserDTOParams {
   dojo: BaseDojoDTO;
 
-  constructor (params: DojoOwnerUserDTOParams) {
+  constructor(params: DojoOwnerUserDTOParams) {
     super(params);
     this.dojo = new BaseDojoDTO(params.dojo);
   }
@@ -107,7 +105,7 @@ export class DojoAdminUserDTO extends UserDTO implements DojoOwnerUserDTOParams 
 export class InstructorUserDTO extends UserDTO implements InstructorUserDTOParams {
   instructor: DojoInstructorDTO;
 
-  constructor (params: InstructorUserDTOParams) {
+  constructor(params: InstructorUserDTOParams) {
     super(params);
     this.instructor = new DojoInstructorDTO(params.instructor);
   }
@@ -116,14 +114,14 @@ export class InstructorUserDTO extends UserDTO implements InstructorUserDTOParam
     return {
       ...super.toJSON(),
       instructor: this.instructor.toJSON(),
-    }
+    };
   }
 }
 
 export class StudentUserDTO extends UserDTO implements StudentUserDTOParams {
   student: StudentDTO;
 
-  constructor (params: StudentUserDTOParams) {
+  constructor(params: StudentUserDTOParams) {
     super(params);
     this.student = new StudentDTO(params.student);
   }
@@ -133,14 +131,13 @@ export class StudentUserDTO extends UserDTO implements StudentUserDTOParams {
       ...super.toJSON(),
       student: this.student.toJSON(),
     };
-  } 
+  }
 }
-  
 
 export class ParentUserDTO extends UserDTO implements ParentUserDTOParams {
   parent: ParentDTO;
 
-  constructor (params: ParentUserDTOParams) {
+  constructor(params: ParentUserDTOParams) {
     super(params);
     this.parent = new ParentDTO(params.parent);
   }
@@ -149,6 +146,6 @@ export class ParentUserDTO extends UserDTO implements ParentUserDTOParams {
     return {
       ...super.toJSON(),
       parent: this.parent.toJSON(),
-    }
+    };
   }
 }

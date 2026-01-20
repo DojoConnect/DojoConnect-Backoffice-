@@ -31,9 +31,7 @@ export class CloudinaryService {
   static getCloudinarySignature = (dto: GetCloudinarySignatureDto) => {
     const { imageType, dojoId } = dto;
     if (!IMAGE_TRANSFORMATIONS[imageType]) {
-      throw new InternalServerErrorException(
-        `Unsupported image type: ${imageType}`
-      );
+      throw new InternalServerErrorException(`Unsupported image type: ${imageType}`);
     }
 
     const asset_folder = getTmpUploadFolder(dojoId);
@@ -56,7 +54,7 @@ export class CloudinaryService {
         transformation,
         upload_preset,
       },
-      AppConfig.CLOUDINARY_API_SECRET
+      AppConfig.CLOUDINARY_API_SECRET,
     );
 
     // Returns the necessary parameters for the client-side upload.
@@ -87,7 +85,7 @@ export class CloudinaryService {
   static moveImageFromTempFolder = async (
     publicId: string,
     dojoId: string,
-    imageType: ImageType
+    imageType: ImageType,
   ) => {
     return await cloudinary.uploader.explicit(publicId, {
       type: "upload",

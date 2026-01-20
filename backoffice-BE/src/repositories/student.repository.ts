@@ -8,18 +8,12 @@ export type INewStudent = InferInsertModel<typeof students>;
 
 export class StudentRepository {
   static create = async (student: INewStudent, tx: Transaction) => {
-    const [insertResult] = await tx
-      .insert(students)
-      .values(student)
-      .$returningId();
+    const [insertResult] = await tx.insert(students).values(student).$returningId();
 
     return insertResult.id;
   };
 
-  static getStudentsAndUserByParentId = async (
-    parentId: string,
-    tx: Transaction
-  ) => {
+  static getStudentsAndUserByParentId = async (parentId: string, tx: Transaction) => {
     return await tx
       .select({
         student: students,
@@ -30,10 +24,7 @@ export class StudentRepository {
       .where(eq(students.parentId, parentId));
   };
 
-  static getStudentsByParentId = async (
-    parentId: string,
-    tx: Transaction
-  ) => {
+  static getStudentsByParentId = async (parentId: string, tx: Transaction) => {
     return await tx
       .select({
         student: students,
@@ -42,16 +33,13 @@ export class StudentRepository {
       .where(eq(students.parentId, parentId));
   };
 
-  static async findOne(
-        whereClause: SQL | undefined,
-        tx: Transaction
-      ): Promise<IStudent | null> {
-        const student = returnFirst(
-          await tx.select().from(students).where(whereClause).limit(1).execute()
-        );
-    
-        return student || null;
-      }
+  static async findOne(whereClause: SQL | undefined, tx: Transaction): Promise<IStudent | null> {
+    const student = returnFirst(
+      await tx.select().from(students).where(whereClause).limit(1).execute(),
+    );
+
+    return student || null;
+  }
 
   static findOneById = async (studentId: string, tx: Transaction) => {
     return await this.findOne(eq(students.id, studentId), tx);
@@ -62,8 +50,8 @@ export class StudentRepository {
   };
 
   static fetchStudentsByIds = async (studentIds: string[], tx: Transaction) => {
-    return await tx.select().from(students).where(inArray(students.id, studentIds)); 
-  }
+    return await tx.select().from(students).where(inArray(students.id, studentIds));
+  };
 
   static fetchStudentsWithUsersByIds = async (studentIds: string[], tx: Transaction) => {
     return await tx
