@@ -14,3 +14,9 @@ export const DateOnlySchema = z.iso.date().transform((v) => {
   if (!isValid(date)) throw new Error("Invalid calendar date");
   return date;
 });
+
+export const IsoDateTimeSchema = z.iso.datetime().transform((v) => {
+  const date = parseISO(v);
+  if (!isValid(date)) throw new Error("Invalid ISO datetime");
+  return date;
+});

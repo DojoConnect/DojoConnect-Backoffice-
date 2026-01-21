@@ -19,20 +19,22 @@ import { ClassDTO } from "../dtos/class.dtos.js";
 import { StudentWihUserDTO } from "../dtos/student.dtos.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { nextDay } from "date-fns";
-import { ClassFrequency, ClassSubscriptionType } from "../constants/enums.js";
+import { ClassFrequency, ClassSubscriptionType, Role } from "../constants/enums.js";
 import { mapWeekdayToDayNumber } from "../utils/date.utils.js";
 import { IDojoInstructor, InstructorsRepository } from "../repositories/instructors.repository.js";
 import { StripeService } from "./stripe.service.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
 import { NotificationService } from "./notifications.service.js";
 import { UsersService } from "./users.service.js";
-import { IDojo } from "../repositories/dojo.repository.js";
+import { DojoRepository, IDojo } from "../repositories/dojo.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { CloudinaryService } from "./cloudinary.service.js";
 import { CloudinaryResourceType, ImageType } from "../constants/cloudinary.js";
-import { InstructorUserDetails, UserRepository } from "../repositories/user.repository.js";
+import { InstructorUserDetails, IUser, UserRepository } from "../repositories/user.repository.js";
 import { StudentRepository } from "../repositories/student.repository.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { ParentRepository } from "../repositories/parent.repository.js";
+import { ChatsService } from "./chats.service.js";
 
 export class ClassService {
   static createClass = async (
@@ -61,12 +63,6 @@ export class ClassService {
         );
       }
 
-      const classData: INewClass = {
-        ...classDetails,
-        dojoId: dojo.id,
-        price: classDetails.price ? classDetails.price.toString() : null,
-      };
-
       if (dto.imagePublicId) {
         await CloudinaryService.moveImageFromTempFolder(
           dto.imagePublicId,
@@ -74,6 +70,24 @@ export class ClassService {
           ImageType.CLASS,
         );
       }
+
+      const dojoOwner = await UsersService.getOneUserByID({
+        userId: dojo.ownerUserId,
+        txInstance: tx,
+      });
+
+      if (!dojoOwner) {
+        throw new InternalServerErrorException("Dojo owner not found");
+      }
+
+      const chatId = await ChatsService.createClassGroupChat(dojoOwner, tx);
+
+      const classData: INewClass = {
+        ...classDetails,
+        dojoId: dojo.id,
+        price: classDetails.price ? classDetails.price.toString() : null,
+        chatId
+      };
 
       const newClassId = await ClassRepository.create(
         {
@@ -111,20 +125,8 @@ export class ClassService {
           tx,
         });
       }
-
-      // TODO: Set Up Chat
-
+      
       // TODO: Set up Grading Notification
-
-      const dojoOwner = await UsersService.getOneUserByID({
-        userId: dojo.ownerUserId,
-        txInstance: tx,
-      });
-
-      if (!dojoOwner) {
-        throw new InternalServerErrorException("Dojo owner not found");
-      }
-
       await NotificationService.notifyDojoOwnerOfClassCreation({
         className: classData.name,
         dojoOwner: dojoOwner,
@@ -139,6 +141,12 @@ export class ClassService {
         if (!instructorUserProfile) {
           throw new InternalServerErrorException("Dojo Instructor not found");
         }
+
+        await ChatsService.addInstructorToChat({
+          chatId,
+          dojoOwner,
+          instructor: instructorUserProfile,
+        }, tx);
 
         await NotificationService.notifyInstructorOfNewClassAssigned({
           className: classData.name,
@@ -203,7 +211,7 @@ export class ClassService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static getAllClassesByDojoId = async (
+  static getAllClassAndInstructorsByDojoId = async (
     dojoId: string,
     txInstance?: Transaction,
   ): Promise<ClassWithInstructor[]> => {
@@ -459,4 +467,140 @@ export class ClassService {
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
+
+  // Get all classes from the dojo they own
+  static getDojoClasses = async (user: IUser, txInstance?: Transaction): Promise<IClass[]> =>{
+    const execute = async (tx: Transaction) => {
+      if (user.role !== Role.DojoAdmin) {
+        throw new InternalServerErrorException("User is not a dojo admin");
+      }
+
+      const dojo = await DojoRepository.getDojoForOwner(user.id, tx);
+      if (!dojo) {
+        throw new NotFoundException("Dojo not found for user");
+      }
+
+      const classes = await ClassRepository.findAllByDojoId(dojo.id, tx);
+      return classes;
+    };
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  // Get classes assigned to this instructor
+  static getInstructorClasses = async (user: IUser, txInstance?: Transaction): Promise<IClass[]> =>{
+    const execute = async (tx: Transaction) => {
+      if (user.role !== Role.Instructor) {
+        throw new InternalServerErrorException("User is not an instructor");
+      }
+      const instructor = await InstructorsRepository.findOneByUserId(user.id, tx);
+      if (!instructor) {
+        throw new NotFoundException("Instructor not found");
+      }
+
+      const classes = await ClassRepository.findAllByInstructorId(instructor.id, tx);
+      return classes;
+    };
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  // Get classes where their children are enrolled
+  static getParentClasses = async (user: IUser, txInstance?: Transaction): Promise<IClass[]> =>{
+    const execute = async (tx: Transaction) => {
+      if (user.role !== Role.Parent) {
+        throw new InternalServerErrorException("User is not a parent");
+      }
+
+      const parent = await ParentRepository.getOneParentByUserId(user.id, tx);
+
+      if (!parent) {
+        throw new NotFoundException("Parent not found");
+      }
+
+      const studentsData = await StudentRepository.getStudentsByParentId(parent.id, tx);
+
+      if (studentsData.length === 0) {
+        return [];
+      }
+
+      const studentIds = studentsData.map((student) => student.student.id);
+
+      const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByStudentIds(
+        studentIds,
+        tx,
+      );
+
+      if (enrollments.length === 0) {
+        return [];
+      }
+
+      const classIds = enrollments.map((enrollment) => enrollment.classId);
+      const uniqueClassIds = Array.from(new Set(classIds));
+
+      return await ClassRepository.findClassesByIds(uniqueClassIds, tx);
+    };
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  // Get classes the student is enrolled in
+  static getStudentClasses = async (user: IUser, txInstance?: Transaction): Promise<IClass[]> =>{
+    const execute = async (tx: Transaction) => {
+      if (user.role !== Role.Child) {
+        throw new InternalServerErrorException("User is not a child");
+      }
+
+      const student = await StudentRepository.findOneByUserId(user.id, tx);
+
+      if (!student) {
+        throw new NotFoundException("Student not found");
+      }
+
+      const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByStudentIds(
+        [student.id],
+        tx,
+      );
+
+      if (enrollments.length === 0) {
+        return [];
+      }
+
+      const classIds = enrollments.map((enrollment) => enrollment.classId);
+      const uniqueClassIds = Array.from(new Set(classIds));
+
+      return await ClassRepository.findClassesByIds(uniqueClassIds, tx);
+    };
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static getUserClasses = async (userId: string, txInstance?: Transaction): Promise<IClass[]> =>{
+
+    const execute = async (tx: Transaction) => {
+      const user = await UsersService.getOneUserByID({userId, txInstance: tx})
+      if (!user) {
+        throw new NotFoundException("User not Found");
+      }
+
+      switch (user.role) {
+            case Role.DojoAdmin: {      
+              return await ClassService.getDojoClasses(user, tx);
+            }
+      
+            case Role.Instructor: {
+              return await ClassService.getInstructorClasses(user, tx);
+            }
+      
+            case Role.Parent: {
+              return await ClassService.getParentClasses(user, tx);
+            }
+      
+            case Role.Child: {
+              return await ClassService.getStudentClasses(user, tx);
+            }
+      
+            default:
+              return [];
+          }
+    }
+
+    return txInstance ? execute(txInstance): dbService.runInTransaction(execute)
+  }
 }

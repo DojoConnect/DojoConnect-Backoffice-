@@ -100,7 +100,7 @@ export class DojosController {
       throw new InternalServerErrorException("Dojo not found on request object.");
     }
 
-    const classes = await ClassService.getAllClassesByDojoId(dojo.id);
+    const classes = await ClassService.getAllClassAndInstructorsByDojoId(dojo.id);
     const classDTOs = classes.map((c) => new ClassDTO(c));
 
     res.status(200).json(formatApiResponse({ data: classDTOs, message: "Classes fetched." }));

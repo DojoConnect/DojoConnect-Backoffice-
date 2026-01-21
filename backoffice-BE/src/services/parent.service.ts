@@ -16,6 +16,7 @@ import { ClassRepository } from "../repositories/class.repository.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
 import { UserRepository } from "../repositories/user.repository.js";
+import { ClassService } from "./class.service.js";
 
 export class ParentService {
   static addChild = async ({
@@ -159,33 +160,7 @@ export class ParentService {
     txInstance?: Transaction;
   }): Promise<ClassDTO[]> => {
     const execute = async (tx: Transaction) => {
-      const parent = await ParentRepository.getOneParentByUserId(currentUser.id, tx);
-
-      if (!parent) {
-        throw new NotFoundException("Parent not found");
-      }
-
-      const studentsData = await StudentRepository.getStudentsByParentId(parent.id, tx);
-
-      if (studentsData.length === 0) {
-        return [];
-      }
-
-      const studentIds = studentsData.map((student) => student.student.id);
-
-      const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByStudentIds(
-        studentIds,
-        tx,
-      );
-
-      if (enrollments.length === 0) {
-        return [];
-      }
-
-      const classIds = enrollments.map((enrollment) => enrollment.classId);
-      const uniqueClassIds = Array.from(new Set(classIds));
-
-      const classes = await ClassRepository.findClassesByIds(uniqueClassIds, tx);
+      const classes = await ClassService.getParentClasses(currentUser, tx);
 
       const instructorIds = classes
         .map((classData) => classData.instructorId)

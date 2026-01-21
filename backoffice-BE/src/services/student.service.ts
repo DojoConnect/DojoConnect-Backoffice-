@@ -7,6 +7,7 @@ import { NotFoundException } from "../core/errors/index.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { ClassRepository } from "../repositories/class.repository.js";
 import { StudentWihUserDTO } from "../dtos/student.dtos.js";
+import { ClassService } from "./class.service.js";
 
 export class StudentService {
   static getOneStudentByID = async (studentId: string, txInstance?: Transaction) => {
@@ -33,25 +34,7 @@ export class StudentService {
     txInstance?: Transaction;
   }): Promise<ClassDTO[]> => {
     const execute = async (tx: Transaction) => {
-      const student = await StudentRepository.findOneByUserId(currentUser.id, tx);
-
-      if (!student) {
-        throw new NotFoundException("Student not found");
-      }
-
-      const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByStudentIds(
-        [student.id],
-        tx,
-      );
-
-      if (enrollments.length === 0) {
-        return [];
-      }
-
-      const classIds = enrollments.map((enrollment) => enrollment.classId);
-      const uniqueClassIds = Array.from(new Set(classIds));
-
-      const classes = await ClassRepository.findClassesByIds(uniqueClassIds, tx);
+      const classes = await ClassService.getStudentClasses(currentUser, tx);
 
       const instructorIds = classes
         .map((classData) => classData.instructorId)

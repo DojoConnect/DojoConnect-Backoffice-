@@ -8,6 +8,13 @@
       "when": 1768571704434,
       "tag": "0000_faithful_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1768996585591,
+      "tag": "0001_wide_thunderbolts",
+      "breakpoints": true
     }
   ]
 }
