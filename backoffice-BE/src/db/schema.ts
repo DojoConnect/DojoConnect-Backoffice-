@@ -36,6 +36,7 @@ import {
   ClassSubscriptionType,
   Weekday,
   ClassOccurrenceStatus,
+  ChatType,
 } from "../constants/enums.js";
 
 const activeBillingStatusesSql = sql.join(
@@ -120,10 +121,12 @@ export const broadcastRecipients = mysqlTable(
 export const chats = mysqlTable(
   "chats",
   {
-    id: int().autoincrement().primaryKey(),
-    type: mysqlEnum(["dm", "group", "broadcast"]).notNull(),
+    id: uuidPrimaryKey(),
+    type: mysqlEnum(ChatType).notNull(),
     name: varchar({ length: 100 }),
-    createdBy: int("created_by"),
+    createdBy: varchar("created_by", { length: UUID_LENGTH })
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -134,13 +137,22 @@ export const chats = mysqlTable(
 export const chatParticipants = mysqlTable(
   "chat_participants",
   {
-    id: int().autoincrement().primaryKey(),
-    chatId: int("chat_id").notNull(),
-    userId: int("user_id").notNull(),
+    id: uuidPrimaryKey(),
+    chatId: varchar("chat_id", { length: UUID_LENGTH })
+      .notNull()
+      .references(() => chats.id, { onDelete: "restrict" }),
+    userId: varchar("user_id", { length: UUID_LENGTH })
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    roleAtTime: mysqlEnum(Role).notNull(),
+    joinedAt: timestamp("joined_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    leftAt: timestamp("left_at"),
   },
   (table) => [
     index("user_id").on(table.userId),
-    index("idx_chat_participants").on(table.chatId, table.userId),
+    uniqueIndex("unique_idx_chat_id_user_id").on(table.chatId, table.userId),
   ],
 );
 
@@ -464,10 +476,14 @@ export const dojoInstructors = mysqlTable(
 export const messages = mysqlTable(
   "messages",
   {
-    id: int().autoincrement().primaryKey(),
-    chatId: int("chat_id").notNull(),
-    senderId: int("sender_id").notNull(),
-    message: text().notNull(),
+    id: uuidPrimaryKey(),
+    chatId: varchar("chat_id", { length: UUID_LENGTH })
+      .notNull()
+      .references(() => chats.id, { onDelete: "restrict" }),
+    senderId: varchar("sender_id", { length: UUID_LENGTH })
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    content: text().notNull(),
     createdAt: datetime("created_at", { mode: "string" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -475,6 +491,8 @@ export const messages = mysqlTable(
   (table) => [
     index("idx_messages_chat_id").on(table.chatId),
     index("idx_messages_sender_id").on(table.senderId),
+    // CRITICAL: Index for fetching history efficiently
+    index("idx_messages_chat_id_created_at").on(table.chatId, table.createdAt),
   ],
 );
 

@@ -139,6 +139,12 @@ export enum GradingNotificationUnit {
   Weeks = "weeks",
 }
 
+export enum ChatType {
+  DM = "dm",
+  ClassGroup = "class_group",
+  Broadcast = "broadcast",
+}
+
 export const ACTIVE_BILLING_STATUSES = [
   BillingStatus.Trialing,
   BillingStatus.Active,
