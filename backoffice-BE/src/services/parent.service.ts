@@ -1,7 +1,4 @@
-import {
-  ConflictException,
-  NotFoundException,
-} from "../core/errors/index.js";
+import { ConflictException, NotFoundException } from "../core/errors/index.js";
 import { Transaction } from "../db/index.js";
 import * as dbService from "../db/index.js";
 import { AddChildDTO } from "../dtos/parent.dtos.js";
@@ -13,12 +10,13 @@ import { MailerService } from "./mailer.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { UsersService } from "./users.service.js";
 import { nanoid } from "nanoid";
-import { StudentWihUserDTO as StudentWihUserDTO } from "../dtos/student.dtos.js";
+import { StudentWihUserDTO } from "../dtos/student.dtos.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
 import { ClassRepository } from "../repositories/class.repository.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
 import { UserRepository } from "../repositories/user.repository.js";
+import { ClassService } from "./class.service.js";
 
 export class ParentService {
   static addChild = async ({
@@ -41,10 +39,7 @@ export class ParentService {
         throw new ConflictException("User with this email already exists");
       }
 
-      const parent = await ParentRepository.getOneParentByUserId(
-        parentUser.id,
-        tx
-      );
+      const parent = await ParentRepository.getOneParentByUserId(parentUser.id, tx);
 
       if (!parent) {
         throw new NotFoundException("Parent not found");
@@ -67,7 +62,7 @@ export class ParentService {
           password: password,
           username: username,
           fcmToken: null,
-          dob: dto.dob
+          dob: dto.dob,
         },
         role: Role.Child,
         tx,
@@ -80,52 +75,43 @@ export class ParentService {
           parentId: parent.id,
           experienceLevel: dto.experience,
         },
-        tx
+        tx,
       );
 
       // Send Emails (Non-blocking usually, but for simplicity we await or catch error inside service)
       // Run parallel for speed
       const results = await Promise.allSettled([
-      // Send mail to Parent
-      MailerService.sendChildAddedEmailToParent(
-        parentUser.email,
-        parentUser.firstName,
-        dto.firstName,
-        dto.email
-      ),
-      // Send mail to Child
-      MailerService.sendChildWelcomeEmail(
-        dto.email,
-        dto.firstName,
-        parentUser.firstName
-      ),
-      // Send Notifications
-      NotificationService.sendChildAddedNotification(
-        parentUser,
-        dto.firstName
-      ),
-      NotificationService.sendWelcomeNotificationToChild(childUser)
-    ]);
+        // Send mail to Parent
+        MailerService.sendChildAddedEmailToParent(
+          parentUser.email,
+          parentUser.firstName,
+          dto.firstName,
+          dto.email,
+        ),
+        // Send mail to Child
+        MailerService.sendChildWelcomeEmail(dto.email, dto.firstName, parentUser.firstName),
+        // Send Notifications
+        NotificationService.sendChildAddedNotification(parentUser, dto.firstName),
+        NotificationService.sendWelcomeNotificationToChild(childUser),
+      ]);
 
-    if (results.some((result) => result.status === "rejected")) {
-          console.log(
-            "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
-            results.find((result) => result.status === "rejected")?.reason
-          );
-        }
+      if (results.some((result) => result.status === "rejected")) {
+        console.log(
+          "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
+          results.find((result) => result.status === "rejected")?.reason,
+        );
+      }
 
-      return  new StudentWihUserDTO({
+      return new StudentWihUserDTO({
         id: newStudentId,
         parentId: parent.id,
         studentUserId: childUser.id,
         experience: dto.experience,
-        studentUser: childUser
+        studentUser: childUser,
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getChildren = async ({
@@ -136,19 +122,13 @@ export class ParentService {
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
-      const parent = await ParentRepository.getOneParentByUserId(
-        currentUser.id,
-        tx
-      );
+      const parent = await ParentRepository.getOneParentByUserId(currentUser.id, tx);
 
       if (!parent) {
         throw new NotFoundException("Parent not found");
       }
 
-      const studentsData = await StudentRepository.getStudentsAndUserByParentId(
-        parent.id,
-        tx
-      );
+      const studentsData = await StudentRepository.getStudentsAndUserByParentId(parent.id, tx);
 
       return studentsData.map((data) => {
         return new StudentWihUserDTO({
@@ -161,9 +141,7 @@ export class ParentService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getOneParentByUserId = async (userId: string, txInstance?: Transaction) => {
@@ -171,9 +149,7 @@ export class ParentService {
       return await ParentRepository.getOneParentByUserId(userId, tx);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static getClassesEnrolledByChildren = async ({
@@ -184,54 +160,18 @@ export class ParentService {
     txInstance?: Transaction;
   }): Promise<ClassDTO[]> => {
     const execute = async (tx: Transaction) => {
-      const parent = await ParentRepository.getOneParentByUserId(
-        currentUser.id,
-        tx
-      );
+      const classes = await ClassService.getParentClasses(currentUser, tx);
 
-      if (!parent) {
-        throw new NotFoundException("Parent not found");
-      }
+      const instructorIds = classes
+        .map((classData) => classData.instructorId)
+        .filter((id) => id !== null);
 
-      const studentsData = await StudentRepository.getStudentsByParentId(
-        parent.id,
-        tx
-      );
-
-      if (studentsData.length === 0) {
-        return [];
-      }
-
-      const studentIds = studentsData.map((student) => student.student.id);
-
-      const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByStudentIds(
-        studentIds,
-        tx
-      );
-
-      if (enrollments.length === 0) {
-        return [];
-      }
-
-      const classIds = enrollments.map((enrollment) => enrollment.classId);
-      const uniqueClassIds = Array.from(new Set(classIds));
-
-      const classes = await ClassRepository.findClassesByIds(
-        uniqueClassIds,
-        tx
-      );
-
-      const instructorIds = classes.map((classData) => classData.instructorId).filter((id) => id !== null);
-
-      const instructors = await UserRepository.getUserProfileByInstructorIds(
-        instructorIds,
-        tx
-      );
+      const instructors = await UserRepository.getUserProfileByInstructorIds(instructorIds, tx);
 
       const instructorMap = new Map(instructors.map((instructor) => [instructor.id, instructor]));
 
       const classesDTOs = classes.map((classData) => {
-        let instructor: InstructorUserDetails | null|undefined = null;
+        let instructor: InstructorUserDetails | null | undefined = null;
 
         if (classData.instructorId) {
           instructor = instructorMap.get(classData.instructorId);
@@ -243,11 +183,9 @@ export class ParentService {
         });
       });
 
-      return classesDTOs
+      return classesDTOs;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
-};
+}

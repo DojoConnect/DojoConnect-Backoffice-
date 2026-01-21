@@ -94,7 +94,9 @@ const OneTimeClassSchema = BaseClassSchema.extend({
 
 // Combine them
 export const CreateClassSchema = z
-  .discriminatedUnion("frequency", [WeeklyClassSchema, OneTimeClassSchema], {error: `Invalid class frequency. Expected : ${ClassFrequency.Weekly} | ${ClassFrequency.OneTime}`})
+  .discriminatedUnion("frequency", [WeeklyClassSchema, OneTimeClassSchema], {
+    error: `Invalid class frequency. Expected : ${ClassFrequency.Weekly} | ${ClassFrequency.OneTime}`,
+  })
   .refine((data) => data.minAge <= data.maxAge, {
     message: "Minimum age cannot be greater than maximum age.",
     path: ["minAge"],
@@ -102,21 +104,14 @@ export const CreateClassSchema = z
   .superRefine((data, ctx) => {
     // Keep your price/subscription logic here,
     // but the frequency/schedule logic is now handled by the structure above!
-    if (
-      data.subscriptionType === ClassSubscriptionType.Free &&
-      data.price &&
-      data.price !== 0
-    ) {
+    if (data.subscriptionType === ClassSubscriptionType.Free && data.price && data.price !== 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Free classes must have price 0.",
         path: ["price"],
       });
     }
-    if (
-      data.subscriptionType === ClassSubscriptionType.Paid &&
-      (!data.price || data.price <= 0)
-    ) {
+    if (data.subscriptionType === ClassSubscriptionType.Paid && (!data.price || data.price <= 0)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Paid classes must have a price > 0.",
@@ -139,10 +134,7 @@ export const UpdateClassSchema = BaseClassSchema.omit({
   .partial()
   .extend({
     schedules: z
-      .union([
-        z.array(WeeklyScheduleSchema).min(1),
-        z.tuple([OneTimeScheduleSchema]),
-      ])
+      .union([z.array(WeeklyScheduleSchema).min(1), z.tuple([OneTimeScheduleSchema])])
       .optional(),
   })
   .refine(
@@ -155,7 +147,7 @@ export const UpdateClassSchema = BaseClassSchema.omit({
     {
       message: "Minimum age cannot be greater than maximum age.",
       path: ["minAge"],
-    }
+    },
   );
 
 export type UpdateClassDTO = z.infer<typeof UpdateClassSchema>;
@@ -165,7 +157,6 @@ export const UpdateClassInstructorSchema = z.object({
 });
 
 export type CreateClassScheduleDTO = z.infer<typeof CreateClassSchema>["schedules"];
-
 
 export const EnrollStudentSchema = z.object({
   studentIds: z.array(z.uuid()).min(1),

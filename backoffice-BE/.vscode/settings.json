@@ -1,5 +1,6 @@
 {
   "workbench.externalBrowser": "edge",
   "geminicodeassist.agentDebugMode": true,
-  "geminicodeassist.project": "gen-lang-client-0405121234"
+  "geminicodeassist.project": "gen-lang-client-0405121234",
+  "editor.formatOnPaste": true
 }

@@ -1,4 +1,4 @@
-import { initializeApp, cert, App } from 'firebase-admin/app';
+import { initializeApp, cert, App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import * as firebaseMessaging from "firebase-admin/messaging";
 import AppConfig from "../config/AppConfig.js";
@@ -26,9 +26,7 @@ export class FirebaseService {
       return firebaseApp;
     }
     firebaseApp = initializeApp({
-      credential: cert(
-        AppConfig.FIREBASE_CRED_FILE_PATH
-      ),
+      credential: cert(AppConfig.FIREBASE_CRED_FILE_PATH),
     });
 
     return firebaseApp;
@@ -39,9 +37,7 @@ export class FirebaseService {
       return firebaseMessagingInstance;
     }
 
-    firebaseMessagingInstance = firebaseMessaging.getMessaging(
-      FirebaseService.getFirebaseApp()
-    );
+    firebaseMessagingInstance = firebaseMessaging.getMessaging(FirebaseService.getFirebaseApp());
 
     return firebaseMessagingInstance;
   };
@@ -50,12 +46,9 @@ export class FirebaseService {
     return getAuth(FirebaseService.getFirebaseApp());
   };
 
-  static verifyFirebaseToken = async (
-    idToken: string
-  ): Promise<IFirebaseUser> => {
+  static verifyFirebaseToken = async (idToken: string): Promise<IFirebaseUser> => {
     try {
-      const decodedToken =
-        await FirebaseService.getFirebaseAuth().verifyIdToken(idToken);
+      const decodedToken = await FirebaseService.getFirebaseAuth().verifyIdToken(idToken);
 
       if (!decodedToken) throw new UnauthorizedException("Invalid Token");
 
@@ -87,4 +80,3 @@ export class FirebaseService {
     }
   };
 }
-

@@ -7,12 +7,8 @@ import { ClassRepository } from "../repositories/class.repository.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { SubscriptionRepository } from "../repositories/subscription.repository.js";
 import { StripeService } from "./stripe.service.js";
-import { 
-  NotFoundException, 
-  ForbiddenException, 
-  ConflictException, 
-} from "../core/errors/index.js";
-import { ClassSubscriptionType, } from "../constants/enums.js";
+import { NotFoundException, ForbiddenException, ConflictException } from "../core/errors/index.js";
+import { ClassSubscriptionType } from "../constants/enums.js";
 
 export class EnrollmentService {
   static enrollStudents = async ({
@@ -35,98 +31,114 @@ export class EnrollmentService {
 
       // 2. Retrieve All Students & Validate Ownership
       // Note: Middleware checks ownership, but we re-verify for consistency or if called internally
-      const students =  await StudentRepository.fetchStudentsByIds(studentIds, tx); 
-      
+      const students = await StudentRepository.fetchStudentsByIds(studentIds, tx);
+
       const parent = await ParentRepository.getOneParentByUserId(parentUser.id, tx);
       if (!parent) {
-         throw new ForbiddenException("User is not a registered parent");
+        throw new ForbiddenException("User is not a registered parent");
       }
 
       for (const studentId of studentIds) {
-          const student = students.find((s) => s.id === studentId);
-          if (!student) throw new NotFoundException(`Student not found`);
-          if (student.parentId !== parent.id) {
-               throw new ForbiddenException(`You are not authorized to enroll student ${student.id}`);
-          }
+        const student = students.find((s) => s.id === studentId);
+        if (!student) throw new NotFoundException(`Student not found`);
+        if (student.parentId !== parent.id) {
+          throw new ForbiddenException(`You are not authorized to enroll student ${student.id}`);
+        }
       }
 
       // 3. Validate Capacity
-      const currentEnrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId(classId, tx);
+      const currentEnrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByClassId(
+        classId,
+        tx,
+      );
       const activeEnrollmentsCount = currentEnrollments.length;
-      
+
       if (activeEnrollmentsCount + studentIds.length > dojoClass.capacity) {
         throw new ConflictException("Class does not have enough capacity for all students");
       }
 
       // 4. Validate Each Student (Existing Enrollment/Sub)
       for (const studentId of studentIds) {
-          // Check Active Enrollment
-          const existing = await ClassEnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId(classId, studentId, tx);
-          if (existing) {
-              throw new ConflictException(`Student ${studentId} is already actively enrolled in this class`);
-          }
+        // Check Active Enrollment
+        const existing =
+          await ClassEnrollmentRepository.findOneActiveEnrollmentByClassIdAndStudentId(
+            classId,
+            studentId,
+            tx,
+          );
+        if (existing) {
+          throw new ConflictException(
+            `Student ${studentId} is already actively enrolled in this class`,
+          );
+        }
 
-          // Check Active Subscription (if paid)
-          if (dojoClass.subscriptionType === ClassSubscriptionType.Paid) {
-               const activeSub = await SubscriptionRepository.findOneActiveClassSubByClassIdAndStudentId(classId, studentId, tx);
-               if (activeSub) {
-                   throw new ConflictException(`Student ${studentId} already has an active subscription for this class`);
-               }
+        // Check Active Subscription (if paid)
+        if (dojoClass.subscriptionType === ClassSubscriptionType.Paid) {
+          const activeSub = await SubscriptionRepository.findOneActiveClassSubByClassIdAndStudentId(
+            classId,
+            studentId,
+            tx,
+          );
+          if (activeSub) {
+            throw new ConflictException(
+              `Student ${studentId} already has an active subscription for this class`,
+            );
           }
+        }
       }
 
       // 5. Process Enrollment
 
       if (dojoClass.subscriptionType !== ClassSubscriptionType.Paid) {
-          // Free Class - Enroll All
-           await Promise.all(
-            studentIds.map(async (studentId) => {
-              ClassEnrollmentRepository.create({
+        // Free Class - Enroll All
+        await Promise.all(
+          studentIds.map(async (studentId) => {
+            ClassEnrollmentRepository.create(
+              {
                 classId,
                 studentId,
-                active: true
-            }, tx)
-          })
-          );
+                active: true,
+              },
+              tx,
+            );
+          }),
+        );
 
-          return {
-            status: 'enrolled',
-            clientSecret: null,
-          };
+        return {
+          status: "enrolled",
+          clientSecret: null,
+        };
       }
 
       if (dojoClass.subscriptionType === ClassSubscriptionType.Paid) {
-                              
-           // Ensure Parent has Stripe Customer
-           let stripeCustomerId = parent.stripeCustomerId;
-           if (!stripeCustomerId) {
-              const customer = await StripeService.createCustomer(parentUser);
-              stripeCustomerId = customer.id;
-              
-              // Update Parent with new Stripe Customer Id
-               await ParentRepository.update({
-                  parentId: parent.id,
-                  update: { stripeCustomerId },
-                  tx
-               });
-           }
+        // Ensure Parent has Stripe Customer
+        let stripeCustomerId = parent.stripeCustomerId;
+        if (!stripeCustomerId) {
+          const customer = await StripeService.createCustomer(parentUser);
+          stripeCustomerId = customer.id;
 
-           // Create Payment Intent
-           const paymentIntent = await StripeService.createEnrollmentPaymentIntent({
-             customerId: stripeCustomerId,
-             dojoClass,
-             students,
-           });
+          // Update Parent with new Stripe Customer Id
+          await ParentRepository.update({
+            parentId: parent.id,
+            update: { stripeCustomerId },
+            tx,
+          });
+        }
 
-           return {
-                status: 'payment_required',
-                clientSecret: paymentIntent.client_secret,
-           };
+        // Create Payment Intent
+        const paymentIntent = await StripeService.createEnrollmentPaymentIntent({
+          customerId: stripeCustomerId,
+          dojoClass,
+          students,
+        });
+
+        return {
+          status: "payment_required",
+          clientSecret: paymentIntent.client_secret,
+        };
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 }

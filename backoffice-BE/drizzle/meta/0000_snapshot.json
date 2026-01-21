@@ -56,17 +56,13 @@
       "compositePrimaryKeys": {
         "admin_id": {
           "name": "admin_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "email": {
           "name": "email",
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "checkConstraint": {}
@@ -116,9 +112,7 @@
       "compositePrimaryKeys": {
         "admin_password_resets_id": {
           "name": "admin_password_resets_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -152,9 +146,7 @@
       "indexes": {
         "announcement_id": {
           "name": "announcement_id",
-          "columns": [
-            "announcement_id"
-          ],
+          "columns": ["announcement_id"],
           "isUnique": false
         }
       },
@@ -162,9 +154,7 @@
       "compositePrimaryKeys": {
         "announcement_recipients_id": {
           "name": "announcement_recipients_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -222,9 +212,7 @@
       "compositePrimaryKeys": {
         "announcements_id": {
           "name": "announcements_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -282,9 +270,7 @@
       "compositePrimaryKeys": {
         "attendance_records_id": {
           "name": "attendance_records_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -318,16 +304,12 @@
       "indexes": {
         "message_id": {
           "name": "message_id",
-          "columns": [
-            "message_id"
-          ],
+          "columns": ["message_id"],
           "isUnique": false
         },
         "recipient_id": {
           "name": "recipient_id",
-          "columns": [
-            "recipient_id"
-          ],
+          "columns": ["recipient_id"],
           "isUnique": false
         }
       },
@@ -335,9 +317,7 @@
       "compositePrimaryKeys": {
         "broadcast_recipients_id": {
           "name": "broadcast_recipients_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -371,17 +351,12 @@
       "indexes": {
         "user_id": {
           "name": "user_id",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         },
         "idx_chat_participants": {
           "name": "idx_chat_participants",
-          "columns": [
-            "chat_id",
-            "user_id"
-          ],
+          "columns": ["chat_id", "user_id"],
           "isUnique": false
         }
       },
@@ -389,9 +364,7 @@
       "compositePrimaryKeys": {
         "chat_participants_id": {
           "name": "chat_participants_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -440,9 +413,7 @@
       "indexes": {
         "created_by": {
           "name": "created_by",
-          "columns": [
-            "created_by"
-          ],
+          "columns": ["created_by"],
           "isUnique": false
         }
       },
@@ -450,9 +421,7 @@
       "compositePrimaryKeys": {
         "chats_id": {
           "name": "chats_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -517,10 +486,7 @@
       "indexes": {
         "student_class_unique": {
           "name": "student_class_unique",
-          "columns": [
-            "student_id",
-            "class_id"
-          ],
+          "columns": ["student_id", "class_id"],
           "isUnique": true
         }
       },
@@ -529,12 +495,8 @@
           "name": "class_enrollments_student_id_students_id_fk",
           "tableFrom": "class_enrollments",
           "tableTo": "students",
-          "columnsFrom": [
-            "student_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["student_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -542,12 +504,8 @@
           "name": "class_enrollments_class_id_classes_id_fk",
           "tableFrom": "class_enrollments",
           "tableTo": "classes",
-          "columnsFrom": [
-            "class_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["class_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -555,9 +513,7 @@
       "compositePrimaryKeys": {
         "class_enrollments_id": {
           "name": "class_enrollments_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -638,12 +594,8 @@
           "name": "class_occurrences_schedule_id_class_schedules_id_fk",
           "tableFrom": "class_occurrences",
           "tableTo": "class_schedules",
-          "columnsFrom": [
-            "schedule_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["schedule_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -651,12 +603,8 @@
           "name": "class_occurrences_class_id_classes_id_fk",
           "tableFrom": "class_occurrences",
           "tableTo": "classes",
-          "columnsFrom": [
-            "class_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["class_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -664,9 +612,7 @@
       "compositePrimaryKeys": {
         "class_occurrences_id": {
           "name": "class_occurrences_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -721,9 +667,7 @@
       "indexes": {
         "class_idx": {
           "name": "class_idx",
-          "columns": [
-            "class_id"
-          ],
+          "columns": ["class_id"],
           "isUnique": false
         }
       },
@@ -732,12 +676,8 @@
           "name": "class_schedules_class_id_classes_id_fk",
           "tableFrom": "class_schedules",
           "tableTo": "classes",
-          "columnsFrom": [
-            "class_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["class_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -745,9 +685,7 @@
       "compositePrimaryKeys": {
         "class_schedules_id": {
           "name": "class_schedules_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -833,12 +771,8 @@
           "name": "class_subscriptions_student_id_students_id_fk",
           "tableFrom": "class_subscriptions",
           "tableTo": "students",
-          "columnsFrom": [
-            "student_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["student_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -846,12 +780,8 @@
           "name": "class_subscriptions_class_id_classes_id_fk",
           "tableFrom": "class_subscriptions",
           "tableTo": "classes",
-          "columnsFrom": [
-            "class_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["class_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -859,17 +789,13 @@
       "compositePrimaryKeys": {
         "class_subscriptions_id": {
           "name": "class_subscriptions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "class_subscriptions_stripe_sub_id_unique": {
           "name": "class_subscriptions_stripe_sub_id_unique",
-          "columns": [
-            "stripe_sub_id"
-          ]
+          "columns": ["stripe_sub_id"]
         }
       },
       "checkConstraint": {}
@@ -1024,16 +950,12 @@
       "indexes": {
         "instructor_idx": {
           "name": "instructor_idx",
-          "columns": [
-            "instructor_id"
-          ],
+          "columns": ["instructor_id"],
           "isUnique": false
         },
         "dojo_idx": {
           "name": "dojo_idx",
-          "columns": [
-            "dojo_id"
-          ],
+          "columns": ["dojo_id"],
           "isUnique": false
         }
       },
@@ -1042,12 +964,8 @@
           "name": "classes_dojo_id_dojos_id_fk",
           "tableFrom": "classes",
           "tableTo": "dojos",
-          "columnsFrom": [
-            "dojo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["dojo_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1055,12 +973,8 @@
           "name": "classes_instructor_id_dojo_instructors_id_fk",
           "tableFrom": "classes",
           "tableTo": "dojo_instructors",
-          "columnsFrom": [
-            "instructor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["instructor_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1068,9 +982,7 @@
       "compositePrimaryKeys": {
         "classes_id": {
           "name": "classes_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1142,9 +1054,7 @@
       "compositePrimaryKeys": {
         "deletion_requests_id": {
           "name": "deletion_requests_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1186,24 +1096,17 @@
       "indexes": {
         "dojo_id": {
           "name": "dojo_id",
-          "columns": [
-            "dojo_id"
-          ],
+          "columns": ["dojo_id"],
           "isUnique": false
         },
         "instructor_user_id": {
           "name": "instructor_user_id",
-          "columns": [
-            "instructor_user_id"
-          ],
+          "columns": ["instructor_user_id"],
           "isUnique": false
         },
         "unique_dojo_instructor": {
           "name": "unique_dojo_instructor",
-          "columns": [
-            "dojo_id",
-            "instructor_user_id"
-          ],
+          "columns": ["dojo_id", "instructor_user_id"],
           "isUnique": true
         }
       },
@@ -1212,12 +1115,8 @@
           "name": "dojo_instructors_instructor_user_id_users_id_fk",
           "tableFrom": "dojo_instructors",
           "tableTo": "users",
-          "columnsFrom": [
-            "instructor_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["instructor_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1225,12 +1124,8 @@
           "name": "dojo_instructors_dojo_id_dojos_id_fk",
           "tableFrom": "dojo_instructors",
           "tableTo": "dojos",
-          "columnsFrom": [
-            "dojo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["dojo_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1238,17 +1133,13 @@
       "compositePrimaryKeys": {
         "dojo_instructors_id": {
           "name": "dojo_instructors_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "dojo_instructors_instructor_user_id_unique": {
           "name": "dojo_instructors_instructor_user_id_unique",
-          "columns": [
-            "instructor_user_id"
-          ]
+          "columns": ["instructor_user_id"]
         }
       },
       "checkConstraint": {}
@@ -1321,9 +1212,7 @@
       "indexes": {
         "one_active_subscription_per_user": {
           "name": "one_active_subscription_per_user",
-          "columns": [
-            "active_dojo_id"
-          ],
+          "columns": ["active_dojo_id"],
           "isUnique": true
         }
       },
@@ -1332,12 +1221,8 @@
           "name": "dojo_subscriptions_dojo_id_dojos_id_fk",
           "tableFrom": "dojo_subscriptions",
           "tableTo": "dojos",
-          "columnsFrom": [
-            "dojo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["dojo_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1345,17 +1230,13 @@
       "compositePrimaryKeys": {
         "dojo_subscriptions_id": {
           "name": "dojo_subscriptions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "dojo_subscriptions_stripe_sub_id_unique": {
           "name": "dojo_subscriptions_stripe_sub_id_unique",
-          "columns": [
-            "stripe_sub_id"
-          ]
+          "columns": ["stripe_sub_id"]
         }
       },
       "checkConstraint": {}
@@ -1471,12 +1352,8 @@
           "name": "dojos_owner_user_id_users_id_fk",
           "tableFrom": "dojos",
           "tableTo": "users",
-          "columnsFrom": [
-            "owner_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1484,23 +1361,17 @@
       "compositePrimaryKeys": {
         "dojos_id": {
           "name": "dojos_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "dojos_tag_unique": {
           "name": "dojos_tag_unique",
-          "columns": [
-            "tag"
-          ]
+          "columns": ["tag"]
         },
         "dojos_stripe_customer_id_unique": {
           "name": "dojos_stripe_customer_id_unique",
-          "columns": [
-            "stripe_customer_id"
-          ]
+          "columns": ["stripe_customer_id"]
         }
       },
       "checkConstraint": {}
@@ -1547,9 +1418,7 @@
       "indexes": {
         "enrollment_id": {
           "name": "enrollment_id",
-          "columns": [
-            "enrollment_id"
-          ],
+          "columns": ["enrollment_id"],
           "isUnique": false
         }
       },
@@ -1557,9 +1426,7 @@
       "compositePrimaryKeys": {
         "enrolled_children_id": {
           "name": "enrolled_children_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1610,17 +1477,13 @@
       "compositePrimaryKeys": {
         "enrollments_id": {
           "name": "enrollments_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "enrollment_id": {
           "name": "enrollment_id",
-          "columns": [
-            "enrollment_id"
-          ]
+          "columns": ["enrollment_id"]
         }
       },
       "checkConstraint": {}
@@ -1758,9 +1621,7 @@
       "compositePrimaryKeys": {
         "events_id": {
           "name": "events_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1818,9 +1679,7 @@
       "compositePrimaryKeys": {
         "feedback_id": {
           "name": "feedback_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1922,12 +1781,8 @@
           "name": "instructor_invites_dojo_id_dojos_id_fk",
           "tableFrom": "instructor_invites",
           "tableTo": "dojos",
-          "columnsFrom": [
-            "dojo_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["dojo_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1935,12 +1790,8 @@
           "name": "instructor_invites_class_id_classes_id_fk",
           "tableFrom": "instructor_invites",
           "tableTo": "classes",
-          "columnsFrom": [
-            "class_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["class_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1948,12 +1799,8 @@
           "name": "instructor_invites_invited_by_users_id_fk",
           "tableFrom": "instructor_invites",
           "tableTo": "users",
-          "columnsFrom": [
-            "invited_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["invited_by"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1961,17 +1808,13 @@
       "compositePrimaryKeys": {
         "instructor_invites_id": {
           "name": "instructor_invites_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "instructor_invites_token_hash_unique": {
           "name": "instructor_invites_token_hash_unique",
-          "columns": [
-            "token_hash"
-          ]
+          "columns": ["token_hash"]
         }
       },
       "checkConstraint": {}
@@ -2019,16 +1862,12 @@
       "indexes": {
         "idx_messages_chat_id": {
           "name": "idx_messages_chat_id",
-          "columns": [
-            "chat_id"
-          ],
+          "columns": ["chat_id"],
           "isUnique": false
         },
         "idx_messages_sender_id": {
           "name": "idx_messages_sender_id",
-          "columns": [
-            "sender_id"
-          ],
+          "columns": ["sender_id"],
           "isUnique": false
         }
       },
@@ -2036,9 +1875,7 @@
       "compositePrimaryKeys": {
         "messages_id": {
           "name": "messages_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2127,12 +1964,8 @@
           "name": "notifications_user_id_users_id_fk",
           "tableFrom": "notifications",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2140,9 +1973,7 @@
       "compositePrimaryKeys": {
         "notifications_id": {
           "name": "notifications_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2207,12 +2038,8 @@
           "name": "one_time_class_payments_student_id_students_id_fk",
           "tableFrom": "one_time_class_payments",
           "tableTo": "students",
-          "columnsFrom": [
-            "student_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["student_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2220,12 +2047,8 @@
           "name": "one_time_class_payments_class_id_classes_id_fk",
           "tableFrom": "one_time_class_payments",
           "tableTo": "classes",
-          "columnsFrom": [
-            "class_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["class_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2233,17 +2056,13 @@
       "compositePrimaryKeys": {
         "one_time_class_payments_id": {
           "name": "one_time_class_payments_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "one_time_class_payments_stripe_payment_intent_id_unique": {
           "name": "one_time_class_payments_stripe_payment_intent_id_unique",
-          "columns": [
-            "stripe_payment_intent_id"
-          ]
+          "columns": ["stripe_payment_intent_id"]
         }
       },
       "checkConstraint": {}
@@ -2295,12 +2114,8 @@
           "name": "parents_user_id_users_id_fk",
           "tableFrom": "parents",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2308,17 +2123,13 @@
       "compositePrimaryKeys": {
         "parents_id": {
           "name": "parents_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "parents_stripe_customer_id_unique": {
           "name": "parents_stripe_customer_id_unique",
-          "columns": [
-            "stripe_customer_id"
-          ]
+          "columns": ["stripe_customer_id"]
         }
       },
       "checkConstraint": {}
@@ -2392,12 +2203,8 @@
           "name": "password_reset_otps_user_id_users_id_fk",
           "tableFrom": "password_reset_otps",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2405,9 +2212,7 @@
       "compositePrimaryKeys": {
         "password_reset_otps_id": {
           "name": "password_reset_otps_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2488,12 +2293,8 @@
           "name": "refresh_tokens_user_id_users_id_fk",
           "tableFrom": "refresh_tokens",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2501,9 +2302,7 @@
       "compositePrimaryKeys": {
         "refresh_tokens_id": {
           "name": "refresh_tokens_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2559,9 +2358,7 @@
       "indexes": {
         "user_email": {
           "name": "user_email",
-          "columns": [
-            "user_email"
-          ],
+          "columns": ["user_email"],
           "isUnique": false
         }
       },
@@ -2601,9 +2398,7 @@
       "compositePrimaryKeys": {
         "stripe_webhook_events_id": {
           "name": "stripe_webhook_events_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2652,10 +2447,7 @@
       "indexes": {
         "unique_student_parent": {
           "name": "unique_student_parent",
-          "columns": [
-            "student_user_id",
-            "parent_id"
-          ],
+          "columns": ["student_user_id", "parent_id"],
           "isUnique": true
         }
       },
@@ -2664,12 +2456,8 @@
           "name": "students_student_user_id_users_id_fk",
           "tableFrom": "students",
           "tableTo": "users",
-          "columnsFrom": [
-            "student_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["student_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2677,12 +2465,8 @@
           "name": "students_parent_id_parents_id_fk",
           "tableFrom": "students",
           "tableTo": "parents",
-          "columnsFrom": [
-            "parent_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parent_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2690,17 +2474,13 @@
       "compositePrimaryKeys": {
         "students_id": {
           "name": "students_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "students_student_user_id_unique": {
           "name": "students_student_user_id_unique",
-          "columns": [
-            "student_user_id"
-          ]
+          "columns": ["student_user_id"]
         }
       },
       "checkConstraint": {}
@@ -2794,9 +2574,7 @@
       "compositePrimaryKeys": {
         "tasks_id": {
           "name": "tasks_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2870,9 +2648,7 @@
       "compositePrimaryKeys": {
         "transactions_id": {
           "name": "transactions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2953,12 +2729,8 @@
           "name": "user_cards_user_id_users_id_fk",
           "tableFrom": "user_cards",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2966,9 +2738,7 @@
       "compositePrimaryKeys": {
         "user_cards_id": {
           "name": "user_cards_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -3035,12 +2805,8 @@
           "name": "user_oauth_accounts_user_id_users_id_fk",
           "tableFrom": "user_oauth_accounts",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -3048,18 +2814,13 @@
       "compositePrimaryKeys": {
         "user_oauth_accounts_id": {
           "name": "user_oauth_accounts_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "provider_user_unique": {
           "name": "provider_user_unique",
-          "columns": [
-            "provider",
-            "provider_user_id"
-          ]
+          "columns": ["provider", "provider_user_id"]
         }
       },
       "checkConstraint": {}
@@ -3187,23 +2948,17 @@
       "compositePrimaryKeys": {
         "users_id": {
           "name": "users_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         },
         "users_username_unique": {
           "name": "users_username_unique",
-          "columns": [
-            "username"
-          ]
+          "columns": ["username"]
         }
       },
       "checkConstraint": {}
@@ -3246,17 +3001,13 @@
       "compositePrimaryKeys": {
         "waitlist_id": {
           "name": "waitlist_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "email": {
           "name": "email",
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "checkConstraint": {}

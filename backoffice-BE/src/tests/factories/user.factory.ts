@@ -28,9 +28,7 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   };
 };
 
-export const buildUserCardMock = (
-  overrides?: Partial<IUserCard>
-): IUserCard => {
+export const buildUserCardMock = (overrides?: Partial<IUserCard>): IUserCard => {
   return {
     id: "card_01JH8B9Z3P9A7XQ2KM4D8S1L0F", // 64-char max, can mimic uuidv7
     userId: "usr_01JH8A3Z9Q7X2TQPM8S4R1A9B7", // must match a user.id
@@ -52,17 +50,13 @@ export const buildNewUserMock = (overrides?: Partial<INewUser>): INewUser => {
   };
 };
 
-export const buildNewUserCardMock = (
-  overrides?: Partial<INewUserCard>
-): INewUserCard => {
+export const buildNewUserCardMock = (overrides?: Partial<INewUserCard>): INewUserCard => {
   return {
     ...buildUserCardMock(overrides),
     ...overrides,
   };
 };
 
-export const buildUserDtoMock = (
-  overrides?: Partial<UserDTOParams>
-): UserDTO => {
-  return new UserDTO({ ...buildUserMock(overrides), });
+export const buildUserDtoMock = (overrides?: Partial<UserDTOParams>): UserDTO => {
+  return new UserDTO({ ...buildUserMock(overrides) });
 };

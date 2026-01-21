@@ -2,15 +2,26 @@
   "name": "back-office-api",
   "version": "1.0.0",
   "description": "Trial class schedule API (Node.js + MySQL, cPanel friendly)",
-  "main": "src/server.ts",
   "type": "module",
+  "main": "src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
     "start": "node ./dist/server.js",
     "build": "rm -rf dist && tsc -b",
     "test": "vitest",
     "db:generate": "tsx node_modules/drizzle-kit/bin.cjs generate",
-    "db:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate"
+    "db:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,js,mjs,cjs}": [
+      "oxfmt --no-error-on-unmatched-pattern",
+      "npm run lint:fix"
+    ]
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
@@ -33,6 +44,7 @@
     "nanoid": "^5.1.6",
     "nodemailer": "^7.0.6",
     "pdfkit": "^0.13.0",
+    "socket.io": "^4.8.3",
     "stripe": "^20.0.0",
     "uuidv7": "^1.1.0",
     "zod": "^4.2.1"
@@ -43,9 +55,17 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.10.1",
     "drizzle-kit": "^0.31.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "oxfmt": "^0.26.0",
+    "oxlint": "^1.41.0",
     "supertest": "^7.1.4",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
+  },
+  "optionalDependencies": {
+    "bufferutil": "*",
+    "utf-8-validate": "*"
   }
 }

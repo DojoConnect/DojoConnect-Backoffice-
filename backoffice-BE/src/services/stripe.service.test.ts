@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import type { MockInstance } from "vitest";
-import {StripePriceIDsMap, StripeService} from "./stripe.service.js";
+import { StripePriceIDsMap, StripeService } from "./stripe.service.js";
 import AppConfig from "../config/AppConfig.js";
 import { StripePlans } from "../constants/enums.js";
 import {
@@ -22,26 +22,29 @@ describe("Stripe Service", () => {
     // Clear mock history before each test
     vi.clearAllMocks();
 
-    getStripeInstanceSpy = vi
-      .spyOn(StripeService, "getStripeInstance")
-      .mockReturnValue({
-        customers: {
-          create: mockCustomersCreate,
-        },
-        subscriptions: {
-          create: mockSubscriptionsCreate,
-        },
-        paymentMethods: {
-          retrieve: mockPaymentMethodsRetrieve,
-        },
-      } as any);
+    getStripeInstanceSpy = vi.spyOn(StripeService, "getStripeInstance").mockReturnValue({
+      customers: {
+        create: mockCustomersCreate,
+      },
+      subscriptions: {
+        create: mockSubscriptionsCreate,
+      },
+      paymentMethods: {
+        retrieve: mockPaymentMethodsRetrieve,
+      },
+    } as any);
 
-      AppConfig.STRIPE_SECRET_KEY = "test_stripe_secret_key";
+    AppConfig.STRIPE_SECRET_KEY = "test_stripe_secret_key";
   });
 
   describe("createCustomers", () => {
     it("should call stripe.customers.create with correct parameters", async () => {
-      const user = buildUserMock({ id: "1", firstName: "John", lastName: "Doe", email: "john.doe@example.com" });
+      const user = buildUserMock({
+        id: "1",
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@example.com",
+      });
       const mockCustomer = buildStripeCustMock({ id: "cus_123", email: user.email });
       mockCustomersCreate.mockResolvedValue(mockCustomer);
 
@@ -86,7 +89,7 @@ describe("Stripe Service", () => {
         },
         {
           idempotencyKey,
-        }
+        },
       );
 
       expect(result).toEqual(mockSubscription);

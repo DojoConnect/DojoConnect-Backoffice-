@@ -8,9 +8,7 @@ import { IAppointment } from "../../services/appointments.service.js";
  * @param overrides - An object with properties to override the default mock data.
  * @returns A complete mock `IAppointment` object.
  */
-export const buildAppointmentMock = (
-  overrides?: Partial<IAppointment>
-): IAppointment => {
+export const buildAppointmentMock = (overrides?: Partial<IAppointment>): IAppointment => {
   return {
     id: 1,
     dojo_id: 1,

@@ -18,7 +18,7 @@ router.get(
   requireAuth,
   requireRole(Role.DojoAdmin),
   isDojoOwnerMiddleware,
-  DojosController.handleFetchDojoInstructors
+  DojosController.handleFetchDojoInstructors,
 );
 
 router.get(
@@ -26,7 +26,7 @@ router.get(
   requireAuth,
   requireRole(Role.DojoAdmin),
   isDojoOwnerMiddleware,
-  DojosController.handleFetchInvitedInstructors
+  DojosController.handleFetchInvitedInstructors,
 );
 
 router.post(
@@ -35,7 +35,7 @@ router.post(
   requireRole(Role.DojoAdmin),
   isDojoOwnerMiddleware,
   validateReqBody(InviteInstructorSchema),
-  DojosController.handleInviteInstructor
+  DojosController.handleInviteInstructor,
 );
 
 router.post(
@@ -44,22 +44,17 @@ router.post(
   requireRole(Role.DojoAdmin),
   isDojoOwnerMiddleware,
   validateReqBody(CreateClassSchema),
-  DojosController.createClass
+  DojosController.createClass,
 );
 
-router.get(
-  "/:dojoId/classes",
-  requireAuth,
-  isDojoMemberMiddleware,
-  DojosController.getClasses
-);
+router.get("/:dojoId/classes", requireAuth, isDojoMemberMiddleware, DojosController.getClasses);
 
 router.get(
   "/:dojoId/students",
   requireAuth,
   requireRole(Role.DojoAdmin),
   isDojoOwnerMiddleware,
-  DojosController.handleFetchDojoStudents
+  DojosController.handleFetchDojoStudents,
 );
 
 export default router;

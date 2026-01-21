@@ -10,9 +10,7 @@ import { IClass, IClassSchedule } from "../../repositories/class.repository.js";
 import { CreateClassDTO } from "../../validations/classes.schemas.js";
 import { DeepPartial } from "../../utils/types.utils.js";
 
-export const buildClassScheduleMock = (
-  overrides?: Partial<IClassSchedule>
-): IClassSchedule => {
+export const buildClassScheduleMock = (overrides?: Partial<IClassSchedule>): IClassSchedule => {
   return {
     id: "schedule-1",
     classId: "class-1",
@@ -25,14 +23,14 @@ export const buildClassScheduleMock = (
 };
 
 export const buildClassMock = (
-  overrides?: DeepPartial<IClass & { schedules: IClassSchedule[] }>
+  overrides?: DeepPartial<IClass & { schedules: IClassSchedule[] }>,
 ): IClass & { schedules: IClassSchedule[] } => {
   const schedules: IClassSchedule[] = overrides?.schedules?.map((s, index) =>
     buildClassScheduleMock({
       ...s,
       id: s?.id ?? `schedule-${index + 1}`,
       classId: s?.classId ?? "class-1",
-    })
+    }),
   ) ?? [buildClassScheduleMock()];
 
   const { schedules: _, ...classOverrides } = overrides ?? {};
@@ -44,6 +42,7 @@ export const buildClassMock = (
     name: "Karate 101",
     description: "Beginner's karate class.",
     level: ExperienceLevel.Beginner,
+    chatId: faker.string.uuid(),
     minAge: 6,
     maxAge: 10,
     capacity: 20,
@@ -65,10 +64,7 @@ export const buildClassMock = (
 
 type WeeklyDTO = Extract<CreateClassDTO, { frequency: ClassFrequency.Weekly }>;
 
-type OneTimeDTO = Extract<
-  CreateClassDTO,
-  { frequency: ClassFrequency.OneTime }
->;
+type OneTimeDTO = Extract<CreateClassDTO, { frequency: ClassFrequency.OneTime }>;
 
 type WeeklyOverrides = Partial<WeeklyDTO>;
 type OneTimeOverrides = Partial<OneTimeDTO>;
@@ -76,10 +72,10 @@ type OneTimeOverrides = Partial<OneTimeDTO>;
 export function buildCreateClassDTOMock(overrides?: WeeklyOverrides): WeeklyDTO;
 
 export function buildCreateClassDTOMock(
-  overrides: OneTimeOverrides & { frequency: ClassFrequency.OneTime }
+  overrides: OneTimeOverrides & { frequency: ClassFrequency.OneTime },
 ): OneTimeDTO;
 export function buildCreateClassDTOMock(
-  overrides?: WeeklyOverrides | OneTimeOverrides
+  overrides?: WeeklyOverrides | OneTimeOverrides,
 ): CreateClassDTO {
   if (overrides?.frequency === ClassFrequency.OneTime) {
     const { frequency: _, ...safeOverrides } = overrides;

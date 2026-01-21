@@ -3,12 +3,9 @@
 import { Request, Router, Response } from "express";
 import AppConfig from "../config/AppConfig.js";
 import { formatApiResponse } from "../utils/api.utils.js";
-import {DojosService} from "../services/dojos.service.js";
+import { DojosService } from "../services/dojos.service.js";
 import * as dbService from "../db/index.js";
-import {
-  BadRequestException,
-  NotFoundException,
-} from "../core/errors/index.js";
+import { BadRequestException, NotFoundException } from "../core/errors/index.js";
 import { SubscriptionRepository } from "../repositories/subscription.repository.js";
 
 const router = Router();
@@ -24,10 +21,7 @@ router.get("/stripe/setup-intent", async (req: Request, res: Response) => {
     throw new NotFoundException("Dojo not found");
   }
 
-  let sub = await SubscriptionRepository.findLatestDojoAdminSub(
-    dojo.id,
-    dbService.getDB()
-  );
+  let sub = await SubscriptionRepository.findLatestDojoAdminSub(dojo.id, dbService.getDB());
 
   if (!sub || !sub.stripeSetupIntentId) {
     throw new BadRequestException("No setup in progress");

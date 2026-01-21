@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 
-import  {AuthService} from "../services/auth.service.js";
+import { AuthService } from "../services/auth.service.js";
 import { formatApiResponse } from "../utils/api.utils.js";
 import { BadRequestException } from "../core/errors/index.js";
 
@@ -18,7 +18,7 @@ export const handleRegisterDojoAdmin = async (req: Request, res: Response) => {
     formatApiResponse({
       data: result,
       message: "User registered successfully",
-    })
+    }),
   );
 };
 
@@ -36,7 +36,7 @@ export const handleRegisterParent = async (req: Request, res: Response) => {
     formatApiResponse({
       data: result,
       message: "Parent registered successfully",
-    })
+    }),
   );
 };
 
@@ -63,9 +63,7 @@ export const refreshUserToken = async (req: Request, res: Response) => {
     userAgent,
   });
 
-  res.json(
-    formatApiResponse({ data: result, message: "Authentication successful" })
-  );
+  res.json(formatApiResponse({ data: result, message: "Authentication successful" }));
 };
 
 export const logoutUser = async (req: Request, res: Response) => {
@@ -76,10 +74,7 @@ export const logoutUser = async (req: Request, res: Response) => {
   res.json(formatApiResponse({ data: undefined, message: "successful" }));
 };
 
-export const handleIsUsernameAvailable = async (
-  req: Request,
-  res: Response
-) => {
+export const handleIsUsernameAvailable = async (req: Request, res: Response) => {
   const username = req.params.username as string;
   const available = await AuthService.isUsernameAvailable({ username });
 
@@ -116,7 +111,7 @@ export const handleInitForgetPassword = async (req: Request, res: Response) => {
       formatApiResponse({
         data: undefined,
         message: "If an account exists, you will receive an OTP code.",
-      })
+      }),
     );
   }
 };
@@ -137,7 +132,7 @@ export const handleResetPassword = async (req: Request, res: Response) => {
       formatApiResponse({
         data: undefined,
         message: "Password reset successful",
-      })
+      }),
     );
   } catch (error) {
     throw new BadRequestException("Reset Password Token expired or invalid");

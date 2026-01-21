@@ -12,7 +12,7 @@ import { InstructorService } from "../../services/instructor.service.js";
 export const isMemberOfInstructorDojoMiddleware = async (
   req: Request,
   _: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     if (!req.user) {
@@ -20,7 +20,6 @@ export const isMemberOfInstructorDojoMiddleware = async (
     }
 
     const instructorId = req.params.instructorId || req.query.instructorId || req.body.instructorId;
-
 
     if (!instructorId) {
       throw new BadRequestException("Missing instructorId");

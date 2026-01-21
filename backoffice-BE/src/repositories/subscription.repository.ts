@@ -21,15 +21,12 @@ export class SubscriptionRepository {
         .where(eq(dojoSubscriptions.dojoId, dojoId))
         .orderBy(desc(dojoSubscriptions.createdAt))
         .limit(1)
-        .execute()
+        .execute(),
     );
   }
 
   static async createDojoAdminSub(newDojoSubDTO: INewDojoSub, tx: Transaction) {
-    const [insertResult] = await tx
-      .insert(dojoSubscriptions)
-      .values(newDojoSubDTO)
-      .$returningId();
+    const [insertResult] = await tx.insert(dojoSubscriptions).values(newDojoSubDTO).$returningId();
 
     return insertResult.id;
   }
@@ -43,13 +40,10 @@ export class SubscriptionRepository {
     update: IUpdateDojoSub;
     tx: Transaction;
   }) => {
-    await tx
-      .update(dojoSubscriptions)
-      .set(update)
-      .where(eq(dojoSubscriptions.id, dojoSubId));
+    await tx.update(dojoSubscriptions).set(update).where(eq(dojoSubscriptions.id, dojoSubId));
   };
 
-  static async createClassSub (newClassSubDTO: INewClassSub, tx: Transaction) {
+  static async createClassSub(newClassSubDTO: INewClassSub, tx: Transaction) {
     const [insertResult] = await tx
       .insert(classSubscriptions)
       .values(newClassSubDTO)
@@ -58,30 +52,41 @@ export class SubscriptionRepository {
     return insertResult.id;
   }
 
-  static findOneClassSub = async ( whereClause: SQL | undefined,
-      tx: Transaction
-    ): Promise<IClassSub | null> => {
-      const classSub = returnFirst(
-        await tx.select().from(classSubscriptions).where(whereClause).limit(1).execute()
-      );
-  
-      return classSub || null;
-    }
+  static findOneClassSub = async (
+    whereClause: SQL | undefined,
+    tx: Transaction,
+  ): Promise<IClassSub | null> => {
+    const classSub = returnFirst(
+      await tx.select().from(classSubscriptions).where(whereClause).limit(1).execute(),
+    );
 
-    static findOneClassSubByStripeSubId = async (stripeSubId: string, tx: Transaction): Promise<IClassSub | null> => {
-      return await this.findOneClassSub(eq(classSubscriptions.stripeSubId, stripeSubId), tx);
-    }
+    return classSub || null;
+  };
 
-    static findOneActiveClassSubByClassIdAndStudentId = async (classId: string, studentId: string, tx: Transaction): Promise<IClassSub | null> => {
-      return await this.findOneClassSub(and(
-                  eq(classSubscriptions.classId, classId),
-                  eq(classSubscriptions.studentId, studentId),
-                  or(
-                     eq(classSubscriptions.status, BillingStatus.Active),
-                     eq(classSubscriptions.status, BillingStatus.Trialing)
-                  )
-                ), tx);
-    }
+  static findOneClassSubByStripeSubId = async (
+    stripeSubId: string,
+    tx: Transaction,
+  ): Promise<IClassSub | null> => {
+    return await this.findOneClassSub(eq(classSubscriptions.stripeSubId, stripeSubId), tx);
+  };
+
+  static findOneActiveClassSubByClassIdAndStudentId = async (
+    classId: string,
+    studentId: string,
+    tx: Transaction,
+  ): Promise<IClassSub | null> => {
+    return await this.findOneClassSub(
+      and(
+        eq(classSubscriptions.classId, classId),
+        eq(classSubscriptions.studentId, studentId),
+        or(
+          eq(classSubscriptions.status, BillingStatus.Active),
+          eq(classSubscriptions.status, BillingStatus.Trialing),
+        ),
+      ),
+      tx,
+    );
+  };
 
   static updateClassSubByStripeSubId = async ({
     stripeSubId,

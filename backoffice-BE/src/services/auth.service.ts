@@ -39,10 +39,7 @@ import {
 } from "../validations/auth.schemas.js";
 import type { Transaction } from "../db/index.js";
 import { DojoStatus, Role } from "../constants/enums.js";
-import {
-  AuthResponseDTO,
-  RegisterDojoAdminResponseDTO,
-} from "../dtos/auth.dtos.js";
+import { AuthResponseDTO, RegisterDojoAdminResponseDTO } from "../dtos/auth.dtos.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
 import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
@@ -88,16 +85,14 @@ export class AuthService {
           userAgent,
           userIp,
         },
-        tx
+        tx,
       );
 
       // 4. Return raw tokens to the mobile app
       return { accessToken, refreshToken };
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static loginUser = async ({
@@ -118,8 +113,7 @@ export class AuthService {
         withPassword: true,
       });
 
-      if (!user || !user.passwordHash)
-        throw new UnauthorizedException(`Invalid credentials`);
+      if (!user || !user.passwordHash) throw new UnauthorizedException(`Invalid credentials`);
 
       const isValid = await verifyPassword(user.passwordHash, dto.password);
       if (!isValid) throw new UnauthorizedException(`Invalid credentials`);
@@ -142,37 +136,39 @@ export class AuthService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static getAuthResponseDTO = async ({user, userIp, userAgent, txInstance}: {user: IUser; userIp?: string;
-    userAgent?: string; txInstance?: Transaction}) => {
-      const execute = async (tx: Transaction) => {
-        const [authTokens, userDto] = await Promise.all([
+  static getAuthResponseDTO = async ({
+    user,
+    userIp,
+    userAgent,
+    txInstance,
+  }: {
+    user: IUser;
+    userIp?: string;
+    userAgent?: string;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      const [authTokens, userDto] = await Promise.all([
         AuthService.generateAuthTokens({
           user,
           userIp,
           userAgent,
           txInstance: tx,
         }),
-        UsersService.getUserDTO(
-          user,
-          tx,
-        ),
+        UsersService.getUserDTO(user, tx),
       ]);
 
       return new AuthResponseDTO({
         ...authTokens,
         userDto,
       });
-      }
+    };
 
-      return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
-    }
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
 
   static revokeRefreshToken = async ({
     dto,
@@ -187,11 +183,7 @@ export class AuthService {
       // 1. Find the token in DB
       const storedToken = await RefreshTokenRepository.getOne(hashedToken, tx);
 
-      if (
-        !storedToken ||
-        storedToken.revoked ||
-        isAfter(new Date(), storedToken.expiresAt)
-      ) {
+      if (!storedToken || storedToken.revoked || isAfter(new Date(), storedToken.expiresAt)) {
         throw new UnauthorizedException("Invalid or expired refresh token");
       }
 
@@ -202,9 +194,7 @@ export class AuthService {
       return storedToken;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static refreshAccessToken = async ({
@@ -239,9 +229,7 @@ export class AuthService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static createUser = async ({
@@ -266,7 +254,7 @@ export class AuthService {
         fcmToken: dto.fcmToken || null,
         dob: dto.dob || null,
       },
-      tx
+      tx,
     );
   };
 
@@ -280,26 +268,23 @@ export class AuthService {
       userIp?: string;
       userAgent?: string;
     },
-    txInstance?: dbService.Transaction
+    txInstance?: dbService.Transaction,
   ): Promise<RegisterDojoAdminResponseDTO> => {
     const execute = async (tx: dbService.Transaction) => {
       try {
         // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
-        const [
-          existingUserWithEmail,
-          existingUserWithUsername,
-          existingDojoWithTag,
-        ] = await Promise.all([
-          UsersService.getOneUserByEmail({
-            email: dto.email,
-            txInstance: tx,
-          }),
-          UsersService.getOneUserByUserName({
-            username: dto.username,
-            txInstance: tx,
-          }),
-          DojosService.getOneDojoByTag(dto.dojoTag, tx),
-        ]);
+        const [existingUserWithEmail, existingUserWithUsername, existingDojoWithTag] =
+          await Promise.all([
+            UsersService.getOneUserByEmail({
+              email: dto.email,
+              txInstance: tx,
+            }),
+            UsersService.getOneUserByUserName({
+              username: dto.username,
+              txInstance: tx,
+            }),
+            DojosService.getOneDojoByTag(dto.dojoTag, tx),
+          ]);
 
         if (existingUserWithEmail) {
           throw new ConflictException("Email already registered");
@@ -331,9 +316,7 @@ export class AuthService {
 
         let trialEndsAt: Date | null = addDays(new Date(), 14);
 
-        const stripeCustomer = await StripeService.createCustomer(
-          newUser,
-        );
+        const stripeCustomer = await StripeService.createCustomer(newUser);
 
         const newDojo = await DojosService.createDojo(
           {
@@ -348,19 +331,18 @@ export class AuthService {
             referralCode: referral_code,
             referredBy: dto.referredBy,
           },
-          tx
+          tx,
         );
 
         let stripeClientSecret: string | null = null;
 
         try {
           // Setup Dojo Admin Billing
-          const { clientSecret } =
-            await SubscriptionService.setupDojoAdminBilling({
-              dojo: newDojo,
-              user: newUser,
-              txInstance: tx,
-            });
+          const { clientSecret } = await SubscriptionService.setupDojoAdminBilling({
+            dojo: newDojo,
+            user: newUser,
+            txInstance: tx,
+          });
 
           stripeClientSecret = clientSecret;
         } catch (err: any) {
@@ -369,9 +351,7 @@ export class AuthService {
           }
 
           console.error("Stripe API error:", err.message);
-          throw new InternalServerErrorException(
-            `Stripe API error: ${err.message || ""}`
-          );
+          throw new InternalServerErrorException(`Stripe API error: ${err.message || ""}`);
         }
 
         const [authTokens, dojo] = await Promise.all([
@@ -391,21 +371,16 @@ export class AuthService {
           throw new NotFoundException("Dojo not found for user");
         }
 
+        const results = await Promise.allSettled([
+          MailerService.sendDojoAdminWelcomeEmail(dto.email, dto.firstName, Role.DojoAdmin),
 
-          const results = await Promise.allSettled([
-            MailerService.sendDojoAdminWelcomeEmail(
-              dto.email,
-              dto.firstName,
-              Role.DojoAdmin
-          ),
-
-          NotificationService.sendDojoAdminSignUpNotification(newUser)
+          NotificationService.sendDojoAdminSignUpNotification(newUser),
         ]);
 
         if (results.some((result) => result.status === "rejected")) {
           console.log(
             "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
-            results.find((result) => result.status === "rejected")?.reason
+            results.find((result) => result.status === "rejected")?.reason,
           );
         }
 
@@ -420,9 +395,7 @@ export class AuthService {
       }
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static registerParent = async (
@@ -435,32 +408,28 @@ export class AuthService {
       userIp?: string;
       userAgent?: string;
     },
-    txInstance?: dbService.Transaction
+    txInstance?: dbService.Transaction,
   ): Promise<AuthResponseDTO> => {
     const execute = async (tx: dbService.Transaction) => {
-
       // --- CHECK EMAIL & USERNAME (Transactional Querying) ---
-        const [
-          existingUserWithEmail,
-          existingUserWithUsername
-        ] = await Promise.all([
-          UsersService.getOneUserByEmail({
-            email: dto.email,
-            txInstance: tx,
-          }),
-          UsersService.getOneUserByUserName({
-            username: dto.username,
-            txInstance: tx,
-          }),
-        ]);
+      const [existingUserWithEmail, existingUserWithUsername] = await Promise.all([
+        UsersService.getOneUserByEmail({
+          email: dto.email,
+          txInstance: tx,
+        }),
+        UsersService.getOneUserByUserName({
+          username: dto.username,
+          txInstance: tx,
+        }),
+      ]);
 
-        if (existingUserWithEmail) {
-          throw new ConflictException("Email already registered");
-        }
+      if (existingUserWithEmail) {
+        throw new ConflictException("Email already registered");
+      }
 
-        if (existingUserWithUsername) {
-          throw new ConflictException("Username already taken");
-        }
+      if (existingUserWithUsername) {
+        throw new ConflictException("Username already taken");
+      }
 
       const newUser = await AuthService.createUser({
         dto,
@@ -468,30 +437,28 @@ export class AuthService {
         tx,
       });
 
-      const stripeCustomer = await StripeService.createCustomer(
-        newUser,
+      const stripeCustomer = await StripeService.createCustomer(newUser);
+
+      await ParentRepository.create(
+        {
+          userId: newUser.id,
+          stripeCustomerId: stripeCustomer.id,
+        },
+        tx,
       );
 
-      await ParentRepository.create({
-        userId: newUser.id,
-        stripeCustomerId: stripeCustomer.id,          
-      }, tx);
-
       // Send Welcome
-        const results = await Promise.allSettled([
-        MailerService.sendParentWelcomeEmail(
-          newUser.email,
-          newUser.firstName
-        ),
-        NotificationService.sendParentSignUpNotification(newUser)]);
+      const results = await Promise.allSettled([
+        MailerService.sendParentWelcomeEmail(newUser.email, newUser.firstName),
+        NotificationService.sendParentSignUpNotification(newUser),
+      ]);
 
-        if (results.some((result) => result.status === "rejected")) {
-          console.log(
-            "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
-            results.find((result) => result.status === "rejected")?.reason
-          );
-        }
-
+      if (results.some((result) => result.status === "rejected")) {
+        console.log(
+          "[Consumed Error]: An Error occurred while trying to send email and notification. Error: ",
+          results.find((result) => result.status === "rejected")?.reason,
+        );
+      }
 
       return this.getAuthResponseDTO({
         user: newUser,
@@ -501,9 +468,7 @@ export class AuthService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static logoutUser = async ({
@@ -517,9 +482,7 @@ export class AuthService {
       await AuthService.revokeRefreshToken({ dto, txInstance: tx });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static isUsernameAvailable = async ({
@@ -542,9 +505,7 @@ export class AuthService {
       return true;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static isDojoTagAvailable = async ({
@@ -564,9 +525,7 @@ export class AuthService {
       return true;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static firebaseSignIn = async ({
@@ -582,9 +541,7 @@ export class AuthService {
   }) => {
     const execute = async (tx: Transaction) => {
       // 1. Verify with Firebase
-      const firebaseUser = await FirebaseService.verifyFirebaseToken(
-        dto.idToken
-      );
+      const firebaseUser = await FirebaseService.verifyFirebaseToken(dto.idToken);
 
       if (!firebaseUser.emailVerified) {
         throw new UnauthorizedException("Social Auth Email not verified");
@@ -599,12 +556,11 @@ export class AuthService {
         throw new NotFoundException("User not found");
       }
 
-      let oAuthAcct =
-        await UserOAuthAccountsRepository.findByProviderAndProviderUserId({
-          tx,
-          provider: firebaseUser.provider,
-          providerUserId: firebaseUser.uid,
-        });
+      let oAuthAcct = await UserOAuthAccountsRepository.findByProviderAndProviderUserId({
+        tx,
+        provider: firebaseUser.provider,
+        providerUserId: firebaseUser.uid,
+      });
 
       if (!oAuthAcct) {
         // Create OAuth link
@@ -660,9 +616,7 @@ export class AuthService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static initForgetPassword = async ({
@@ -712,9 +666,7 @@ export class AuthService {
       });
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static verifyOtp = async ({
@@ -744,7 +696,7 @@ export class AuthService {
           eq(passwordResetOTPs.hashedOTP, otpHash),
           eq(passwordResetOTPs.used, false),
           isNull(passwordResetOTPs.blockedAt),
-          gt(passwordResetOTPs.expiresAt, new Date())
+          gt(passwordResetOTPs.expiresAt, new Date()),
         ),
       });
 
@@ -769,9 +721,7 @@ export class AuthService {
           },
         });
 
-        throw new TooManyRequestsException(
-          "Too many failed attempts. Request a new code."
-        );
+        throw new TooManyRequestsException("Too many failed attempts. Request a new code.");
       }
 
       // SUCCESS: Burn the OTP immediately!
@@ -791,9 +741,7 @@ export class AuthService {
       return { resetToken };
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static resetPassword = async ({
@@ -820,9 +768,7 @@ export class AuthService {
       await RefreshTokenRepository.deleteByUserId(decoded.userId, tx);
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
   static generateUsername = async ({
@@ -833,7 +779,7 @@ export class AuthService {
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
-            // Generate Username
+      // Generate Username
       let username = email.split("@")[0];
       let isAvailable = await AuthService.isUsernameAvailable({
         username,
@@ -849,7 +795,7 @@ export class AuthService {
         });
         if (!isAvailableRetry) {
           throw new ConflictException(
-            "Could not generate a unique username. Please try a different email."
+            "Could not generate a unique username. Please try a different email.",
           );
         }
       }
@@ -857,8 +803,6 @@ export class AuthService {
       return username;
     };
 
-    return txInstance
-      ? execute(txInstance)
-      : dbService.runInTransaction(execute);
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 }

@@ -2,7 +2,7 @@ import Stripe from "stripe";
 import { faker } from "@faker-js/faker";
 
 export const buildStripePaymentMethodCardMock = (
-  overrides?: Partial<Stripe.PaymentMethod.Card>
+  overrides?: Partial<Stripe.PaymentMethod.Card>,
 ): Stripe.PaymentMethod.Card => {
   return {
     id: "card_123",
@@ -17,9 +17,7 @@ export const buildStripePaymentMethodCardMock = (
   } as Stripe.PaymentMethod.Card;
 };
 
-export const buildStripeCustMock = (
-  overrides?: Partial<Stripe.Customer>
-): Stripe.Customer => {
+export const buildStripeCustMock = (overrides?: Partial<Stripe.Customer>): Stripe.Customer => {
   return {
     id: "cus_123",
     email: "john.doe@example.com",
@@ -28,7 +26,7 @@ export const buildStripeCustMock = (
 };
 
 export const buildStripePaymentMethodMock = (
-  overrides?: Partial<Stripe.PaymentMethod>
+  overrides?: Partial<Stripe.PaymentMethod>,
 ): Stripe.PaymentMethod => {
   return {
     id: "pm_123",
@@ -38,7 +36,7 @@ export const buildStripePaymentMethodMock = (
 };
 
 export const buildStripeSubMock = (
-  overrides?: Partial<Stripe.Subscription>
+  overrides?: Partial<Stripe.Subscription>,
 ): Stripe.Subscription => {
   return {
     id: "sub_123",
@@ -48,7 +46,7 @@ export const buildStripeSubMock = (
 };
 
 export const buildStripeSetupIntentMock = (
-  overrides?: Partial<Stripe.SetupIntent>
+  overrides?: Partial<Stripe.SetupIntent>,
 ): Stripe.SetupIntent => {
   return {
     id: "seti_123",
@@ -58,7 +56,7 @@ export const buildStripeSetupIntentMock = (
 };
 
 export const buildStripeProductMock = (
-  overrides?: Partial<Stripe.Product>
+  overrides?: Partial<Stripe.Product>,
 ): Stripe.Response<Stripe.Product> => {
   return {
     id: "prod_123",
@@ -69,7 +67,7 @@ export const buildStripeProductMock = (
 };
 
 export const buildStripePriceMock = (
-  overrides?: Partial<Stripe.Price>
+  overrides?: Partial<Stripe.Price>,
 ): Stripe.Response<Stripe.Price> => {
   return {
     id: "price_123",

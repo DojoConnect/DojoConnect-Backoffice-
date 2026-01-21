@@ -1,25 +1,17 @@
-import {
-  ClassFrequency,
-  ExperienceLevel,
-  ClassSubscriptionType,
-} from "../constants/enums.js";
+import { ClassFrequency, ExperienceLevel, ClassSubscriptionType } from "../constants/enums.js";
 import { classes, classSchedules } from "../db/schema.js";
 import { InferSelectModel } from "drizzle-orm";
 import { CloudinaryService } from "../services/cloudinary.service.js";
 import { UpdateClassInstructorSchema } from "../validations/classes.schemas.js";
 import z from "zod";
-import {
-  SchedulesAndInstructor,
-} from "../repositories/class.repository.js";
+import { SchedulesAndInstructor } from "../repositories/class.repository.js";
 import { InstructorUserDetails } from "../repositories/user.repository.js";
 
 export type Class = InferSelectModel<typeof classes>;
 export type ClassSchedule = InferSelectModel<typeof classSchedules>;
 export type NewClassSchedule = InferSelectModel<typeof classSchedules>;
 
-export type UpdateClassInstructorDto = z.infer<
-  typeof UpdateClassInstructorSchema
->;
+export type UpdateClassInstructorDto = z.infer<typeof UpdateClassInstructorSchema>;
 
 export class ClassDTO {
   id: string;
@@ -58,9 +50,7 @@ export class ClassDTO {
     this.price = data.price;
     this.instructorId = data.instructorId;
     this.imagePublicId = data.imagePublicId;
-    this.schedules = (data.schedules ?? []).map(
-      (schedule) => new ClassScheduleDTO(schedule)
-    );
+    this.schedules = (data.schedules ?? []).map((schedule) => new ClassScheduleDTO(schedule));
     this.instructor = data.instructor ?? null;
   }
 
@@ -91,9 +81,7 @@ export class ClassDTO {
               : null,
           }
         : null,
-      imageUrl: this.imagePublicId
-        ? CloudinaryService.getAssetUrl(this.imagePublicId)
-        : null,
+      imageUrl: this.imagePublicId ? CloudinaryService.getAssetUrl(this.imagePublicId) : null,
       schedules: this.schedules.map((schedule) => schedule.toJSON()),
     };
   }

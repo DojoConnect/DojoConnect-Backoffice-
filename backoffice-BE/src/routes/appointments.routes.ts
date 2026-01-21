@@ -10,11 +10,7 @@ import { CreateAppointmentSchema } from "../validations/appointments.schemas.js"
 const router = Router();
 
 /* ------------------ CREATE A NEW APPOINTMENT REQUESTS ------------------ */
-router.post(
-  "/requests",
-  validateReqBody(CreateAppointmentSchema),
-  createAppointment
-);
+router.post("/requests", validateReqBody(CreateAppointmentSchema), createAppointment);
 
 /* ------------------ FETCH ALL APPOINTMENT REQUESTS ------------------ */
 router.get("/requests", fetchAllAppointments);

@@ -1,9 +1,6 @@
 import { Request, Response } from "express";
 import { DojosService } from "../services/dojos.service.js";
-import {
-  BadRequestException,
-  InternalServerErrorException,
-} from "../core/errors/index.js";
+import { BadRequestException, InternalServerErrorException } from "../core/errors/index.js";
 import { formatApiResponse } from "../utils/api.utils.js";
 import { NotFoundException } from "../core/errors/index.js";
 import { ClassService } from "../services/class.service.js";
@@ -61,7 +58,7 @@ export class DojosController {
       formatApiResponse({
         data: undefined,
         message: "Instructor invited successfully",
-      })
+      }),
     );
   }
 
@@ -74,65 +71,55 @@ export class DojosController {
       formatApiResponse({
         data: instructors,
         message: "Instructors fetched successfully",
-      })
+      }),
     );
   }
 
   static async createClass(req: Request, res: Response) {
-      const dojo = req.dojo;
-      if (!dojo) {
-        throw new InternalServerErrorException(
-          "Dojo not found on request object."
-        );
-      }
-  
-      const newClass = await ClassService.createClass({
-        dto: req.body,
-        dojo: dojo,
-      });
-  
-      res.status(201).json(
-        formatApiResponse({
-          data: newClass,
-          message: "Class created successfully.",
-        })
-      );
-    }
-  
-    static async getClasses(req: Request, res: Response) {
-      const dojo = req.dojo;
-      if (!dojo) {
-        throw new InternalServerErrorException(
-          "Dojo not found on request object."
-        );
-      }
-  
-      const classes = await ClassService.getAllClassesByDojoId(dojo.id);
-      const classDTOs = classes.map((c) => new ClassDTO(c));
-  
-      res
-        .status(200)
-        .json(
-          formatApiResponse({ data: classDTOs, message: "Classes fetched." })
-        );
+    const dojo = req.dojo;
+    if (!dojo) {
+      throw new InternalServerErrorException("Dojo not found on request object.");
     }
 
-    static async handleFetchDojoStudents(req: Request, res: Response) {
-      const dojo = req.dojo;
-      
-      if (!dojo) {
-          throw new InternalServerErrorException(
-            "Dojo not found on request object."
-          );
-      }
+    const newClass = await ClassService.createClass({
+      dto: req.body,
+      dojo: dojo,
+    });
 
-      const students = await StudentService.fetchAllDojoStudents(dojo.id);
+    res.status(201).json(
+      formatApiResponse({
+        data: newClass,
+        message: "Class created successfully.",
+      }),
+    );
+  }
 
-      res.status(200).json(
-          formatApiResponse({
-              data: students.map((student) => student.toJSON()),
-              message: "Dojo students fetched successfully",
-          })
-      );
+  static async getClasses(req: Request, res: Response) {
+    const dojo = req.dojo;
+    if (!dojo) {
+      throw new InternalServerErrorException("Dojo not found on request object.");
+    }
+
+    const classes = await ClassService.getAllClassAndInstructorsByDojoId(dojo.id);
+    const classDTOs = classes.map((c) => new ClassDTO(c));
+
+    res.status(200).json(formatApiResponse({ data: classDTOs, message: "Classes fetched." }));
+  }
+
+  static async handleFetchDojoStudents(req: Request, res: Response) {
+    const dojo = req.dojo;
+
+    if (!dojo) {
+      throw new InternalServerErrorException("Dojo not found on request object.");
+    }
+
+    const students = await StudentService.fetchAllDojoStudents(dojo.id);
+
+    res.status(200).json(
+      formatApiResponse({
+        data: students.map((student) => student.toJSON()),
+        message: "Dojo students fetched successfully",
+      }),
+    );
   }
 }

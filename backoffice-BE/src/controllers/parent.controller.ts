@@ -4,55 +4,41 @@ import { formatApiResponse } from "../utils/api.utils.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 
 export class ParentController {
+  static handleAddChild = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await ParentService.addChild({
+        parentUser: req.user!,
+        dto: req.body,
+      });
 
-static handleAddChild = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const result = await ParentService.addChild({
-      parentUser: req.user!,
-      dto: req.body,
-    });
+      res.status(201).json(
+        formatApiResponse({
+          data: result,
+          message: "Child added successfully",
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
 
-    res.status(201).json(
-      formatApiResponse({
-        data: result,
-        message: "Child added successfully",
-      })
-    );
-  } catch (error) {
-    next(error);
-  }
-};
+  static handleGetChildren = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await ParentService.getChildren({
+        currentUser: req.user!,
+      });
 
-static handleGetChildren = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const result = await ParentService.getChildren({
-      currentUser: req.user!,
-    });
+      res.status(200).json(
+        formatApiResponse({
+          data: result,
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
 
-    res.status(200).json(
-      formatApiResponse({
-        data: result,
-      })
-    );
-  } catch (error) {
-    next(error);
-  }
-};
-
-static handleGetClasses = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  
+  static handleGetClasses = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       throw new InternalServerErrorException("User not found");
     }
@@ -64,7 +50,7 @@ static handleGetClasses = async (
     res.status(200).json(
       formatApiResponse({
         data: result,
-      })
+      }),
     );
   };
 }

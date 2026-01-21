@@ -56,20 +56,13 @@ export const generatePasswordResetToken = (userId: string) => {
   return jwt.sign(payload, AppConfig.JWT_ACCESS_SECRET, { expiresIn: "5m" });
 };
 
-export const verifyPasswordResetToken = (
-  resetToken: string
-): PasswordResetTokenPayload => {
+export const verifyPasswordResetToken = (resetToken: string): PasswordResetTokenPayload => {
   // A. Verify the JWT
   let payload: PasswordResetTokenPayload;
   try {
-    payload = jwt.verify(
-      resetToken,
-      AppConfig.JWT_ACCESS_SECRET
-    ) as PasswordResetTokenPayload;
+    payload = jwt.verify(resetToken, AppConfig.JWT_ACCESS_SECRET) as PasswordResetTokenPayload;
   } catch (err) {
-    throw new BadRequestException(
-      "Reset token expired. Please verify OTP again."
-    );
+    throw new BadRequestException("Reset token expired. Please verify OTP again.");
   }
 
   // B. Security Check: Ensure this is a RESET token, not a login token
@@ -82,4 +75,4 @@ export const verifyPasswordResetToken = (
 
 export const generateInviteToken = () => {
   return crypto.randomBytes(32).toString("hex");
-}
+};

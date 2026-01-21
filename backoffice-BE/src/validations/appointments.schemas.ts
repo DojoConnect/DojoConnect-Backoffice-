@@ -24,21 +24,13 @@ export const CreateAppointmentSchema = z.object({
 
   additional_notes: z.string().trim().optional().nullable(),
 
-  consent_acknowledged: z
-    .union([z.boolean(), z.string(), z.number()])
-    .transform((v) => {
-      // The controller converts to: consent = !!value ? 1 : 0
-      if (v === "1" || v === 1 || v === true) return 1;
-      return 0;
-    }),
+  consent_acknowledged: z.union([z.boolean(), z.string(), z.number()]).transform((v) => {
+    // The controller converts to: consent = !!value ? 1 : 0
+    if (v === "1" || v === 1 || v === true) return 1;
+    return 0;
+  }),
 
-  appointment_type: z
-    .nativeEnum(AppointmentType)
-    .optional()
-    .default(AppointmentType.Online),
+  appointment_type: z.nativeEnum(AppointmentType).optional().default(AppointmentType.Online),
 
-  status: z
-    .nativeEnum(AppointmentStatus)
-    .optional()
-    .default(AppointmentStatus.Pending),
+  status: z.nativeEnum(AppointmentStatus).optional().default(AppointmentStatus.Pending),
 });

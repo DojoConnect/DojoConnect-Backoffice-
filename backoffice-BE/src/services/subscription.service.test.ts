@@ -1,18 +1,12 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import type { MockInstance } from "vitest";
-import  {StripeService} from "./stripe.service.js";
-import {DojosService} from "./dojos.service.js";
-import {UsersService} from "./users.service.js";
-import {
-  SubscriptionService,
-} from "./subscription.service.js";
+import { StripeService } from "./stripe.service.js";
+import { DojosService } from "./dojos.service.js";
+import { UsersService } from "./users.service.js";
+import { SubscriptionService } from "./subscription.service.js";
 import { DojoRepository, IDojo } from "../repositories/dojo.repository.js";
 import { SubscriptionRepository } from "../repositories/subscription.repository.js";
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from "../core/errors/index.js";
+import { BadRequestException, ConflictException, NotFoundException } from "../core/errors/index.js";
 import {
   BillingStatus,
   DojoStatus,
@@ -65,18 +59,9 @@ describe("SubscriptionService", () => {
     retrieveSetupIntentSpy = vi.spyOn(StripeService, "retrieveSetupIntent");
     createSubscriptionSpy = vi.spyOn(StripeService, "createSubscription");
 
-    findLatestDojoAdminSubSpy = vi.spyOn(
-      SubscriptionRepository,
-      "findLatestDojoAdminSub"
-    );
-    createDojoAdminSubSpy = vi.spyOn(
-      SubscriptionRepository,
-      "createDojoAdminSub"
-    );
-    updateDojoAdminSubSpy = vi.spyOn(
-      SubscriptionRepository,
-      "updateDojoAdminSub"
-    );
+    findLatestDojoAdminSubSpy = vi.spyOn(SubscriptionRepository, "findLatestDojoAdminSub");
+    createDojoAdminSubSpy = vi.spyOn(SubscriptionRepository, "createDojoAdminSub");
+    updateDojoAdminSubSpy = vi.spyOn(SubscriptionRepository, "updateDojoAdminSub");
 
     updateDojoRepoSpy = vi.spyOn(DojoRepository, "update");
     getOneDojoByUserIdSpy = vi.spyOn(DojosService, "getOneDojoByUserId");
@@ -131,7 +116,7 @@ describe("SubscriptionService", () => {
     it("should throw ConflictException if user does not own dojo", async () => {
       const anotherUser = buildUserMock();
       await expect(
-        SubscriptionService.setupDojoAdminBilling({ dojo, user: anotherUser })
+        SubscriptionService.setupDojoAdminBilling({ dojo, user: anotherUser }),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -215,7 +200,7 @@ describe("SubscriptionService", () => {
           stripeSetupIntentId: newSetupIntent.id,
           billingStatus: BillingStatus.SetupIntentCreated,
         },
-        dbSpies.mockTx
+        dbSpies.mockTx,
       );
       expect(updateDojoSpy).toHaveBeenCalledWith({
         dojoId: dojo.id,
@@ -242,23 +227,23 @@ describe("SubscriptionService", () => {
 
     it("should throw NotFoundException if dojo not found", async () => {
       getOneDojoByUserIdSpy.mockResolvedValue(null);
-      await expect(
-        SubscriptionService.confirmDojoAdminBilling({ user })
-      ).rejects.toThrow(NotFoundException);
+      await expect(SubscriptionService.confirmDojoAdminBilling({ user })).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it("should throw BadRequestException if stripeCustomerId is missing", async () => {
       dojo.stripeCustomerId = "";
-      await expect(
-        SubscriptionService.confirmDojoAdminBilling({ user })
-      ).rejects.toThrow(BadRequestException);
+      await expect(SubscriptionService.confirmDojoAdminBilling({ user })).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("should throw BadRequestException if subscription is not found", async () => {
       findLatestDojoAdminSubSpy.mockResolvedValue(null);
-      await expect(
-        SubscriptionService.confirmDojoAdminBilling({ user })
-      ).rejects.toThrow(BadRequestException);
+      await expect(SubscriptionService.confirmDojoAdminBilling({ user })).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("should return early if billing status is not SetupIntentCreated", async () => {
@@ -272,9 +257,9 @@ describe("SubscriptionService", () => {
         status: StripeSetupIntentStatus.RequiresPaymentMethod,
       });
       retrieveSetupIntentSpy.mockResolvedValue(setupIntent);
-      await expect(
-        SubscriptionService.confirmDojoAdminBilling({ user })
-      ).rejects.toThrow("Setup not complete");
+      await expect(SubscriptionService.confirmDojoAdminBilling({ user })).rejects.toThrow(
+        "Setup not complete",
+      );
     });
 
     it("should create subscription, grant trial, and update statuses", async () => {
@@ -340,7 +325,7 @@ describe("SubscriptionService", () => {
       expect(createSubscriptionSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           grantTrial: false,
-        })
+        }),
       );
       expect(updateDojoAdminSubSpy).toHaveBeenCalledWith({
         tx: dbSpies.mockTx,
@@ -364,67 +349,51 @@ describe("SubscriptionService", () => {
 
   describe("mapStripeSubStatus", () => {
     it('should map "trialing" to BillingStatus.Trialing', () => {
-      expect(SubscriptionService.mapStripeSubStatus("trialing")).toBe(
-        BillingStatus.Trialing
-      );
+      expect(SubscriptionService.mapStripeSubStatus("trialing")).toBe(BillingStatus.Trialing);
     });
     it('should map "active" to BillingStatus.Active', () => {
-      expect(SubscriptionService.mapStripeSubStatus("active")).toBe(
-        BillingStatus.Active
-      );
+      expect(SubscriptionService.mapStripeSubStatus("active")).toBe(BillingStatus.Active);
     });
     it('should map "past_due" to BillingStatus.PastDue', () => {
-      expect(SubscriptionService.mapStripeSubStatus("past_due")).toBe(
-        BillingStatus.PastDue
-      );
+      expect(SubscriptionService.mapStripeSubStatus("past_due")).toBe(BillingStatus.PastDue);
     });
     it('should map "unpaid" to BillingStatus.PastDue', () => {
-      expect(SubscriptionService.mapStripeSubStatus("unpaid")).toBe(
-        BillingStatus.PastDue
-      );
+      expect(SubscriptionService.mapStripeSubStatus("unpaid")).toBe(BillingStatus.PastDue);
     });
     it('should map "canceled" to BillingStatus.Cancelled', () => {
-      expect(SubscriptionService.mapStripeSubStatus("canceled")).toBe(
-        BillingStatus.Cancelled
-      );
+      expect(SubscriptionService.mapStripeSubStatus("canceled")).toBe(BillingStatus.Cancelled);
     });
     it("should throw an error for unhandled status", () => {
-      expect(() =>
-        SubscriptionService.mapStripeSubStatus("unknown" as any)
-      ).toThrow("Unhandled Stripe status: unknown");
+      expect(() => SubscriptionService.mapStripeSubStatus("unknown" as any)).toThrow(
+        "Unhandled Stripe status: unknown",
+      );
     });
   });
 
   describe("deriveDojoStatus", () => {
     it("should derive Trailing from Trialing", () => {
       expect(SubscriptionService.deriveDojoStatus(BillingStatus.Trialing)).toBe(
-        DojoStatus.Trailing
+        DojoStatus.Trailing,
       );
     });
     it("should derive Active from Active", () => {
-      expect(SubscriptionService.deriveDojoStatus(BillingStatus.Active)).toBe(
-        DojoStatus.Active
-      );
+      expect(SubscriptionService.deriveDojoStatus(BillingStatus.Active)).toBe(DojoStatus.Active);
     });
     it("should derive PastDue from PastDue", () => {
-      expect(SubscriptionService.deriveDojoStatus(BillingStatus.PastDue)).toBe(
-        DojoStatus.PastDue
-      );
+      expect(SubscriptionService.deriveDojoStatus(BillingStatus.PastDue)).toBe(DojoStatus.PastDue);
     });
     it("should derive Blocked from Cancelled", () => {
-      expect(
-        SubscriptionService.deriveDojoStatus(BillingStatus.Cancelled)
-      ).toBe(DojoStatus.Blocked);
+      expect(SubscriptionService.deriveDojoStatus(BillingStatus.Cancelled)).toBe(
+        DojoStatus.Blocked,
+      );
     });
     it("should derive OnboardingIncomplete from SetupIntentCreated", () => {
-      expect(
-        SubscriptionService.deriveDojoStatus(BillingStatus.SetupIntentCreated)
-      ).toBe(DojoStatus.OnboardingIncomplete);
+      expect(SubscriptionService.deriveDojoStatus(BillingStatus.SetupIntentCreated)).toBe(
+        DojoStatus.OnboardingIncomplete,
+      );
     });
     it("should derive Registered as default", () => {
-      expect(SubscriptionService.deriveDojoStatus("unknown" as any)).toBe(
-        DojoStatus.Registered
-      );
+      expect(SubscriptionService.deriveDojoStatus("unknown" as any)).toBe(DojoStatus.Registered);
     });
   });
   describe("createClassSubscriptionsFromPaymentIntent", () => {
@@ -450,28 +419,32 @@ describe("SubscriptionService", () => {
       vi.spyOn(
         // @ts-ignore
         EnrollmentRepository,
-        "findOneByClassIdAndStudentId"
+        "findOneByClassIdAndStudentId",
       ).mockResolvedValue(null);
       vi.spyOn(
         // @ts-ignore
         EnrollmentRepository,
-        "create"
+        "create",
       ).mockResolvedValue({} as any);
       vi.spyOn(
         // @ts-ignore
         EnrollmentRepository,
-        "update"
+        "update",
       ).mockResolvedValue({} as any);
     });
 
     it("should throw error if customer is missing", async () => {
-        mockPaymentIntent.customer = null;
-        await expect(SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent)).rejects.toThrow("Customer not found in payment intent");
+      mockPaymentIntent.customer = null;
+      await expect(
+        SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent),
+      ).rejects.toThrow("Customer not found in payment intent");
     });
 
     it("should throw error if metadata is missing fields", async () => {
-       mockPaymentIntent.metadata = {};
-       await expect(SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent)).rejects.toThrow("Missing metadata in payment intent");
+      mockPaymentIntent.metadata = {};
+      await expect(
+        SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent),
+      ).rejects.toThrow("Missing metadata in payment intent");
     });
 
     it("should create subscriptions and enrollments for all children", async () => {
@@ -484,14 +457,14 @@ describe("SubscriptionService", () => {
     });
 
     it("should update enrollment if exists but inactive", async () => {
-       vi.spyOn(
+      vi.spyOn(
         // @ts-ignore
         EnrollmentRepository,
-        "findOneByClassIdAndStudentId"
+        "findOneByClassIdAndStudentId",
       ).mockResolvedValue({ id: "enroll_1", active: false } as any);
 
       await SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent);
-       // @ts-ignore
+      // @ts-ignore
       expect(EnrollmentRepository.update).toHaveBeenCalledTimes(2);
     });
   });

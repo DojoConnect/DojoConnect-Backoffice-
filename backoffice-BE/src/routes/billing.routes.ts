@@ -10,7 +10,7 @@ router.post(
   "/confirm/dojo-admin",
   requireAuth,
   requireRole(Role.DojoAdmin),
-  BillingController.handleConfirmDojoAdminBilling
+  BillingController.handleConfirmDojoAdminBilling,
 );
 
 export default router;
