@@ -414,7 +414,7 @@ describe("Class Service", () => {
       findAllByDojoIdSpy.mockResolvedValue(mockClasses);
       userProfileByInstructorIdsSpy.mockResolvedValue(mockInstructorProfiles);
 
-      const result = await ClassService.getAllClassesByDojoId(dojo.id);
+      const result = await ClassService.getAllClassAndInstructorsByDojoId(dojo.id);
 
       expect(findAllByDojoIdSpy).toHaveBeenCalledWith(dojo.id, dbServiceSpy.mockTx);
       expect(userProfileByInstructorIdsSpy).toHaveBeenCalledWith(

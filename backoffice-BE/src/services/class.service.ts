@@ -19,18 +19,18 @@ import { ClassDTO } from "../dtos/class.dtos.js";
 import { StudentWihUserDTO } from "../dtos/student.dtos.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { nextDay } from "date-fns";
-import { ClassFrequency, ClassSubscriptionType } from "../constants/enums.js";
+import { ClassFrequency, ClassSubscriptionType, Role } from "../constants/enums.js";
 import { mapWeekdayToDayNumber } from "../utils/date.utils.js";
 import { IDojoInstructor, InstructorsRepository } from "../repositories/instructors.repository.js";
 import { StripeService } from "./stripe.service.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
 import { NotificationService } from "./notifications.service.js";
 import { UsersService } from "./users.service.js";
-import { IDojo } from "../repositories/dojo.repository.js";
+import { DojoRepository, IDojo } from "../repositories/dojo.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { CloudinaryService } from "./cloudinary.service.js";
 import { CloudinaryResourceType, ImageType } from "../constants/cloudinary.js";
-import { InstructorUserDetails, UserRepository } from "../repositories/user.repository.js";
+import { InstructorUserDetails, IUser, UserRepository } from "../repositories/user.repository.js";
 import { StudentRepository } from "../repositories/student.repository.js";
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 
@@ -61,12 +61,6 @@ export class ClassService {
         );
       }
 
-      const classData: INewClass = {
-        ...classDetails,
-        dojoId: dojo.id,
-        price: classDetails.price ? classDetails.price.toString() : null,
-      };
-
       if (dto.imagePublicId) {
         await CloudinaryService.moveImageFromTempFolder(
           dto.imagePublicId,
@@ -74,6 +68,24 @@ export class ClassService {
           ImageType.CLASS,
         );
       }
+
+      const dojoOwner = await UsersService.getOneUserByID({
+        userId: dojo.ownerUserId,
+        txInstance: tx,
+      });
+
+      if (!dojoOwner) {
+        throw new InternalServerErrorException("Dojo owner not found");
+      }
+
+      const chatId = await ChatsService.createClassGroupChat(dojoOwner, tx);
+
+      const classData: INewClass = {
+        ...classDetails,
+        dojoId: dojo.id,
+        price: classDetails.price ? classDetails.price.toString() : null,
+        chatId
+      };
 
       const newClassId = await ClassRepository.create(
         {
@@ -140,6 +152,12 @@ export class ClassService {
           throw new InternalServerErrorException("Dojo Instructor not found");
         }
 
+        await ChatsService.addInstructorToChat({
+          chatId,
+          dojoOwner,
+          instructor: instructorUserProfile,
+        }, tx);
+
         await NotificationService.notifyInstructorOfNewClassAssigned({
           className: classData.name,
           instructor: instructorUserProfile,
@@ -203,7 +221,7 @@ export class ClassService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static getAllClassesByDojoId = async (
+  static getAllClassAndInstructorsByDojoId = async (
     dojoId: string,
     txInstance?: Transaction,
   ): Promise<ClassWithInstructor[]> => {
