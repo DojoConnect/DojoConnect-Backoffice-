@@ -4,7 +4,10 @@ import { ClassService } from "./class.service.js";
 import { buildClassMock, buildCreateClassDTOMock } from "../tests/factories/class.factory.js";
 import { ClassRepository } from "../repositories/class.repository.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
+import { Role } from "../constants/enums.js";
 import { ClassFrequency, ClassSubscriptionType, Weekday } from "../constants/enums.js";
+import { buildParentMock } from "../tests/factories/parent.factory.js";
+import { buildStudentMock } from "../tests/factories/student.factory.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { mapWeekdayToDayNumber } from "../utils/date.utils.js";
 import { InstructorsRepository } from "../repositories/instructors.repository.js";
@@ -38,10 +41,14 @@ vi.mock("../repositories/user.repository.js");
 vi.mock("../repositories/enrollment.repository.js");
 vi.mock("../repositories/student.repository.js");
 vi.mock("./chats.service.js");
+vi.mock("../repositories/dojo.repository.js");
+vi.mock("../repositories/parent.repository.js");
 
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { StudentRepository } from "../repositories/student.repository.js";
 import { StudentWihUserDTO } from "../dtos/student.dtos.js";
+import { DojoRepository } from "../repositories/dojo.repository.js";
+import { ParentRepository } from "../repositories/parent.repository.js";
 
 describe("Class Service", () => {
   let dbServiceSpy: DbServiceSpies;
@@ -736,4 +743,348 @@ describe("Class Service", () => {
       );
     });
   });
+
+  describe("getDojoClasses", () => {
+    let getDojoForOwnerSpy: MockInstance;
+    let findAllByDojoIdSpy: MockInstance;
+
+    beforeEach(() => {
+      getDojoForOwnerSpy = vi.spyOn(DojoRepository, "getDojoForOwner");
+      findAllByDojoIdSpy = vi.spyOn(ClassRepository, "findAllByDojoId");
+    });
+
+    it("should throw InternalServerErrorException if user is not a dojo admin", async () => {
+      const nonAdminUser = buildUserMock({ role: Role.Instructor });
+
+      await expect(ClassService.getDojoClasses(nonAdminUser)).rejects.toThrow(
+        new InternalServerErrorException("User is not a dojo admin"),
+      );
+      expect(getDojoForOwnerSpy).not.toHaveBeenCalled();
+    });
+
+    it("should throw NotFoundException if dojo not found for user", async () => {
+      const adminUser = buildUserMock({ role: Role.DojoAdmin });
+      getDojoForOwnerSpy.mockResolvedValue(null);
+
+      await expect(ClassService.getDojoClasses(adminUser)).rejects.toThrow(
+        new NotFoundException("Dojo not found for user"),
+      );
+    });
+
+    it("should return classes for the dojo", async () => {
+      const adminUser = buildUserMock({ role: Role.DojoAdmin });
+      const mockDojo = buildDojoMock({ ownerUserId: adminUser.id });
+      const mockClasses = [
+        buildClassMock({ id: "class-1", dojoId: mockDojo.id }),
+        buildClassMock({ id: "class-2", dojoId: mockDojo.id }),
+      ];
+
+      getDojoForOwnerSpy.mockResolvedValue(mockDojo);
+      findAllByDojoIdSpy.mockResolvedValue(mockClasses);
+
+      const result = await ClassService.getDojoClasses(adminUser);
+
+      expect(result).toEqual(mockClasses);
+      expect(getDojoForOwnerSpy).toHaveBeenCalledWith(adminUser.id, dbServiceSpy.mockTx);
+      expect(findAllByDojoIdSpy).toHaveBeenCalledWith(mockDojo.id, dbServiceSpy.mockTx);
+    });
+  });
+
+  describe("getInstructorClasses", () => {
+    let findOneByUserIdSpy: MockInstance;
+    let findAllByInstructorIdSpy: MockInstance;
+
+    beforeEach(() => {
+      findOneByUserIdSpy = vi.spyOn(InstructorsRepository, "findOneByUserId");
+      findAllByInstructorIdSpy = vi.spyOn(ClassRepository, "findAllByInstructorId");
+    });
+
+    it("should throw InternalServerErrorException if user is not an instructor", async () => {
+      const nonInstructorUser = buildUserMock({ role: Role.Parent });
+
+      await expect(ClassService.getInstructorClasses(nonInstructorUser)).rejects.toThrow(
+        new InternalServerErrorException("User is not an instructor"),
+      );
+      expect(findOneByUserIdSpy).not.toHaveBeenCalled();
+    });
+
+    it("should throw NotFoundException if instructor record not found", async () => {
+      const instructorUser = buildUserMock({ role: Role.Instructor });
+      findOneByUserIdSpy.mockResolvedValue(null);
+
+      await expect(ClassService.getInstructorClasses(instructorUser)).rejects.toThrow(
+        new NotFoundException("Instructor not found"),
+      );
+    });
+
+    it("should return classes assigned to the instructor", async () => {
+      const instructorUser = buildUserMock({ role: Role.Instructor });
+      const mockInstructor = buildInstructorMock({ instructorUserId: instructorUser.id });
+      const mockClasses = [
+        buildClassMock({ id: "class-1", instructorId: mockInstructor.id }),
+        buildClassMock({ id: "class-2", instructorId: mockInstructor.id }),
+      ];
+
+      findOneByUserIdSpy.mockResolvedValue(mockInstructor);
+      findAllByInstructorIdSpy.mockResolvedValue(mockClasses);
+
+      const result = await ClassService.getInstructorClasses(instructorUser);
+
+      expect(result).toEqual(mockClasses);
+      expect(findOneByUserIdSpy).toHaveBeenCalledWith(instructorUser.id, dbServiceSpy.mockTx);
+      expect(findAllByInstructorIdSpy).toHaveBeenCalledWith(
+        mockInstructor.id,
+        dbServiceSpy.mockTx,
+      );
+    });
+  });
+
+  describe("getParentClasses", () => {
+    let getOneParentByUserIdSpy: MockInstance;
+    let getStudentsByParentIdSpy: MockInstance;
+    let fetchActiveEnrollmentsByStudentIdsSpy: MockInstance;
+    let findClassesByIdsSpy: MockInstance;
+
+    beforeEach(() => {
+      getOneParentByUserIdSpy = vi.spyOn(ParentRepository, "getOneParentByUserId");
+      getStudentsByParentIdSpy = vi.spyOn(StudentRepository, "getStudentsByParentId");
+      fetchActiveEnrollmentsByStudentIdsSpy = vi.spyOn(
+        ClassEnrollmentRepository,
+        "fetchActiveEnrollmentsByStudentIds",
+      );
+      findClassesByIdsSpy = vi.spyOn(ClassRepository, "findClassesByIds");
+    });
+
+    it("should throw InternalServerErrorException if user is not a parent", async () => {
+      const nonParentUser = buildUserMock({ role: Role.Instructor });
+
+      await expect(ClassService.getParentClasses(nonParentUser)).rejects.toThrow(
+        new InternalServerErrorException("User is not a parent"),
+      );
+      expect(getOneParentByUserIdSpy).not.toHaveBeenCalled();
+    });
+
+    it("should throw NotFoundException if parent record not found", async () => {
+      const parentUser = buildUserMock({ role: Role.Parent });
+      getOneParentByUserIdSpy.mockResolvedValue(null);
+
+      await expect(ClassService.getParentClasses(parentUser)).rejects.toThrow(
+        new NotFoundException("Parent not found"),
+      );
+    });
+
+    it("should return empty array if parent has no students", async () => {
+      const parentUser = buildUserMock({ role: Role.Parent });
+      const mockParent = buildParentMock({ userId: parentUser.id });
+
+      getOneParentByUserIdSpy.mockResolvedValue(mockParent);
+      getStudentsByParentIdSpy.mockResolvedValue([]);
+
+      const result = await ClassService.getParentClasses(parentUser);
+
+      expect(result).toEqual([]);
+      expect(fetchActiveEnrollmentsByStudentIdsSpy).not.toHaveBeenCalled();
+    });
+
+    it("should return empty array if no active enrollments", async () => {
+      const parentUser = buildUserMock({ role: Role.Parent });
+      const mockParent = buildParentMock({ userId: parentUser.id });
+      const mockStudent = buildStudentMock({ parentId: mockParent.id });
+
+      getOneParentByUserIdSpy.mockResolvedValue(mockParent);
+      getStudentsByParentIdSpy.mockResolvedValue([{ student: mockStudent, user: buildUserMock() }]);
+      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([]);
+
+      const result = await ClassService.getParentClasses(parentUser);
+
+      expect(result).toEqual([]);
+      expect(findClassesByIdsSpy).not.toHaveBeenCalled();
+    });
+
+    it("should return classes where children are enrolled", async () => {
+      const parentUser = buildUserMock({ role: Role.Parent });
+      const mockParent = buildParentMock({ userId: parentUser.id });
+      const mockStudent1 = buildStudentMock({ id: "student-1", parentId: mockParent.id });
+      const mockStudent2 = buildStudentMock({ id: "student-2", parentId: mockParent.id });
+      const mockClasses = [
+        buildClassMock({ id: "class-1" }),
+        buildClassMock({ id: "class-2" }),
+      ];
+
+      getOneParentByUserIdSpy.mockResolvedValue(mockParent);
+      getStudentsByParentIdSpy.mockResolvedValue([
+        { student: mockStudent1, user: buildUserMock() },
+        { student: mockStudent2, user: buildUserMock() },
+      ]);
+      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([
+        { studentId: "student-1", classId: "class-1" },
+        { studentId: "student-2", classId: "class-2" },
+        { studentId: "student-1", classId: "class-2" }, // duplicate class
+      ]);
+      findClassesByIdsSpy.mockResolvedValue(mockClasses);
+
+      const result = await ClassService.getParentClasses(parentUser);
+
+      expect(result).toEqual(mockClasses);
+      expect(findClassesByIdsSpy).toHaveBeenCalledWith(["class-1", "class-2"], dbServiceSpy.mockTx);
+    });
+  });
+
+  describe("getStudentClasses", () => {
+    let findOneStudentByUserIdSpy: MockInstance;
+    let fetchActiveEnrollmentsByStudentIdsSpy: MockInstance;
+    let findClassesByIdsSpy: MockInstance;
+
+    beforeEach(() => {
+      findOneStudentByUserIdSpy = vi.spyOn(StudentRepository, "findOneByUserId");
+      fetchActiveEnrollmentsByStudentIdsSpy = vi.spyOn(
+        ClassEnrollmentRepository,
+        "fetchActiveEnrollmentsByStudentIds",
+      );
+      findClassesByIdsSpy = vi.spyOn(ClassRepository, "findClassesByIds");
+    });
+
+    it("should throw InternalServerErrorException if user is not a child", async () => {
+      const nonChildUser = buildUserMock({ role: Role.Parent });
+
+      await expect(ClassService.getStudentClasses(nonChildUser)).rejects.toThrow(
+        new InternalServerErrorException("User is not a child"),
+      );
+      expect(findOneStudentByUserIdSpy).not.toHaveBeenCalled();
+    });
+
+    it("should throw NotFoundException if student record not found", async () => {
+      const childUser = buildUserMock({ role: Role.Child });
+      findOneStudentByUserIdSpy.mockResolvedValue(null);
+
+      await expect(ClassService.getStudentClasses(childUser)).rejects.toThrow(
+        new NotFoundException("Student not found"),
+      );
+    });
+
+    it("should return empty array if no active enrollments", async () => {
+      const childUser = buildUserMock({ role: Role.Child });
+      const mockStudent = buildStudentMock({ studentUserId: childUser.id });
+
+      findOneStudentByUserIdSpy.mockResolvedValue(mockStudent);
+      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([]);
+
+      const result = await ClassService.getStudentClasses(childUser);
+
+      expect(result).toEqual([]);
+      expect(findClassesByIdsSpy).not.toHaveBeenCalled();
+    });
+
+    it("should return classes student is enrolled in", async () => {
+      const childUser = buildUserMock({ role: Role.Child });
+      const mockStudent = buildStudentMock({ id: "student-1", studentUserId: childUser.id });
+      const mockClasses = [
+        buildClassMock({ id: "class-1" }),
+        buildClassMock({ id: "class-2" }),
+      ];
+
+      findOneStudentByUserIdSpy.mockResolvedValue(mockStudent);
+      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([
+        { studentId: "student-1", classId: "class-1" },
+        { studentId: "student-1", classId: "class-2" },
+      ]);
+      findClassesByIdsSpy.mockResolvedValue(mockClasses);
+
+      const result = await ClassService.getStudentClasses(childUser);
+
+      expect(result).toEqual(mockClasses);
+      expect(fetchActiveEnrollmentsByStudentIdsSpy).toHaveBeenCalledWith(
+        ["student-1"],
+        dbServiceSpy.mockTx,
+      );
+      expect(findClassesByIdsSpy).toHaveBeenCalledWith(["class-1", "class-2"], dbServiceSpy.mockTx);
+    });
+  });
+
+  describe("getUserClasses", () => {
+    let getDojoClassesSpy: MockInstance;
+    let getInstructorClassesSpy: MockInstance;
+    let getParentClassesSpy: MockInstance;
+    let getStudentClassesSpy: MockInstance;
+
+    beforeEach(() => {
+      getDojoClassesSpy = vi.spyOn(ClassService, "getDojoClasses");
+      getInstructorClassesSpy = vi.spyOn(ClassService, "getInstructorClasses");
+      getParentClassesSpy = vi.spyOn(ClassService, "getParentClasses");
+      getStudentClassesSpy = vi.spyOn(ClassService, "getStudentClasses");
+    });
+
+    it("should throw NotFoundException if user not found", async () => {
+      getUserByIdSpy.mockResolvedValue(null);
+
+      await expect(ClassService.getUserClasses("unknown-user-id")).rejects.toThrow(
+        new NotFoundException("User not Found"),
+      );
+    });
+
+    it("should call getDojoClasses for DojoAdmin users", async () => {
+      const adminUser = buildUserMock({ role: Role.DojoAdmin });
+      const mockClasses = [buildClassMock()];
+
+      getUserByIdSpy.mockResolvedValue(adminUser);
+      getDojoClassesSpy.mockResolvedValue(mockClasses);
+
+      const result = await ClassService.getUserClasses(adminUser.id);
+
+      expect(result).toEqual(mockClasses);
+      expect(getDojoClassesSpy).toHaveBeenCalledWith(adminUser, dbServiceSpy.mockTx);
+      expect(getInstructorClassesSpy).not.toHaveBeenCalled();
+    });
+
+    it("should call getInstructorClasses for Instructor users", async () => {
+      const instructorUser = buildUserMock({ role: Role.Instructor });
+      const mockClasses = [buildClassMock()];
+
+      getUserByIdSpy.mockResolvedValue(instructorUser);
+      getInstructorClassesSpy.mockResolvedValue(mockClasses);
+
+      const result = await ClassService.getUserClasses(instructorUser.id);
+
+      expect(result).toEqual(mockClasses);
+      expect(getInstructorClassesSpy).toHaveBeenCalledWith(instructorUser, dbServiceSpy.mockTx);
+      expect(getDojoClassesSpy).not.toHaveBeenCalled();
+    });
+
+    it("should call getParentClasses for Parent users", async () => {
+      const parentUser = buildUserMock({ role: Role.Parent });
+      const mockClasses = [buildClassMock()];
+
+      getUserByIdSpy.mockResolvedValue(parentUser);
+      getParentClassesSpy.mockResolvedValue(mockClasses);
+
+      const result = await ClassService.getUserClasses(parentUser.id);
+
+      expect(result).toEqual(mockClasses);
+      expect(getParentClassesSpy).toHaveBeenCalledWith(parentUser, dbServiceSpy.mockTx);
+    });
+
+    it("should call getStudentClasses for Child users", async () => {
+      const childUser = buildUserMock({ role: Role.Child });
+      const mockClasses = [buildClassMock()];
+
+      getUserByIdSpy.mockResolvedValue(childUser);
+      getStudentClassesSpy.mockResolvedValue(mockClasses);
+
+      const result = await ClassService.getUserClasses(childUser.id);
+
+      expect(result).toEqual(mockClasses);
+      expect(getStudentClassesSpy).toHaveBeenCalledWith(childUser, dbServiceSpy.mockTx);
+    });
+
+    it("should return empty array for unknown role", async () => {
+      const unknownRoleUser = buildUserMock({ role: "Unknown" as Role });
+
+      getUserByIdSpy.mockResolvedValue(unknownRoleUser);
+
+      const result = await ClassService.getUserClasses(unknownRoleUser.id);
+
+      expect(result).toEqual([]);
+    });
+  });
 });
+
