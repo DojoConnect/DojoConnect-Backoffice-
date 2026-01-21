@@ -6,6 +6,10 @@
  * This implementation assumes a SINGLE BACKEND INSTANCE. Socket.IO rooms are
  * stored in-memory only and are not shared across instances.
  *
+ * NAMESPACE: /chat
+ * All chat/communications functionality is scoped to the /chat namespace.
+ * This allows for future expansion with other namespaces (e.g., /notifications).
+ *
  * SINGLE INSTANCE LIMITATION:
  * - Socket.IO state (rooms, connected sockets) lives in this process's memory
  * - If you deploy multiple instances behind a load balancer, users connected
@@ -31,7 +35,7 @@
  */
 
 import { Server as HttpServer } from "http";
-import { Server, Socket } from "socket.io";
+import { Namespace, Server, Socket } from "socket.io";
 import { socketAuthMiddleware, type AuthenticatedSocket } from "./auth.middleware.js";
 import * as dbService from "../db/index.js";
 import { Role } from "../constants/enums.js";
@@ -39,9 +43,17 @@ import { ClassService } from "../services/class.service.js";
 import AppConfig from "../config/AppConfig.js";
 
 let io: Server | null = null;
+let chatNamespace: Namespace | null = null;
+
+/**
+ * Chat namespace path.
+ * Clients should connect to: socket.io('/chat')
+ */
+export const CHAT_NAMESPACE = "/chats";
 
 /**
  * Initializes the Socket.IO server and attaches it to the HTTP server.
+ * Sets up the /chat namespace for all chat/communications functionality.
  *
  * @param httpServer - The HTTP server instance to attach Socket.IO to
  * @returns The Socket.IO Server instance
@@ -55,28 +67,31 @@ export const initializeSocketIO = (httpServer: HttpServer): Server => {
     },
   });
 
-  // Apply JWT authentication middleware
-  io.use(socketAuthMiddleware);
+  // Create the /chat namespace for all chat functionality
+  chatNamespace = io.of(CHAT_NAMESPACE);
 
-  // Handle new connections
-  io.on("connection", async (socket: Socket) => {
+  // Apply JWT authentication middleware to the chat namespace
+  chatNamespace.use(socketAuthMiddleware);
+
+  // Handle new connections to the /chat namespace
+  chatNamespace.on("connection", async (socket: Socket) => {
     const authSocket = socket as AuthenticatedSocket;
     const { userId, role } = authSocket.data;
 
-    console.log(`Socket connected: ${socket.id} (User: ${userId}, Role: ${role})`);
+    console.log(`[/chat] Socket connected: ${socket.id} (User: ${userId}, Role: ${role})`);
 
     // Join class rooms based on user role and memberships
     await joinClassRooms(authSocket);
 
     // Handle typing indicators
-    socket.on("typing:start", ({classId}:{classId: string}) => {
+    socket.on("typing:start", ({ classId }: { classId: string }) => {
       socket.to(`class:${classId}`).emit("typing:start", {
         userId,
         classId,
       });
     });
 
-    socket.on("typing:stop", (classId: string) => {
+    socket.on("typing:stop", ({ classId }: { classId: string }) => {
       socket.to(`class:${classId}`).emit("typing:stop", {
         userId,
         classId,
@@ -85,7 +100,7 @@ export const initializeSocketIO = (httpServer: HttpServer): Server => {
 
     // Handle disconnection
     socket.on("disconnect", (reason) => {
-      console.log(`Socket disconnected: ${socket.id} (Reason: ${reason})`);
+      console.log(`[/chat] Socket disconnected: ${socket.id} (Reason: ${reason})`);
     });
   });
 
@@ -101,15 +116,23 @@ export const getSocketIO = (): Server | null => {
 };
 
 /**
- * Emits an event to a specific class room.
+ * Gets the /chat namespace instance.
+ * Returns null if Socket.IO has not been initialized.
+ */
+export const getChatNamespace = (): Namespace | null => {
+  return chatNamespace;
+};
+
+/**
+ * Emits an event to a specific class room within the /chat namespace.
  *
  * @param classId - The class ID to emit to
  * @param event - The event name
  * @param payload - The event payload
  */
 export const emitToClassRoom = (classId: string, event: string, payload: unknown): void => {
-  if (io) {
-    io.to(`class:${classId}`).emit(event, payload);
+  if (chatNamespace) {
+    chatNamespace.to(`class:${classId}`).emit(event, payload);
   }
 };
 
@@ -135,9 +158,9 @@ const joinClassRooms = async (socket: AuthenticatedSocket): Promise<void> => {
       socket.join(`class:${classId}`);
     }
 
-    console.log(`User ${userId} joined ${classIds.length} class room(s)`);
+    console.log(`[/chat] User ${userId} joined ${classIds.length} class room(s)`);
   } catch (error) {
-    console.error(`Failed to join class rooms for user ${userId}:`, error);
+    console.error(`[/chat] Failed to join class rooms for user ${userId}:`, error);
   }
 };
 
@@ -150,3 +173,4 @@ const getClassIdsForUser = async (userId: string, role: Role): Promise<string[]>
     return classes.map((c) => c.id);
   });
 };
+

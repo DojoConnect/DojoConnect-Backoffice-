@@ -9,7 +9,7 @@ import { ParentRepository } from "../repositories/parent.repository.js";
 import { InstructorsRepository } from "../repositories/instructors.repository.js";
 import { DojoRepository } from "../repositories/dojo.repository.js";
 import { ForbiddenException, NotFoundException } from "../core/errors/index.js";
-import { getSocketIO } from "../socket/index.js";
+import { getChatNamespace } from "../socket/index.js";
 import { MessageDTO, PaginatedMessagesDTO } from "../dtos/chat.dtos.js";
 import { ClassService } from "./class.service.js";
 
@@ -195,7 +195,7 @@ export class MessageService {
       // This runs after the transaction commits, but we do it here for simplicity
       // In a production setup, you might want to emit after tx commit confirmation
       try {
-        const io = getSocketIO();
+        const io = getChatNamespace();
         if (io) {
           io.to(`class:${classId}`).emit("message:new", messageDTO);
         }
