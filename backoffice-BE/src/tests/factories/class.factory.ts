@@ -42,6 +42,7 @@ export const buildClassMock = (
     name: "Karate 101",
     description: "Beginner's karate class.",
     level: ExperienceLevel.Beginner,
+    chatId: faker.string.uuid(),
     minAge: 6,
     maxAge: 10,
     capacity: 20,

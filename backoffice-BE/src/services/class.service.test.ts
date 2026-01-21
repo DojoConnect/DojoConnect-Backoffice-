@@ -37,6 +37,7 @@ vi.mock("./cloudinary.service.js");
 vi.mock("../repositories/user.repository.js");
 vi.mock("../repositories/enrollment.repository.js");
 vi.mock("../repositories/student.repository.js");
+vi.mock("./chats.service.js");
 
 import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { StudentRepository } from "../repositories/student.repository.js";
