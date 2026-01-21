@@ -144,7 +144,6 @@ export const chatParticipants = mysqlTable(
     userId: varchar("user_id", { length: UUID_LENGTH })
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
-    roleAtTime: mysqlEnum(Role).notNull(),
     joinedAt: timestamp("joined_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -173,6 +172,7 @@ export const classes = mysqlTable(
     minAge: tinyint("min_age", { unsigned: true }).notNull(),
     maxAge: tinyint("max_age", { unsigned: true }).notNull(),
     capacity: smallint({ unsigned: true }).notNull(),
+    chatId: varchar("chat_id", { length: UUID_LENGTH }).notNull().references(() => chats.id),
     streetAddress: varchar("street_address", { length: 255 }).notNull(),
     city: varchar("city", { length: 255 }).notNull(),
     gradingDate: timestamp("grading_date"),
@@ -484,7 +484,7 @@ export const messages = mysqlTable(
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
     content: text().notNull(),
-    createdAt: datetime("created_at", { mode: "string" })
+    createdAt: datetime("created_at",)
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
   },
