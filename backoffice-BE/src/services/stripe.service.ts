@@ -60,16 +60,14 @@ export class StripeService {
   static createDojoSubSetupIntent = async (
     stripeCustId: string,
     dojoId: string,
-    ownerUserId: string,
   ) => {
     return await StripeService.setupIntent(stripeCustId, {
       type: SubscriptionType.DojoSub,
       dojoId,
-      ownerUserId,
     });
   };
 
-  static setupIntent = async (stripeCustId: string, metadata?: Stripe.MetadataParam) => {
+  static setupIntent = async (stripeCustId: string, metadata: DojoSubStripeMetadata) => {
     return await StripeService.getStripeInstance().setupIntents.create({
       customer: stripeCustId,
       payment_method_types: ["card"],

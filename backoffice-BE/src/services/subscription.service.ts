@@ -95,7 +95,6 @@ export class SubscriptionService {
       const setupIntent = await StripeService.createDojoSubSetupIntent(
         stripeCustomerId,
         dojo.id,
-        user.id,
       );
 
       await SubscriptionRepository.createDojoAdminSub(
@@ -146,7 +145,7 @@ export class SubscriptionService {
         throw new BadRequestException("No setup in progress");
       }
 
-      // ✅ State-based idempotency (correct)
+      // ✅ State-based idempotency
       if (sub.billingStatus !== BillingStatus.SetupIntentCreated) {
         return;
       }
