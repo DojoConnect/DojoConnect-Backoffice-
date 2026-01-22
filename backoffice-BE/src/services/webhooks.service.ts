@@ -48,6 +48,9 @@ export class WebhooksService {
       case StripeWebhookEvents.PaymentIntentSucceeded:
         WebhooksService.handlePaymentIntentSucceeded(event.data.object, tx);
         break;
+      case StripeWebhookEvents.SetupIntentSucceeded:
+        WebhooksService.handleSetupIntentSucceeded(event.data.object, tx);
+        break;
     }
   };
 
@@ -201,4 +204,21 @@ export class WebhooksService {
   };
 
   static handleOneTimePayment = (event: Stripe.Event, tx: Transaction) => {};
+
+  static handleSetupIntentSucceeded = async (
+    setupIntent: Stripe.SetupIntent,
+    tx: Transaction,
+  ) => {
+    if (!setupIntent.metadata) {
+      throw new Error("No metadata found in setup intent");
+    }
+
+    const metadata = setupIntent.metadata as any as StripeMetadata;
+
+    switch (metadata.type) {
+      case SubscriptionType.DojoSub:
+        await SubscriptionService.handleDojoAdminSetupIntentSucceeded(setupIntent, tx);
+        break;
+    }
+  };
 }
