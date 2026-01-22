@@ -99,10 +99,7 @@ export class ClassService {
 
       const classWithSchedules = await ClassService.fetchClassAndSchedules(newClassId, tx);
 
-      if (
-        classData.frequency === ClassFrequency.Weekly &&
-        classData.subscriptionType === ClassSubscriptionType.Paid
-      ) {
+      if (classData.subscriptionType === ClassSubscriptionType.Paid) {
         if (!classData.price) {
           throw new BadRequestException("Price is required for paid classes");
         }
@@ -112,9 +109,11 @@ export class ClassService {
           dojoId: dojo.id,
           classId: newClassId,
         });
+
         const prodPrice = await StripeService.createClassPrice(
           stripeProd.id,
           Number(classData.price),
+          classData.frequency,
         );
 
         await ClassRepository.update({

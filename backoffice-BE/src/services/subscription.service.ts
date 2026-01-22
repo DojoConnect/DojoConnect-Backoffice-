@@ -5,10 +5,13 @@ import { DojoRepository, IDojo } from "../repositories/dojo.repository.js";
 import { Transaction } from "../db/index.js";
 import {
   BillingStatus,
+  ClassFrequency,
   DojoStatus,
   StripeSetupIntentStatus,
   StripeSubscriptionStatus,
 } from "../constants/enums.js";
+import { ClassRepository } from "../repositories/class.repository.js";
+import { OneTimePaymentRepository } from "../repositories/one-time-payment.repository.js";
 import { IUser } from "../repositories/user.repository.js";
 import { SubscriptionRepository } from "../repositories/subscription.repository.js";
 import { BadRequestException, NotFoundException } from "../core/errors/index.js";
@@ -392,24 +395,44 @@ export class SubscriptionService {
       const classId = metadata.class_id;
       const customerId = typeof customer === "string" ? customer : customer.id;
 
-      for (const child of childrenData) {
-        // 1. Create Stripe Subscription
-        const subscription = await StripeService.createClassSubscription({
-          customerId,
-          priceId,
-        });
+      const dojoClass = await ClassRepository.findById(classId, tx);
+      if (!dojoClass) {
+        throw new NotFoundException("Class not found");
+      }
 
-        // 2. Create Class Subscription Record
-        await SubscriptionRepository.createClassSub(
-          {
-            classId,
-            studentId: child.id,
-            stripeCustomerId: customerId,
-            stripeSubId: subscription.id,
-            status: BillingStatus.Active,
-          },
-          tx,
-        );
+      for (const child of childrenData) {
+        if (dojoClass.frequency === ClassFrequency.Weekly) {
+          // 1. Create Stripe Subscription
+          const subscription = await StripeService.createClassSubscription({
+            customerId,
+            priceId,
+          });
+
+          // 2. Create Class Subscription Record
+          await SubscriptionRepository.createClassSub(
+            {
+              classId,
+              studentId: child.id,
+              stripeCustomerId: customerId,
+              stripeSubId: subscription.id,
+              status: BillingStatus.Active,
+            },
+            tx,
+          );
+        } else if (dojoClass.frequency === ClassFrequency.OneTime) {
+          // One-Time Class
+          await OneTimePaymentRepository.create(
+            {
+              classId,
+              studentId: child.id,
+              stripePaymentIntentId: paymentIntent.id,
+              amount: (paymentIntent.amount / 100).toString(),
+              status: BillingStatus.Active,
+              paidAt: new Date(),
+            },
+            tx,
+          );
+        }
 
         // 3. Create/Update Enrollment
         const existingEnrollment = await EnrollmentRepository.findOneByClassIdAndStudentId(

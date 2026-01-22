@@ -1,6 +1,6 @@
 import Stripe from "stripe";
 import AppConfig from "../config/AppConfig.js";
-import { NodeEnv, StripePlans } from "../constants/enums.js";
+import { ClassFrequency, NodeEnv, StripePlans } from "../constants/enums.js";
 import { IUser } from "../repositories/user.repository.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
 import { SubscriptionType } from "../constants/subscription.constants.js";
@@ -166,13 +166,22 @@ export class StripeService {
     });
   };
 
-  static createClassPrice = async (stripeProductId: string, price: number) => {
-    return await StripeService.getStripeInstance().prices.create({
+  static createClassPrice = async (
+    stripeProductId: string,
+    price: number,
+    frequency: ClassFrequency,
+  ) => {
+    const params: Stripe.PriceCreateParams = {
       unit_amount: Math.round((price ?? 0) * 100),
       currency: "gbp",
-      recurring: { interval: "month" },
       product: stripeProductId,
-    });
+    };
+
+    if (frequency === ClassFrequency.Weekly) {
+      params.recurring = { interval: "month" };
+    }
+
+    return await StripeService.getStripeInstance().prices.create(params);
   };
 
   static retrievePrice = async (priceId: string) => {
