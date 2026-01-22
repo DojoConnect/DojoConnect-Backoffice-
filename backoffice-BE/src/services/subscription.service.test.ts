@@ -14,14 +14,17 @@ import {
   StripeSetupIntentStatus,
   StripeSubscriptionStatus,
 } from "../constants/enums.js";
-import { SubscriptionType } from "../constants/subscription.constants.js";
+
 import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
 import { ClassRepository } from "../repositories/class.repository.js";
 import { OneTimePaymentRepository } from "../repositories/one-time-payment.repository.js";
 import { buildClassMock } from "../tests/factories/class.factory.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
-import { buildSubscriptionMock } from "../tests/factories/subscription.factory.js";
+import {
+  buildSubscriptionMock,
+  buildDojoSubStripeMetadataMock,
+} from "../tests/factories/subscription.factory.js";
 import { IDojoSub } from "../repositories/subscription.repository.js";
 import { IUser } from "../repositories/user.repository.js";
 import {
@@ -171,10 +174,9 @@ describe("SubscriptionService", () => {
       });
 
       expect(retrieveSetupIntentSpy).toHaveBeenCalledWith("seti_canceled");
-      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, {
+      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, buildDojoSubStripeMetadataMock({
         dojoId: dojo.id,
-        type: SubscriptionType.DojoSub,
-      });
+      }));
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
     });
 
@@ -192,10 +194,10 @@ describe("SubscriptionService", () => {
       });
 
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
-      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, {
-        dojoId: dojo.id,
-        type: SubscriptionType.DojoSub,
-      });
+      expect(setupIntentSpy).toHaveBeenCalledWith(
+        dojo.stripeCustomerId,
+        buildDojoSubStripeMetadataMock({ dojoId: dojo.id }),
+      );
       expect(createDojoAdminSubSpy).toHaveBeenCalledWith(
         {
           dojoId: dojo.id,
@@ -285,10 +287,9 @@ describe("SubscriptionService", () => {
         grantTrial: true,
         paymentMethodId: "pm_123",
         idempotencyKey: `dojo-admin-sub-${sub.id}`,
-        metadata: {
-          dojoId: dojo.id,
-          type: SubscriptionType.DojoSub,
-        },
+        metadata: buildDojoSubStripeMetadataMock({
+          dojoId: dojo.id
+        }),
       });
       expect(updateDojoAdminSubSpy).toHaveBeenCalledWith({
         tx: dbSpies.mockTx,
@@ -367,10 +368,9 @@ describe("SubscriptionService", () => {
       vi.spyOn(DojoRepository, "getOneByID").mockResolvedValue(null);
       const setupIntent = buildStripeSetupIntentMock({
         id: "seti_123",
-        metadata: {
+        metadata: buildDojoSubStripeMetadataMock({
           dojoId: dojo.id,
-          type: SubscriptionType.DojoSub,
-        },
+        }),
       });
       await expect(
         SubscriptionService.handleDojoAdminSetupIntentSucceeded(setupIntent as any),
@@ -382,10 +382,9 @@ describe("SubscriptionService", () => {
         id: "seti_123",
         status: StripeSetupIntentStatus.Succeeded,
         payment_method: "pm_123",
-        metadata: {
+        metadata: buildDojoSubStripeMetadataMock({
           dojoId: dojo.id,
-          type: SubscriptionType.DojoSub,
-        },
+        }),
       });
       const stripeSub = buildStripeSubMock({
         id: "sub_123",
@@ -401,10 +400,7 @@ describe("SubscriptionService", () => {
         grantTrial: true,
         paymentMethodId: "pm_123",
         idempotencyKey: `dojo-admin-sub-${sub.id}`,
-        metadata: {
-          dojoId: dojo.id,
-          type: SubscriptionType.DojoSub,
-        },
+        metadata: buildDojoSubStripeMetadataMock({ dojoId: dojo.id }),
       });
       expect(updateDojoAdminSubSpy).toHaveBeenCalledTimes(1);
       expect(updateDojoRepoSpy).toHaveBeenCalledTimes(1);
@@ -416,10 +412,9 @@ describe("SubscriptionService", () => {
         id: "seti_123",
         status: StripeSetupIntentStatus.Succeeded,
         payment_method: " pm_123",
-        metadata: {
+        metadata: buildDojoSubStripeMetadataMock({
           dojoId: dojo.id,
-          type: SubscriptionType.DojoSub,
-        },
+        }),
       });
 
       await SubscriptionService.handleDojoAdminSetupIntentSucceeded(setupIntent as any);
