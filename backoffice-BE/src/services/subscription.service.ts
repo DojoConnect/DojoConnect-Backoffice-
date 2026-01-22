@@ -19,6 +19,7 @@ import Stripe from "stripe";
 import { assertDojoOwnership } from "../utils/assertions.utils.js";
 import { ClassSubStripeMetadata } from "../types/subscription.types.js";
 import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { isString } from "../utils/type-guards.utils.js";
 
 export class SubscriptionService {
   static getOrCreateDojoStripeCustId = async ({
@@ -266,9 +267,9 @@ export class SubscriptionService {
         classId: metadata.classId,
         studentId: metadata.studentId,
         stripeCustomerId:
-          typeof session.customer === "string" ? session.customer : session.customer.id,
+          isString(session.customer) ? session.customer : session.customer.id,
         stripeSubId:
-          typeof session.subscription === "string" ? session.subscription : session.subscription.id,
+          isString(session.subscription) ? session.subscription : session.subscription.id,
         status: BillingStatus.Trialing,
       },
       tx,
@@ -392,7 +393,7 @@ export class SubscriptionService {
       const childrenData = JSON.parse(metadata.children_data) as { id: string }[];
       const priceId = metadata.price_id;
       const classId = metadata.class_id;
-      const customerId = typeof customer === "string" ? customer : customer.id;
+      const customerId = isString(customer) ? customer : customer.id;
 
       const dojoClass = await ClassRepository.findById(classId, tx);
       if (!dojoClass) {

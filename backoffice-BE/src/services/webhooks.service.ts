@@ -6,6 +6,7 @@ import { StripeMetadata } from "../types/subscription.types.js";
 import { StripeWebhookEvents, SubscriptionType } from "../constants/subscription.constants.js";
 import { SubscriptionService } from "./subscription.service.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
+import { isString } from "../utils/type-guards.utils.js";
 
 export class WebhooksService {
   static processStripeWebhookEvent = async (event: Stripe.Event, txInstance?: Transaction) => {
@@ -94,7 +95,7 @@ export class WebhooksService {
       throw new Error("No subscription found in invoice");
     }
 
-    const subId = typeof subscription === "string" ? subscription : subscription.id;
+    const subId = isString(subscription) ? subscription : subscription.id;
     const subscriptionMetadata = this.getSubscriptionMetadataFromInvoice(invoice);
 
     if (!subscriptionMetadata) {
@@ -132,7 +133,7 @@ export class WebhooksService {
     }
 
     const subscriptionMetadata =
-      typeof subscription !== "string" ? subscription.metadata : invoice.metadata;
+      !isString(subscription) ? subscription.metadata : invoice.metadata;
 
     if (!subscriptionMetadata) {
       throw new BadRequestException("No metadata found in invoice");
@@ -149,7 +150,7 @@ export class WebhooksService {
       throw new Error("No subscription found in invoice");
     }
 
-    const subId = typeof subscription === "string" ? subscription : subscription.id;
+    const subId = isString(subscription) ? subscription : subscription.id;
 
     const subscriptionMetadata = this.getSubscriptionMetadataFromInvoice(invoice);
 
