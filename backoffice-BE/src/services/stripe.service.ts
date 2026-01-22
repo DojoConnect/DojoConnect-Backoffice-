@@ -11,8 +11,8 @@ import { IStudent } from "../repositories/student.repository.js";
 import { getFullName } from "../utils/text.utils.js";
 
 export const StripePriceIDsMap = {
-  [StripePlans.Monthly]: "price_1Sg2AkRbZzajfaIIlgDhjLfh",
-  [StripePlans.Yearly]: "price_1Sg2AkRbZzajfaIInUpYkpcw",
+  [StripePlans.Monthly]: AppConfig.DOJO_MONTHLY_SUB_PRICE_ID,
+  [StripePlans.Yearly]: AppConfig.DOJO_YEARLY_SUB_PRICE_ID,
 };
 
 type CreateStripeCustRes = Awaited<ReturnType<typeof StripeService.createCustomer>>;
@@ -82,7 +82,6 @@ export class StripeService {
     grantTrial = false,
     idempotencyKey,
     dojoId,
-    ownerUserId,
   }: {
     custId: string;
     plan: StripePlans;
@@ -90,7 +89,6 @@ export class StripeService {
     grantTrial: boolean;
     idempotencyKey;
     dojoId: string;
-    ownerUserId: string;
   }) => {
     const metadata: DojoSubStripeMetadata = {
       type: SubscriptionType.DojoSub,

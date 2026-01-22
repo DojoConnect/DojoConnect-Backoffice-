@@ -223,7 +223,6 @@ export class SubscriptionService {
       grantTrial,
       paymentMethodId,
       dojoId: dojo.id,
-      ownerUserId: dojo.ownerUserId,
       idempotencyKey: `dojo-admin-sub-${sub.id}`,
     });
 
