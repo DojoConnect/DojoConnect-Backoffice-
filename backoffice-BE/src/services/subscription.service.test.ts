@@ -9,12 +9,16 @@ import { SubscriptionRepository } from "../repositories/subscription.repository.
 import { BadRequestException, ConflictException, NotFoundException } from "../core/errors/index.js";
 import {
   BillingStatus,
+  ClassFrequency,
   DojoStatus,
   StripeSetupIntentStatus,
   StripeSubscriptionStatus,
 } from "../constants/enums.js";
 import { SubscriptionType } from "../constants/subscription.constants.js";
 import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { ClassRepository } from "../repositories/class.repository.js";
+import { OneTimePaymentRepository } from "../repositories/one-time-payment.repository.js";
+import { buildClassMock } from "../tests/factories/class.factory.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
 import { buildSubscriptionMock } from "../tests/factories/subscription.factory.js";
@@ -412,6 +416,11 @@ describe("SubscriptionService", () => {
         },
       };
 
+      vi.spyOn(ClassRepository, "findById").mockResolvedValue(
+        buildClassMock({ frequency: ClassFrequency.Weekly }),
+      );
+      vi.spyOn(OneTimePaymentRepository, "create").mockResolvedValue({} as any);
+
       vi.spyOn(StripeService, "createClassSubscription").mockResolvedValue({
         id: "sub_123",
       } as any);
@@ -431,6 +440,13 @@ describe("SubscriptionService", () => {
         EnrollmentRepository,
         "update",
       ).mockResolvedValue({} as any);
+    });
+
+    it("should throw error if class not found", async () => {
+      vi.spyOn(ClassRepository, "findById").mockResolvedValue(null);
+      await expect(
+        SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent),
+      ).rejects.toThrow("Class not found");
     });
 
     it("should throw error if customer is missing", async () => {
@@ -466,6 +482,20 @@ describe("SubscriptionService", () => {
       await SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent);
       // @ts-ignore
       expect(EnrollmentRepository.update).toHaveBeenCalledTimes(2);
+    });
+
+    it("should record one-time payment and not create subscription for one-time classes", async () => {
+      vi.spyOn(ClassRepository, "findById").mockResolvedValue(
+        buildClassMock({ frequency: ClassFrequency.OneTime }),
+      );
+
+      await SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent);
+
+      expect(StripeService.createClassSubscription).not.toHaveBeenCalled();
+      expect(SubscriptionRepository.createClassSub).not.toHaveBeenCalled();
+      expect(OneTimePaymentRepository.create).toHaveBeenCalledTimes(2);
+      // @ts-ignore
+      expect(EnrollmentRepository.create).toHaveBeenCalledTimes(2);
     });
   });
 });

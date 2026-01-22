@@ -225,7 +225,7 @@ describe("Class Service", () => {
           dojoId: dojo.id,
           classId: newClassId,
         });
-        expect(createStripePriceSpy).toHaveBeenCalledWith("prod_123", dto.price);
+        expect(createStripePriceSpy).toHaveBeenCalledWith("prod_123", dto.price, ClassFrequency.Weekly);
         expect(updateClassRepoSpy).toHaveBeenCalledWith({
           classId: newClassId,
           update: { stripePriceId: "price_123" },
@@ -242,6 +242,34 @@ describe("Class Service", () => {
         await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(
           new BadRequestException("Price is required for paid classes"),
         );
+      });
+    });
+
+    describe("for a paid one-time class", () => {
+      it("should create stripe product and price, and update the class", async () => {
+        const dto = buildCreateClassDTOMock({
+          frequency: ClassFrequency.OneTime,
+          subscriptionType: ClassSubscriptionType.Paid,
+          price: 30,
+        });
+
+        await ClassService.createClass({ dto, dojo });
+
+        expect(createStripeProdSpy).toHaveBeenCalledWith({
+          className: dto.name,
+          dojoId: dojo.id,
+          classId: newClassId,
+        });
+        expect(createStripePriceSpy).toHaveBeenCalledWith(
+          "prod_123",
+          dto.price,
+          ClassFrequency.OneTime,
+        );
+        expect(updateClassRepoSpy).toHaveBeenCalledWith({
+          classId: newClassId,
+          update: { stripePriceId: "price_123" },
+          tx: dbServiceSpy.mockTx,
+        });
       });
     });
 

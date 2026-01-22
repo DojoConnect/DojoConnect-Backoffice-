@@ -293,7 +293,7 @@ export const oneTimeClassPayments = mysqlTable("one_time_class_payments", {
   classId: varchar("class_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => classes.id, { onDelete: "cascade" }),
-  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }).unique(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }).unique().notNull(),
   amount: decimal({ precision: 10, scale: 2 }).notNull(),
   status: mysqlEnum(BillingStatus).notNull(),
   paidAt: timestamp("paid_at"),
