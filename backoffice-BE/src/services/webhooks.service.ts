@@ -83,9 +83,11 @@ export class WebhooksService {
       case SubscriptionType.ClassSub:
         SubscriptionService.syncClassSub(subscription, tx);
         break;
-      case SubscriptionType.OneTimeClass:
       case SubscriptionType.DojoSub:
-        // TODO: Handle dojo subscription and One Time classes
+        SubscriptionService.syncDojoSub(subscription, tx);
+        break;
+      case SubscriptionType.OneTimeClass:
+        // TODO: Handle One Time classes
         break;
       default:
         throw new Error("Invalid subscription type");
@@ -109,9 +111,11 @@ export class WebhooksService {
       case SubscriptionType.ClassSub:
         SubscriptionService.markClassSubPastDue(subId, tx);
         break;
-      case SubscriptionType.OneTimeClass:
       case SubscriptionType.DojoSub:
-        // TODO: Handle dojo subscription and One Time classes
+        SubscriptionService.markDojoSubPastDue(subId, tx);
+        break;
+      case SubscriptionType.OneTimeClass:
+        // TODO: Handle One Time classes
         break;
       default:
         throw new Error("Invalid subscription type");
@@ -165,9 +169,11 @@ export class WebhooksService {
       case SubscriptionType.ClassSub:
         SubscriptionService.markClassSubActive(subId, tx);
         break;
-      case SubscriptionType.OneTimeClass:
       case SubscriptionType.DojoSub:
-        // TODO: Handle dojo subscription and One Time classes
+        SubscriptionService.markDojoSubActive(subId, tx);
+        break;
+      case SubscriptionType.OneTimeClass:
+        // TODO: Handle One Time classes
         break;
       default:
         throw new Error("Invalid subscription type");
@@ -194,9 +200,11 @@ export class WebhooksService {
       case SubscriptionType.ClassSub:
         SubscriptionService.markClassSubCancelled(subscription, tx);
         break;
-      case SubscriptionType.OneTimeClass:
       case SubscriptionType.DojoSub:
-        // TODO: Handle dojo subscription and One Time classes
+        SubscriptionService.markDojoSubCancelled(subscription, tx);
+        break;
+      case SubscriptionType.OneTimeClass:
+        // TODO: Handle One Time classes
         break;
       default:
         throw new Error("Invalid subscription type");

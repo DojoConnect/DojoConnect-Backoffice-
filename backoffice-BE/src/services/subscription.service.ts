@@ -411,6 +411,110 @@ export class SubscriptionService {
     });
   };
 
+  static syncDojoSub = async (subscription: Stripe.Subscription, tx: Transaction) => {
+    const billingStatus = this.mapStripeSubStatus(subscription.status);
+    const dojoStatus = this.deriveDojoStatus(billingStatus);
+
+    const dojoSub = await SubscriptionRepository.findOneDojoSubByStripeSubId(subscription.id, tx);
+    if (!dojoSub) {
+      throw new BadRequestException("Dojo subscription not found");
+    }
+
+    await Promise.all([
+      SubscriptionRepository.updateDojoAdminSubByStripeSubId({
+        stripeSubId: subscription.id,
+        update: {
+          billingStatus,
+          stripeSubStatus: subscription.status as StripeSubscriptionStatus,
+        },
+        tx,
+      }),
+      DojoRepository.update({
+        tx,
+        dojoId: dojoSub.dojoId,
+        update: {
+          status: dojoStatus,
+        },
+      }),
+    ]);
+  };
+
+  static markDojoSubPastDue = async (subId: string, tx: Transaction) => {
+    const dojoSub = await SubscriptionRepository.findOneDojoSubByStripeSubId(subId, tx);
+    if (!dojoSub) {
+      throw new BadRequestException("Dojo subscription not found");
+    }
+
+    await Promise.all([
+      SubscriptionRepository.updateDojoAdminSubByStripeSubId({
+        stripeSubId: subId,
+        update: {
+          billingStatus: BillingStatus.PastDue,
+        },
+        tx,
+      }),
+      DojoRepository.update({
+        tx,
+        dojoId: dojoSub.dojoId,
+        update: {
+          status: DojoStatus.PastDue,
+        },
+      }),
+    ]);
+  };
+
+  static markDojoSubActive = async (subId: string, tx: Transaction) => {
+    const dojoSub = await SubscriptionRepository.findOneDojoSubByStripeSubId(subId, tx);
+    if (!dojoSub) {
+      throw new BadRequestException("Dojo subscription not found");
+    }
+
+    await Promise.all([
+      SubscriptionRepository.updateDojoAdminSubByStripeSubId({
+        stripeSubId: subId,
+        update: {
+          billingStatus: BillingStatus.Active,
+        },
+        tx,
+      }),
+      DojoRepository.update({
+        tx,
+        dojoId: dojoSub.dojoId,
+        update: {
+          status: DojoStatus.Active,
+        },
+      }),
+    ]);
+  };
+
+  static markDojoSubCancelled = async (subscription: Stripe.Subscription, tx: Transaction) => {
+    const dojoSub = await SubscriptionRepository.findOneDojoSubByStripeSubId(subscription.id, tx);
+    if (!dojoSub) {
+      throw new BadRequestException("Dojo subscription not found");
+    }
+
+    const billingStatus = this.mapStripeSubStatus(subscription.status);
+    const dojoStatus = this.deriveDojoStatus(billingStatus);
+
+    await Promise.all([
+      SubscriptionRepository.updateDojoAdminSubByStripeSubId({
+        stripeSubId: subscription.id,
+        update: {
+          billingStatus,
+          stripeSubStatus: subscription.status as StripeSubscriptionStatus,
+        },
+        tx,
+      }),
+      DojoRepository.update({
+        tx,
+        dojoId: dojoSub.dojoId,
+        update: {
+          status: dojoStatus,
+        },
+      }),
+    ]);
+  };
+
   static markClassSubPastDue = async (subId: string, tx: Transaction) => {
     await SubscriptionRepository.updateClassSubByStripeSubId({
       stripeSubId: subId,

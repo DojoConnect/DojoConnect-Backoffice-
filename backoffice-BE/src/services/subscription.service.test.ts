@@ -368,6 +368,8 @@ describe("SubscriptionService", () => {
       vi.spyOn(DojoRepository, "getOneByID").mockResolvedValue(null);
       const setupIntent = buildStripeSetupIntentMock({
         id: "seti_123",
+        status: StripeSetupIntentStatus.Succeeded,
+        payment_method: "pm_123",
         metadata: buildDojoSubStripeMetadataMock({
           dojoId: dojo.id,
         }),
@@ -420,6 +422,123 @@ describe("SubscriptionService", () => {
       await SubscriptionService.handleDojoAdminSetupIntentSucceeded(setupIntent as any);
 
       expect(createSubscriptionSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Dojo Subscription Lifecycle", () => {
+    let sub: IDojoSub;
+
+    beforeEach(() => {
+      sub = buildSubscriptionMock({
+        dojoId: dojo.id,
+        stripeSubId: "sub_lifecycle_123",
+        billingStatus: BillingStatus.Active,
+      });
+      vi.spyOn(SubscriptionRepository, "findOneDojoSubByStripeSubId").mockResolvedValue(sub);
+      vi.spyOn(SubscriptionRepository, "updateDojoAdminSubByStripeSubId").mockResolvedValue({} as any);
+    });
+
+    describe("syncDojoSub", () => {
+      it("should sync subscription status correctly", async () => {
+        const stripeSub = {
+          id: sub.stripeSubId,
+          status: "past_due",
+        } as any;
+
+        await SubscriptionService.syncDojoSub(stripeSub, dbSpies.mockTx);
+
+        expect(SubscriptionRepository.updateDojoAdminSubByStripeSubId).toHaveBeenCalledWith({
+          stripeSubId: sub.stripeSubId,
+          update: {
+            billingStatus: BillingStatus.PastDue,
+            stripeSubStatus: "past_due",
+          },
+          tx: dbSpies.mockTx,
+        });
+        expect(updateDojoRepoSpy).toHaveBeenCalledWith({
+          tx: dbSpies.mockTx,
+          dojoId: sub.dojoId,
+          update: {
+            status: DojoStatus.PastDue,
+          },
+        });
+      });
+
+      it("should throw error if sub not found", async () => {
+        vi.spyOn(SubscriptionRepository, "findOneDojoSubByStripeSubId").mockResolvedValue(null);
+        await expect(
+          SubscriptionService.syncDojoSub({ id: "missing", status: "active" } as any, dbSpies.mockTx),
+        ).rejects.toThrow("Dojo subscription not found");
+      });
+    });
+
+    describe("markDojoSubPastDue", () => {
+      it("should mark sub and dojo as past due", async () => {
+        await SubscriptionService.markDojoSubPastDue(sub.stripeSubId!, dbSpies.mockTx);
+
+        expect(SubscriptionRepository.updateDojoAdminSubByStripeSubId).toHaveBeenCalledWith({
+          stripeSubId: sub.stripeSubId,
+          update: {
+            billingStatus: BillingStatus.PastDue,
+          },
+          tx: dbSpies.mockTx,
+        });
+        expect(updateDojoRepoSpy).toHaveBeenCalledWith({
+          tx: dbSpies.mockTx,
+          dojoId: sub.dojoId,
+          update: {
+            status: DojoStatus.PastDue,
+          },
+        });
+      });
+    });
+
+    describe("markDojoSubActive", () => {
+      it("should mark sub and dojo as active", async () => {
+        await SubscriptionService.markDojoSubActive(sub.stripeSubId!, dbSpies.mockTx);
+
+        expect(SubscriptionRepository.updateDojoAdminSubByStripeSubId).toHaveBeenCalledWith({
+          stripeSubId: sub.stripeSubId,
+          update: {
+            billingStatus: BillingStatus.Active,
+          },
+          tx: dbSpies.mockTx,
+        });
+        expect(updateDojoRepoSpy).toHaveBeenCalledWith({
+          tx: dbSpies.mockTx,
+          dojoId: sub.dojoId,
+          update: {
+            status: DojoStatus.Active,
+          },
+        });
+      });
+    });
+
+    describe("markDojoSubCancelled", () => {
+      it("should mark sub as cancelled and dojo as blocked", async () => {
+        const stripeSub = {
+          id: sub.stripeSubId,
+          status: "canceled",
+        } as any;
+
+        await SubscriptionService.markDojoSubCancelled(stripeSub, dbSpies.mockTx);
+
+        expect(SubscriptionRepository.updateDojoAdminSubByStripeSubId).toHaveBeenCalledWith({
+          stripeSubId: sub.stripeSubId,
+          update: {
+            billingStatus: BillingStatus.Cancelled,
+            stripeSubStatus: "canceled",
+          },
+          tx: dbSpies.mockTx,
+        });
+        expect(updateDojoRepoSpy).toHaveBeenCalledWith({
+          tx: dbSpies.mockTx,
+          dojoId: sub.dojoId,
+          update: {
+            status: DojoStatus.Blocked,
+          },
+        });
+      });
     });
   });
 
