@@ -1,10 +1,11 @@
 import { isValid, parseISO } from "date-fns";
 import z from "zod";
+import { isString } from "../utils/type-guards.utils.js";
 
 // Helper for date transformation
 export const isoDateSchema = z.iso
   .date()
-  .transform((v) => (typeof v === "string" ? new Date(v) : v));
+  .transform((v) => (isString(v) ? new Date(v) : v));
 
 // -------------------
 // DATE-ONLY SCHEMA

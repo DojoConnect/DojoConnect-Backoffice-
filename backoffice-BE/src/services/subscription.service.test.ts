@@ -9,15 +9,22 @@ import { SubscriptionRepository } from "../repositories/subscription.repository.
 import { BadRequestException, ConflictException, NotFoundException } from "../core/errors/index.js";
 import {
   BillingStatus,
+  ClassFrequency,
   DojoStatus,
   StripeSetupIntentStatus,
   StripeSubscriptionStatus,
 } from "../constants/enums.js";
-import { SubscriptionType } from "../constants/subscription.constants.js";
+
 import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { ClassRepository } from "../repositories/class.repository.js";
+import { OneTimePaymentRepository } from "../repositories/one-time-payment.repository.js";
+import { buildClassMock } from "../tests/factories/class.factory.js";
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
-import { buildSubscriptionMock } from "../tests/factories/subscription.factory.js";
+import {
+  buildSubscriptionMock,
+  buildDojoSubStripeMetadataMock,
+} from "../tests/factories/subscription.factory.js";
 import { IDojoSub } from "../repositories/subscription.repository.js";
 import { IUser } from "../repositories/user.repository.js";
 import {
@@ -120,6 +127,17 @@ describe("SubscriptionService", () => {
       ).rejects.toThrow(ConflictException);
     });
 
+    it("should throw BadRequestException if billing is already setup", async () => {
+      const activeSub = buildSubscriptionMock({
+        billingStatus: BillingStatus.Active,
+      });
+      findLatestDojoAdminSubSpy.mockResolvedValue(activeSub);
+
+      await expect(SubscriptionService.setupDojoAdminBilling({ dojo, user })).rejects.toThrow(
+        "Billing already set up",
+      );
+    });
+
     it("should return existing client_secret if an incomplete setup intent exists", async () => {
       const subscription = buildSubscriptionMock({
         billingStatus: BillingStatus.SetupIntentCreated,
@@ -167,11 +185,9 @@ describe("SubscriptionService", () => {
       });
 
       expect(retrieveSetupIntentSpy).toHaveBeenCalledWith("seti_canceled");
-      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, {
+      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, buildDojoSubStripeMetadataMock({
         dojoId: dojo.id,
-        ownerUserId: user.id,
-        type: SubscriptionType.DojoSub,
-      });
+      }));
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
     });
 
@@ -189,11 +205,10 @@ describe("SubscriptionService", () => {
       });
 
       expect(result.clientSecret).toBe(newSetupIntent.client_secret);
-      expect(setupIntentSpy).toHaveBeenCalledWith(dojo.stripeCustomerId, {
-        dojoId: dojo.id,
-        ownerUserId: user.id,
-        type: SubscriptionType.DojoSub,
-      });
+      expect(setupIntentSpy).toHaveBeenCalledWith(
+        dojo.stripeCustomerId,
+        buildDojoSubStripeMetadataMock({ dojoId: dojo.id }),
+      );
       expect(createDojoAdminSubSpy).toHaveBeenCalledWith(
         {
           dojoId: dojo.id,
@@ -208,6 +223,59 @@ describe("SubscriptionService", () => {
           status: DojoStatus.OnboardingIncomplete,
         },
         txInstance: dbSpies.mockTx,
+      });
+    });
+
+    it("should create a new setup intent if the existing one is older than 30 minutes", async () => {
+      const thirtyOneMinutesAgo = new Date(Date.now() - 31 * 60 * 1000);
+      const subscription = buildSubscriptionMock({
+        billingStatus: BillingStatus.SetupIntentCreated,
+        stripeSetupIntentId: "seti_old",
+        createdAt: thirtyOneMinutesAgo,
+      });
+      const newSetupIntent = buildStripeSetupIntentMock({
+        id: "seti_new_after_expiry",
+        client_secret: "seti_new_secret_after_expiry",
+      });
+
+      findLatestDojoAdminSubSpy.mockResolvedValue(subscription);
+      setupIntentSpy.mockResolvedValue(newSetupIntent);
+
+      const result = await SubscriptionService.setupDojoAdminBilling({
+        dojo,
+        user,
+      });
+
+      expect(retrieveSetupIntentSpy).not.toHaveBeenCalled();
+      expect(setupIntentSpy).toHaveBeenCalled();
+      expect(result.clientSecret).toBe(newSetupIntent.client_secret);
+    });
+  });
+
+  describe("initDojoAdminBillingSetup", () => {
+    it("should throw NotFoundException if dojo not found", async () => {
+      getOneDojoByUserIdSpy.mockResolvedValue(null);
+      await expect(
+        SubscriptionService.initDojoAdminBillingSetup({ user }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("should call setupDojoAdminBilling and return clientSecret", async () => {
+      const setupIntent = buildStripeSetupIntentMock({
+        client_secret: "seti_secret_init",
+      });
+      getOneDojoByUserIdSpy.mockResolvedValue(dojo);
+      vi.spyOn(SubscriptionService, "setupDojoAdminBilling").mockResolvedValue({
+        clientSecret: setupIntent.client_secret!,
+      });
+
+      const result = await SubscriptionService.initDojoAdminBillingSetup({ user });
+
+      expect(result.clientSecret).toBe(setupIntent.client_secret);
+      expect(SubscriptionService.setupDojoAdminBilling).toHaveBeenCalledWith({
+        dojo,
+        user,
+        txInstance: expect.anything(),
       });
     });
   });
@@ -283,10 +351,9 @@ describe("SubscriptionService", () => {
         grantTrial: true,
         paymentMethodId: "pm_123",
         idempotencyKey: `dojo-admin-sub-${sub.id}`,
-        metadata: {
-          dojoId: dojo.id,
-          type: SubscriptionType.DojoSub,
-        },
+        metadata: buildDojoSubStripeMetadataMock({
+          dojoId: dojo.id
+        }),
       });
       expect(updateDojoAdminSubSpy).toHaveBeenCalledWith({
         tx: dbSpies.mockTx,
@@ -343,6 +410,198 @@ describe("SubscriptionService", () => {
           status: DojoStatus.Active,
           hasUsedTrial: true,
         },
+      });
+    });
+  });
+
+  describe("handleDojoAdminSetupIntentSucceeded", () => {
+    let sub: IDojoSub;
+
+    beforeEach(() => {
+      dojo.stripeCustomerId = "cus_123";
+      sub = buildSubscriptionMock({
+        dojoId: dojo.id,
+        billingStatus: BillingStatus.SetupIntentCreated,
+        stripeSetupIntentId: "seti_123",
+      });
+      vi.spyOn(DojoRepository, "getOneByID").mockResolvedValue(dojo);
+      findLatestDojoAdminSubSpy.mockResolvedValue(sub);
+    });
+
+    it("should throw NotFoundException if dojo or sub not found", async () => {
+      vi.spyOn(DojoRepository, "getOneByID").mockResolvedValue(null);
+      const setupIntent = buildStripeSetupIntentMock({
+        id: "seti_123",
+        status: StripeSetupIntentStatus.Succeeded,
+        payment_method: "pm_123",
+        metadata: buildDojoSubStripeMetadataMock({
+          dojoId: dojo.id,
+        }),
+      });
+      await expect(
+        SubscriptionService.handleDojoAdminSetupIntentSucceeded(setupIntent as any),
+      ).rejects.toThrow("Dojo or Subscription record not found for webhook");
+    });
+
+    it("should process setup success correctly", async () => {
+      const setupIntent = buildStripeSetupIntentMock({
+        id: "seti_123",
+        status: StripeSetupIntentStatus.Succeeded,
+        payment_method: "pm_123",
+        metadata: buildDojoSubStripeMetadataMock({
+          dojoId: dojo.id,
+        }),
+      });
+      const stripeSub = buildStripeSubMock({
+        id: "sub_123",
+        status: StripeSubscriptionStatus.Trialing,
+      });
+      createSubscriptionSpy.mockResolvedValue(stripeSub);
+
+      await SubscriptionService.handleDojoAdminSetupIntentSucceeded(setupIntent as any);
+
+      expect(createSubscriptionSpy).toHaveBeenCalledWith({
+        custId: dojo.stripeCustomerId,
+        plan: dojo.activeSub,
+        grantTrial: true,
+        paymentMethodId: "pm_123",
+        idempotencyKey: `dojo-admin-sub-${sub.id}`,
+        metadata: buildDojoSubStripeMetadataMock({ dojoId: dojo.id }),
+      });
+      expect(updateDojoAdminSubSpy).toHaveBeenCalledTimes(1);
+      expect(updateDojoRepoSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("should respect idempotency if already processed", async () => {
+      sub.billingStatus = BillingStatus.Active;
+      const setupIntent = buildStripeSetupIntentMock({
+        id: "seti_123",
+        status: StripeSetupIntentStatus.Succeeded,
+        payment_method: " pm_123",
+        metadata: buildDojoSubStripeMetadataMock({
+          dojoId: dojo.id,
+        }),
+      });
+
+      await SubscriptionService.handleDojoAdminSetupIntentSucceeded(setupIntent as any);
+
+      expect(createSubscriptionSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Dojo Subscription Lifecycle", () => {
+    let sub: IDojoSub;
+
+    beforeEach(() => {
+      sub = buildSubscriptionMock({
+        dojoId: dojo.id,
+        stripeSubId: "sub_lifecycle_123",
+        billingStatus: BillingStatus.Active,
+      });
+      vi.spyOn(SubscriptionRepository, "findOneDojoSubByStripeSubId").mockResolvedValue(sub);
+      vi.spyOn(SubscriptionRepository, "updateDojoAdminSubByStripeSubId").mockResolvedValue({} as any);
+    });
+
+    describe("syncDojoSub", () => {
+      it("should sync subscription status correctly", async () => {
+        const stripeSub = {
+          id: sub.stripeSubId,
+          status: "past_due",
+        } as any;
+
+        await SubscriptionService.syncDojoSub(stripeSub, dbSpies.mockTx);
+
+        expect(SubscriptionRepository.updateDojoAdminSubByStripeSubId).toHaveBeenCalledWith({
+          stripeSubId: sub.stripeSubId,
+          update: {
+            billingStatus: BillingStatus.PastDue,
+            stripeSubStatus: "past_due",
+          },
+          tx: dbSpies.mockTx,
+        });
+        expect(updateDojoRepoSpy).toHaveBeenCalledWith({
+          tx: dbSpies.mockTx,
+          dojoId: sub.dojoId,
+          update: {
+            status: DojoStatus.PastDue,
+          },
+        });
+      });
+
+      it("should throw error if sub not found", async () => {
+        vi.spyOn(SubscriptionRepository, "findOneDojoSubByStripeSubId").mockResolvedValue(null);
+        await expect(
+          SubscriptionService.syncDojoSub({ id: "missing", status: "active" } as any, dbSpies.mockTx),
+        ).rejects.toThrow("Dojo subscription not found");
+      });
+    });
+
+    describe("markDojoSubPastDue", () => {
+      it("should mark sub and dojo as past due", async () => {
+        await SubscriptionService.markDojoSubPastDue(sub.stripeSubId!, dbSpies.mockTx);
+
+        expect(SubscriptionRepository.updateDojoAdminSubByStripeSubId).toHaveBeenCalledWith({
+          stripeSubId: sub.stripeSubId,
+          update: {
+            billingStatus: BillingStatus.PastDue,
+          },
+          tx: dbSpies.mockTx,
+        });
+        expect(updateDojoRepoSpy).toHaveBeenCalledWith({
+          tx: dbSpies.mockTx,
+          dojoId: sub.dojoId,
+          update: {
+            status: DojoStatus.PastDue,
+          },
+        });
+      });
+    });
+
+    describe("markDojoSubActive", () => {
+      it("should mark sub and dojo as active", async () => {
+        await SubscriptionService.markDojoSubActive(sub.stripeSubId!, dbSpies.mockTx);
+
+        expect(SubscriptionRepository.updateDojoAdminSubByStripeSubId).toHaveBeenCalledWith({
+          stripeSubId: sub.stripeSubId,
+          update: {
+            billingStatus: BillingStatus.Active,
+          },
+          tx: dbSpies.mockTx,
+        });
+        expect(updateDojoRepoSpy).toHaveBeenCalledWith({
+          tx: dbSpies.mockTx,
+          dojoId: sub.dojoId,
+          update: {
+            status: DojoStatus.Active,
+          },
+        });
+      });
+    });
+
+    describe("markDojoSubCancelled", () => {
+      it("should mark sub as cancelled and dojo as blocked", async () => {
+        const stripeSub = {
+          id: sub.stripeSubId,
+          status: "canceled",
+        } as any;
+
+        await SubscriptionService.markDojoSubCancelled(stripeSub, dbSpies.mockTx);
+
+        expect(SubscriptionRepository.updateDojoAdminSubByStripeSubId).toHaveBeenCalledWith({
+          stripeSubId: sub.stripeSubId,
+          update: {
+            billingStatus: BillingStatus.Cancelled,
+            stripeSubStatus: "canceled",
+          },
+          tx: dbSpies.mockTx,
+        });
+        expect(updateDojoRepoSpy).toHaveBeenCalledWith({
+          tx: dbSpies.mockTx,
+          dojoId: sub.dojoId,
+          update: {
+            status: DojoStatus.Blocked,
+          },
+        });
       });
     });
   });
@@ -412,6 +671,11 @@ describe("SubscriptionService", () => {
         },
       };
 
+      vi.spyOn(ClassRepository, "findById").mockResolvedValue(
+        buildClassMock({ frequency: ClassFrequency.Weekly }),
+      );
+      vi.spyOn(OneTimePaymentRepository, "create").mockResolvedValue({} as any);
+
       vi.spyOn(StripeService, "createClassSubscription").mockResolvedValue({
         id: "sub_123",
       } as any);
@@ -431,6 +695,13 @@ describe("SubscriptionService", () => {
         EnrollmentRepository,
         "update",
       ).mockResolvedValue({} as any);
+    });
+
+    it("should throw error if class not found", async () => {
+      vi.spyOn(ClassRepository, "findById").mockResolvedValue(null);
+      await expect(
+        SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent),
+      ).rejects.toThrow("Class not found");
     });
 
     it("should throw error if customer is missing", async () => {
@@ -466,6 +737,20 @@ describe("SubscriptionService", () => {
       await SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent);
       // @ts-ignore
       expect(EnrollmentRepository.update).toHaveBeenCalledTimes(2);
+    });
+
+    it("should record one-time payment and not create subscription for one-time classes", async () => {
+      vi.spyOn(ClassRepository, "findById").mockResolvedValue(
+        buildClassMock({ frequency: ClassFrequency.OneTime }),
+      );
+
+      await SubscriptionService.createClassSubscriptionsFromPaymentIntent(mockPaymentIntent);
+
+      expect(StripeService.createClassSubscription).not.toHaveBeenCalled();
+      expect(SubscriptionRepository.createClassSub).not.toHaveBeenCalled();
+      expect(OneTimePaymentRepository.create).toHaveBeenCalledTimes(2);
+      // @ts-ignore
+      expect(EnrollmentRepository.create).toHaveBeenCalledTimes(2);
     });
   });
 });

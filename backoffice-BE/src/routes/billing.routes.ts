@@ -13,4 +13,11 @@ router.post(
   BillingController.handleConfirmDojoAdminBilling,
 );
 
+router.post(
+  "/setup/dojo-admin",
+  requireAuth,
+  requireRole(Role.DojoAdmin),
+  BillingController.handleSetupDojoAdminBilling,
+);
+
 export default router;

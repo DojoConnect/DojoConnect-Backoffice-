@@ -57,7 +57,7 @@ const uuidPrimaryKey = () =>
 export const admin = mysqlTable(
   "admin",
   {
-    id: int().autoincrement().primaryKey(),
+    id: uuidPrimaryKey(),
     firstName: varchar("first_name", { length: 100 }).notNull(),
     lastName: varchar("last_name", { length: 100 }).notNull(),
     email: varchar({ length: 255 }).notNull(),
@@ -68,7 +68,7 @@ export const admin = mysqlTable(
 );
 
 export const adminPasswordResets = mysqlTable("admin_password_resets", {
-  id: int().autoincrement().primaryKey(),
+  id: uuidPrimaryKey(),
   adminEmail: varchar("admin_email", { length: 255 }).notNull(),
   otp: varchar({ length: 6 }).notNull(),
   expiresAt: datetime("expires_at", { mode: "string" }).notNull(),
@@ -78,7 +78,7 @@ export const adminPasswordResets = mysqlTable("admin_password_resets", {
 });
 
 export const announcements = mysqlTable("announcements", {
-  id: int().autoincrement().primaryKey(),
+  id: uuidPrimaryKey(),
   title: varchar({ length: 255 }).notNull(),
   message: text().notNull(),
   senderEmail: varchar("sender_email", { length: 255 }).notNull(),
@@ -89,7 +89,7 @@ export const announcements = mysqlTable("announcements", {
 export const announcementRecipients = mysqlTable(
   "announcement_recipients",
   {
-    id: int().autoincrement().primaryKey(),
+    id: uuidPrimaryKey(),
     announcementId: int("announcement_id").notNull(),
     recipientEmail: varchar("recipient_email", { length: 255 }).notNull(),
   },
@@ -97,7 +97,7 @@ export const announcementRecipients = mysqlTable(
 );
 
 export const attendanceRecords = mysqlTable("attendance_records", {
-  id: int().autoincrement().primaryKey(),
+  id: uuidPrimaryKey(),
   classId: varchar("class_id", { length: 255 }).notNull(),
   email: varchar({ length: 255 }).notNull(),
   // you can use { mode: 'date' }, if you want to have Date as type for this column
@@ -111,7 +111,7 @@ export const attendanceRecords = mysqlTable("attendance_records", {
 export const broadcastRecipients = mysqlTable(
   "broadcast_recipients",
   {
-    id: int().autoincrement().primaryKey(),
+    id: uuidPrimaryKey(),
     messageId: int("message_id").notNull(),
     recipientId: int("recipient_id").notNull(),
   },
@@ -293,14 +293,14 @@ export const oneTimeClassPayments = mysqlTable("one_time_class_payments", {
   classId: varchar("class_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => classes.id, { onDelete: "cascade" }),
-  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }).unique(),
+  stripePaymentIntentId: varchar("stripe_payment_intent_id", { length: 255 }).unique().notNull(),
   amount: decimal({ precision: 10, scale: 2 }).notNull(),
   status: mysqlEnum(BillingStatus).notNull(),
   paidAt: timestamp("paid_at"),
 });
 
 export const deletionRequests = mysqlTable("deletion_requests", {
-  id: int().autoincrement().primaryKey(),
+  id: uuidPrimaryKey(),
   title: varchar({ length: 50 }).notNull(),
   email: varchar({ length: 255 }).notNull(),
   reason: text(),
@@ -370,7 +370,7 @@ export const dojoSubscriptions = mysqlTable(
 export const enrolledChildren = mysqlTable(
   "enrolled_children",
   {
-    id: int().autoincrement().primaryKey(),
+    id: uuidPrimaryKey(),
     enrollmentId: varchar("enrollment_id", { length: 50 }).notNull(),
     childName: varchar("child_name", { length: 100 }).notNull(),
     childEmail: varchar("child_email", { length: 100 }).notNull(),
@@ -382,7 +382,7 @@ export const enrolledChildren = mysqlTable(
 export const enrollments = mysqlTable(
   "enrollments",
   {
-    id: int().autoincrement().primaryKey(),
+    id: uuidPrimaryKey(),
     enrollmentId: varchar("enrollment_id", { length: 50 }).notNull(),
     classId: varchar("class_id", { length: 50 }).notNull(),
     parentEmail: varchar("parent_email", { length: 100 }).notNull(),
@@ -392,7 +392,7 @@ export const enrollments = mysqlTable(
 );
 
 export const events = mysqlTable("events", {
-  id: int().autoincrement().primaryKey(),
+  id: uuidPrimaryKey(),
   title: varchar({ length: 255 }).notNull(),
   description: text(),
   classIds: text("class_ids").notNull(),
@@ -418,7 +418,7 @@ export const events = mysqlTable("events", {
 });
 
 export const feedback = mysqlTable("feedback", {
-  id: int().autoincrement().primaryKey(),
+  id: uuidPrimaryKey(),
   userEmail: varchar("user_email", { length: 255 }),
   message: text(),
   fullName: varchar("full_name", { length: 255 }),
@@ -620,7 +620,7 @@ export const stripeWebhookEvents = mysqlTable("stripe_webhook_events", {
 });
 
 export const tasks = mysqlTable("tasks", {
-  id: int().autoincrement().primaryKey(),
+  id: uuidPrimaryKey(),
   title: varchar({ length: 255 }),
   description: text(),
   assignedTo: varchar("assigned_to", { length: 255 }),
@@ -639,7 +639,7 @@ export const tasks = mysqlTable("tasks", {
 });
 
 export const transactions = mysqlTable("transactions", {
-  id: int().autoincrement().primaryKey(),
+  id: uuidPrimaryKey(),
   userEmail: varchar("user_email", { length: 255 }).notNull(),
   transactionTitle: varchar("transaction_title", { length: 255 }).notNull(),
   revenue: decimal({ precision: 10, scale: 2 }).default("0.00"),
@@ -695,7 +695,7 @@ export const userCards = mysqlTable("user_cards", {
 export const waitlist = mysqlTable(
   "waitlist",
   {
-    id: int().autoincrement().primaryKey(),
+    id: uuidPrimaryKey(),
     fullname: varchar({ length: 255 }).notNull(),
     email: varchar({ length: 255 }).notNull(),
     createdAt: timestamp("created_at", { mode: "string" })

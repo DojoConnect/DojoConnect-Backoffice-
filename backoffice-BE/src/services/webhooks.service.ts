@@ -6,6 +6,7 @@ import { StripeMetadata } from "../types/subscription.types.js";
 import { StripeWebhookEvents, SubscriptionType } from "../constants/subscription.constants.js";
 import { SubscriptionService } from "./subscription.service.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
+import { isString } from "../utils/type-guards.utils.js";
 
 export class WebhooksService {
   static processStripeWebhookEvent = async (event: Stripe.Event, txInstance?: Transaction) => {
@@ -47,6 +48,9 @@ export class WebhooksService {
       case StripeWebhookEvents.PaymentIntentSucceeded:
         WebhooksService.handlePaymentIntentSucceeded(event.data.object, tx);
         break;
+      case StripeWebhookEvents.SetupIntentSucceeded:
+        WebhooksService.handleSetupIntentSucceeded(event.data.object, tx);
+        break;
     }
   };
 
@@ -79,9 +83,11 @@ export class WebhooksService {
       case SubscriptionType.ClassSub:
         SubscriptionService.syncClassSub(subscription, tx);
         break;
-      case SubscriptionType.OneTimeClass:
       case SubscriptionType.DojoSub:
-        // TODO: Handle dojo subscription and One Time classes
+        SubscriptionService.syncDojoSub(subscription, tx);
+        break;
+      case SubscriptionType.OneTimeClass:
+        // TODO: Handle One Time classes
         break;
       default:
         throw new Error("Invalid subscription type");
@@ -94,7 +100,7 @@ export class WebhooksService {
       throw new Error("No subscription found in invoice");
     }
 
-    const subId = typeof subscription === "string" ? subscription : subscription.id;
+    const subId = isString(subscription) ? subscription : subscription.id;
     const subscriptionMetadata = this.getSubscriptionMetadataFromInvoice(invoice);
 
     if (!subscriptionMetadata) {
@@ -105,9 +111,11 @@ export class WebhooksService {
       case SubscriptionType.ClassSub:
         SubscriptionService.markClassSubPastDue(subId, tx);
         break;
-      case SubscriptionType.OneTimeClass:
       case SubscriptionType.DojoSub:
-        // TODO: Handle dojo subscription and One Time classes
+        SubscriptionService.markDojoSubPastDue(subId, tx);
+        break;
+      case SubscriptionType.OneTimeClass:
+        // TODO: Handle One Time classes
         break;
       default:
         throw new Error("Invalid subscription type");
@@ -132,7 +140,7 @@ export class WebhooksService {
     }
 
     const subscriptionMetadata =
-      typeof subscription !== "string" ? subscription.metadata : invoice.metadata;
+      !isString(subscription) ? subscription.metadata : invoice.metadata;
 
     if (!subscriptionMetadata) {
       throw new BadRequestException("No metadata found in invoice");
@@ -149,7 +157,7 @@ export class WebhooksService {
       throw new Error("No subscription found in invoice");
     }
 
-    const subId = typeof subscription === "string" ? subscription : subscription.id;
+    const subId = isString(subscription) ? subscription : subscription.id;
 
     const subscriptionMetadata = this.getSubscriptionMetadataFromInvoice(invoice);
 
@@ -161,9 +169,11 @@ export class WebhooksService {
       case SubscriptionType.ClassSub:
         SubscriptionService.markClassSubActive(subId, tx);
         break;
-      case SubscriptionType.OneTimeClass:
       case SubscriptionType.DojoSub:
-        // TODO: Handle dojo subscription and One Time classes
+        SubscriptionService.markDojoSubActive(subId, tx);
+        break;
+      case SubscriptionType.OneTimeClass:
+        // TODO: Handle One Time classes
         break;
       default:
         throw new Error("Invalid subscription type");
@@ -190,14 +200,31 @@ export class WebhooksService {
       case SubscriptionType.ClassSub:
         SubscriptionService.markClassSubCancelled(subscription, tx);
         break;
-      case SubscriptionType.OneTimeClass:
       case SubscriptionType.DojoSub:
-        // TODO: Handle dojo subscription and One Time classes
+        SubscriptionService.markDojoSubCancelled(subscription, tx);
+        break;
+      case SubscriptionType.OneTimeClass:
+        // TODO: Handle One Time classes
         break;
       default:
         throw new Error("Invalid subscription type");
     }
   };
 
-  static handleOneTimePayment = (event: Stripe.Event, tx: Transaction) => {};
+  static handleSetupIntentSucceeded = async (
+    setupIntent: Stripe.SetupIntent,
+    tx: Transaction,
+  ) => {
+    if (!setupIntent.metadata) {
+      throw new Error("No metadata found in setup intent");
+    }
+
+    const metadata = setupIntent.metadata as any as StripeMetadata;
+
+    switch (metadata.type) {
+      case SubscriptionType.DojoSub:
+        await SubscriptionService.handleDojoAdminSetupIntentSucceeded(setupIntent, tx);
+        break;
+    }
+  };
 }

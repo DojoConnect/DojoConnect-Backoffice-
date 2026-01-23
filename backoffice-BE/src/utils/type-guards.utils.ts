@@ -9,3 +9,5 @@ export const isEnumValue = <T extends { [k: string]: string }>(
   enumObject: T,
 ): something is T[keyof T] =>
   typeof something === "string" && Object.values(enumObject).includes(something);
+
+export const isString = (something: any): something is string => typeof something === "string";
