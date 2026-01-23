@@ -127,6 +127,17 @@ describe("SubscriptionService", () => {
       ).rejects.toThrow(ConflictException);
     });
 
+    it("should throw BadRequestException if billing is already setup", async () => {
+      const activeSub = buildSubscriptionMock({
+        billingStatus: BillingStatus.Active,
+      });
+      findLatestDojoAdminSubSpy.mockResolvedValue(activeSub);
+
+      await expect(SubscriptionService.setupDojoAdminBilling({ dojo, user })).rejects.toThrow(
+        "Billing already set up",
+      );
+    });
+
     it("should return existing client_secret if an incomplete setup intent exists", async () => {
       const subscription = buildSubscriptionMock({
         billingStatus: BillingStatus.SetupIntentCreated,
@@ -212,6 +223,59 @@ describe("SubscriptionService", () => {
           status: DojoStatus.OnboardingIncomplete,
         },
         txInstance: dbSpies.mockTx,
+      });
+    });
+
+    it("should create a new setup intent if the existing one is older than 30 minutes", async () => {
+      const thirtyOneMinutesAgo = new Date(Date.now() - 31 * 60 * 1000);
+      const subscription = buildSubscriptionMock({
+        billingStatus: BillingStatus.SetupIntentCreated,
+        stripeSetupIntentId: "seti_old",
+        createdAt: thirtyOneMinutesAgo,
+      });
+      const newSetupIntent = buildStripeSetupIntentMock({
+        id: "seti_new_after_expiry",
+        client_secret: "seti_new_secret_after_expiry",
+      });
+
+      findLatestDojoAdminSubSpy.mockResolvedValue(subscription);
+      setupIntentSpy.mockResolvedValue(newSetupIntent);
+
+      const result = await SubscriptionService.setupDojoAdminBilling({
+        dojo,
+        user,
+      });
+
+      expect(retrieveSetupIntentSpy).not.toHaveBeenCalled();
+      expect(setupIntentSpy).toHaveBeenCalled();
+      expect(result.clientSecret).toBe(newSetupIntent.client_secret);
+    });
+  });
+
+  describe("initDojoAdminBillingSetup", () => {
+    it("should throw NotFoundException if dojo not found", async () => {
+      getOneDojoByUserIdSpy.mockResolvedValue(null);
+      await expect(
+        SubscriptionService.initDojoAdminBillingSetup({ user }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("should call setupDojoAdminBilling and return clientSecret", async () => {
+      const setupIntent = buildStripeSetupIntentMock({
+        client_secret: "seti_secret_init",
+      });
+      getOneDojoByUserIdSpy.mockResolvedValue(dojo);
+      vi.spyOn(SubscriptionService, "setupDojoAdminBilling").mockResolvedValue({
+        clientSecret: setupIntent.client_secret!,
+      });
+
+      const result = await SubscriptionService.initDojoAdminBillingSetup({ user });
+
+      expect(result.clientSecret).toBe(setupIntent.client_secret);
+      expect(SubscriptionService.setupDojoAdminBilling).toHaveBeenCalledWith({
+        dojo,
+        user,
+        txInstance: expect.anything(),
       });
     });
   });

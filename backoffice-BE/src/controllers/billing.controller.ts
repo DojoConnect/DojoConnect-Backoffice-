@@ -8,7 +8,20 @@ export class BillingController {
 
     res.status(200).json(
       formatApiResponse({
-        data: undefined,
+        data: true,
+        message: "Successful",
+      }),
+    );
+  }
+
+  static async handleSetupDojoAdminBilling(req: Request, res: Response) {
+    const result = await SubscriptionService.initDojoAdminBillingSetup({
+      user: req.user!,
+    });
+
+    res.status(200).json(
+      formatApiResponse({
+        data: result,
         message: "Successful",
       }),
     );

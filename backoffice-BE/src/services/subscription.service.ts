@@ -1,4 +1,5 @@
 import * as dbService from "../db/index.js";
+import { differenceInMinutes } from "date-fns";
 import { StripeService } from "./stripe.service.js";
 import { DojosService } from "./dojos.service.js";
 import { DojoRepository, IDojo } from "../repositories/dojo.repository.js";
@@ -78,6 +79,33 @@ export class SubscriptionService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
+  static initDojoAdminBillingSetup = async ({
+    user,
+    txInstance,
+  }: {
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      const dojo = await DojosService.getOneDojoByUserId({
+        userId: user.id,
+        txInstance: tx,
+      });
+
+      if (!dojo) {
+        throw new NotFoundException("No dojo found for user");
+      }
+
+      return await this.setupDojoAdminBilling({
+        dojo,
+        user,
+        txInstance: tx,
+      });
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
   static setupDojoAdminBilling = async ({
     dojo,
     user,
@@ -101,19 +129,33 @@ export class SubscriptionService {
       // 2. Check for existing incomplete setup
       let subscription = await SubscriptionRepository.findLatestDojoAdminSub(dojo.id, tx);
 
-      if (
-        subscription &&
-        subscription.billingStatus === BillingStatus.SetupIntentCreated &&
-        subscription.stripeSetupIntentId
-      ) {
-        const setupIntent = await StripeService.retrieveSetupIntent(
-          subscription.stripeSetupIntentId,
-        );
+      if (subscription) {
+        // ✅ Prevent already set up billing
+        if (
+          subscription.billingStatus === BillingStatus.Active ||
+          subscription.billingStatus === BillingStatus.Trialing
+        ) {
+          throw new BadRequestException("Billing already set up");
+        }
 
-        if (setupIntent.status !== StripeSetupIntentStatus.Canceled) {
-          return {
-            clientSecret: setupIntent.client_secret,
-          };
+        if (
+          subscription.billingStatus === BillingStatus.SetupIntentCreated &&
+          subscription.stripeSetupIntentId
+        ) {
+          // ✅ Only reuse if not older than 30 minutes
+          const minutesSinceCreation = differenceInMinutes(new Date(), subscription.createdAt);
+
+          if (minutesSinceCreation < 30) {
+            const setupIntent = await StripeService.retrieveSetupIntent(
+              subscription.stripeSetupIntentId,
+            );
+
+            if (setupIntent.status !== StripeSetupIntentStatus.Canceled) {
+              return {
+                clientSecret: setupIntent.client_secret,
+              };
+            }
+          }
         }
       }
 
