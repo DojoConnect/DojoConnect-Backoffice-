@@ -8,7 +8,7 @@ export class BillingController {
 
     res.status(200).json(
       formatApiResponse({
-        data: undefined,
+        data: true,
         message: "Successful",
       }),
     );
