@@ -127,6 +127,17 @@ describe("SubscriptionService", () => {
       ).rejects.toThrow(ConflictException);
     });
 
+    it("should throw BadRequestException if billing is already setup", async () => {
+      const activeSub = buildSubscriptionMock({
+        billingStatus: BillingStatus.Active,
+      });
+      findLatestDojoAdminSubSpy.mockResolvedValue(activeSub);
+
+      await expect(SubscriptionService.setupDojoAdminBilling({ dojo, user })).rejects.toThrow(
+        "Billing already set up",
+      );
+    });
+
     it("should return existing client_secret if an incomplete setup intent exists", async () => {
       const subscription = buildSubscriptionMock({
         billingStatus: BillingStatus.SetupIntentCreated,
