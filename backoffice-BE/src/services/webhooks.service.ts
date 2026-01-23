@@ -203,8 +203,6 @@ export class WebhooksService {
     }
   };
 
-  static handleOneTimePayment = (event: Stripe.Event, tx: Transaction) => {};
-
   static handleSetupIntentSucceeded = async (
     setupIntent: Stripe.SetupIntent,
     tx: Transaction,

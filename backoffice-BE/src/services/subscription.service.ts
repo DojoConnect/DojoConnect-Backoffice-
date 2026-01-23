@@ -13,7 +13,7 @@ import {
 import { ClassRepository } from "../repositories/class.repository.js";
 import { OneTimePaymentRepository } from "../repositories/one-time-payment.repository.js";
 import { IUser } from "../repositories/user.repository.js";
-import { SubscriptionRepository, IDojoSub } from "../repositories/subscription.repository.js";
+import { SubscriptionRepository, IDojoSub, } from "../repositories/subscription.repository.js";
 import { BadRequestException, NotFoundException } from "../core/errors/index.js";
 import Stripe from "stripe";
 import { assertDojoOwnership } from "../utils/assertions.utils.js";
@@ -48,6 +48,31 @@ export class SubscriptionService {
       });
 
       return customer.id;
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static createDojoSub = async ({
+    dojoId,
+    setupIntent,
+  }: {
+    dojoId: string;
+    setupIntent: Stripe.SetupIntent;
+  },
+  txInstance?: Transaction,
+) => {
+    const execute = async (tx: Transaction) => {
+      const newSubId = await SubscriptionRepository.createDojoAdminSub(
+        {
+          dojoId,
+          stripeSetupIntentId: setupIntent.id,
+          billingStatus: BillingStatus.SetupIntentCreated,
+        },
+        tx,
+      );
+
+      return (await SubscriptionRepository.findOneDojoSubById(newSubId, tx))!;
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
@@ -173,19 +198,29 @@ export class SubscriptionService {
     txInstance?: Transaction,
   ) => {
     const execute = async (tx: Transaction) => {
+      if (setupIntent.status !== StripeSetupIntentStatus.Succeeded || setupIntent.payment_method === null) {
+        throw new BadRequestException("Setup not complete");
+      }
+
       const { dojoId } = setupIntent.metadata as any as DojoSubStripeMetadata;
 
-      const [dojo, sub] = await Promise.all([
+      let [dojo, sub] = await Promise.all([
         DojosService.getOneDojoByID(dojoId, tx),
         SubscriptionRepository.findLatestDojoAdminSub(dojoId, tx),
       ]);
 
-      if (!dojo || !sub) {
+      if (!dojo ) {
         throw new NotFoundException("Dojo or Subscription record not found for webhook");
       }
 
-      if (setupIntent.status !== StripeSetupIntentStatus.Succeeded || setupIntent.payment_method === null) {
-        throw new BadRequestException("Setup not complete");
+      if (!sub) {
+        sub = await SubscriptionService.createDojoSub(
+        {
+          dojoId: dojo.id,
+          setupIntent
+        },
+        tx,
+      );
       }
 
       await this.processDojoAdminSetupSuccess({

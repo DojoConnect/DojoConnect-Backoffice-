@@ -25,6 +25,26 @@ export class SubscriptionRepository {
     );
   }
 
+  static findOneDojoSub = async (
+    whereClause: SQL | undefined,
+    tx: Transaction,
+  ): Promise<IDojoSub | null> => {
+    const dojoSub = returnFirst(
+      await tx.select().from(dojoSubscriptions).where(whereClause).limit(1).execute(),
+    );
+
+    return dojoSub || null;
+  };
+
+  static findOneDojoSubById = async (
+    dojoSubId: string,
+    tx: Transaction,
+  ): Promise<IDojoSub | null> => {
+    const dojoSub = this.findOneDojoSub(eq(dojoSubscriptions.id, dojoSubId), tx);
+
+    return dojoSub || null;
+  };
+
   static async createDojoAdminSub(newDojoSubDTO: INewDojoSub, tx: Transaction) {
     const [insertResult] = await tx.insert(dojoSubscriptions).values(newDojoSubDTO).$returningId();
 
