@@ -12,4 +12,5 @@ export enum StripeWebhookEvents {
   InvoicePaymentFailed = "invoice.payment_failed",
   CustomerSubscriptionDeleted = "customer.subscription.deleted",
   PaymentIntentSucceeded = "payment_intent.succeeded",
+  SetupIntentSucceeded = "setup_intent.succeeded",
 }

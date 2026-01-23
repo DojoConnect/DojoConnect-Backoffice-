@@ -29,6 +29,9 @@ export const appConfigSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().nonempty(),
   STRIPE_TEST_SECRET_KEY: z.string(),
 
+  DOJO_MONTHLY_SUB_PRICE_ID: z.string().nonempty(),
+  DOJO_YEARLY_SUB_PRICE_ID: z.string().nonempty(),
+
   WEB_URL: z.url().nonempty(),
 
   CLOUDINARY_CLOUD_NAME: z.string().nonempty(),
@@ -63,6 +66,10 @@ export const AppConfig: IAppConfig = {
   STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || "",
   STRIPE_TEST_SECRET_KEY: process.env.STRIPE_TEST_SECRET_KEY || "",
   STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET || "",
+
+  DOJO_MONTHLY_SUB_PRICE_ID: process.env.DOJO_MONTHLY_SUB_PRICE_ID || "",
+  DOJO_YEARLY_SUB_PRICE_ID: process.env.DOJO_YEARLY_SUB_PRICE_ID || "",
+  
 
   WEB_URL: process.env.WEB_URL || "",
 

@@ -25,6 +25,26 @@ export class SubscriptionRepository {
     );
   }
 
+  static findOneDojoSub = async (
+    whereClause: SQL | undefined,
+    tx: Transaction,
+  ): Promise<IDojoSub | null> => {
+    const dojoSub = returnFirst(
+      await tx.select().from(dojoSubscriptions).where(whereClause).limit(1).execute(),
+    );
+
+    return dojoSub || null;
+  };
+
+  static findOneDojoSubById = async (
+    dojoSubId: string,
+    tx: Transaction,
+  ): Promise<IDojoSub | null> => {
+    const dojoSub = this.findOneDojoSub(eq(dojoSubscriptions.id, dojoSubId), tx);
+
+    return dojoSub || null;
+  };
+
   static async createDojoAdminSub(newDojoSubDTO: INewDojoSub, tx: Transaction) {
     const [insertResult] = await tx.insert(dojoSubscriptions).values(newDojoSubDTO).$returningId();
 
@@ -41,6 +61,28 @@ export class SubscriptionRepository {
     tx: Transaction;
   }) => {
     await tx.update(dojoSubscriptions).set(update).where(eq(dojoSubscriptions.id, dojoSubId));
+  };
+    
+  static findOneDojoSubByStripeSubId = async (
+    stripeSubId: string,
+    tx: Transaction,
+  ): Promise<IDojoSub | null> => {
+    return await this.findOneDojoSub(eq(dojoSubscriptions.stripeSubId, stripeSubId), tx);
+  };
+    
+  static updateDojoAdminSubByStripeSubId = async ({
+    stripeSubId,
+    update,
+    tx,
+  }: {
+    stripeSubId: string;
+    update: IUpdateDojoSub;
+    tx: Transaction;
+  }) => {
+    await tx
+      .update(dojoSubscriptions)
+      .set(update)
+      .where(eq(dojoSubscriptions.stripeSubId, stripeSubId));
   };
 
   static async createClassSub(newClassSubDTO: INewClassSub, tx: Transaction) {

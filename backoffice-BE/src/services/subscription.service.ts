@@ -13,12 +13,13 @@ import {
 import { ClassRepository } from "../repositories/class.repository.js";
 import { OneTimePaymentRepository } from "../repositories/one-time-payment.repository.js";
 import { IUser } from "../repositories/user.repository.js";
-import { SubscriptionRepository } from "../repositories/subscription.repository.js";
+import { SubscriptionRepository, IDojoSub, } from "../repositories/subscription.repository.js";
 import { BadRequestException, NotFoundException } from "../core/errors/index.js";
 import Stripe from "stripe";
 import { assertDojoOwnership } from "../utils/assertions.utils.js";
-import { ClassSubStripeMetadata } from "../types/subscription.types.js";
+import { ClassSubStripeMetadata, DojoSubStripeMetadata } from "../types/subscription.types.js";
 import { ClassEnrollmentRepository as EnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { isString } from "../utils/type-guards.utils.js";
 
 export class SubscriptionService {
   static getOrCreateDojoStripeCustId = async ({
@@ -47,6 +48,31 @@ export class SubscriptionService {
       });
 
       return customer.id;
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static createDojoSub = async ({
+    dojoId,
+    setupIntent,
+  }: {
+    dojoId: string;
+    setupIntent: Stripe.SetupIntent;
+  },
+  txInstance?: Transaction,
+) => {
+    const execute = async (tx: Transaction) => {
+      const newSubId = await SubscriptionRepository.createDojoAdminSub(
+        {
+          dojoId,
+          stripeSetupIntentId: setupIntent.id,
+          billingStatus: BillingStatus.SetupIntentCreated,
+        },
+        tx,
+      );
+
+      return (await SubscriptionRepository.findOneDojoSubById(newSubId, tx))!;
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
@@ -95,7 +121,6 @@ export class SubscriptionService {
       const setupIntent = await StripeService.createDojoSubSetupIntent(
         stripeCustomerId,
         dojo.id,
-        user.id,
       );
 
       await SubscriptionRepository.createDojoAdminSub(
@@ -146,56 +171,118 @@ export class SubscriptionService {
         throw new BadRequestException("No setup in progress");
       }
 
-      // ✅ State-based idempotency (correct)
+      // ✅ State-based idempotency
       if (sub.billingStatus !== BillingStatus.SetupIntentCreated) {
         return;
       }
 
       const setupIntent = await StripeService.retrieveSetupIntent(sub.stripeSetupIntentId);
 
-      if (setupIntent.status !== StripeSetupIntentStatus.Succeeded) {
+      if (setupIntent.status !== StripeSetupIntentStatus.Succeeded || setupIntent.payment_method === null) {
         throw new BadRequestException("Setup not complete");
       }
 
-      const paymentMethodId = setupIntent.payment_method as string;
-
-      const grantTrial = !dojo.hasUsedTrial;
-
-      const stripeSub = await StripeService.createDojoSubscription({
-        custId: dojo.stripeCustomerId,
-        plan: dojo.activeSub,
-        grantTrial,
-        paymentMethodId,
-        dojoId: dojo.id,
-        ownerUserId: user.id,
-        idempotencyKey: `dojo-admin-sub-${sub.id}`,
+      await this.processDojoAdminSetupSuccess({
+        dojo,
+        sub,
+        paymentMethodId: isString(setupIntent.payment_method) ? setupIntent.payment_method : setupIntent.payment_method.id,
+        tx,
       });
-
-      const billingStatus = this.mapStripeSubStatus(stripeSub.status);
-      const dojoStatus = this.deriveDojoStatus(billingStatus);
-
-      await Promise.all([
-        SubscriptionRepository.updateDojoAdminSub({
-          tx,
-          dojoSubId: sub.id,
-          update: {
-            stripeSubId: stripeSub.id,
-            stripeSubStatus: stripeSub.status as StripeSubscriptionStatus,
-            billingStatus,
-          },
-        }),
-        DojoRepository.update({
-          tx,
-          dojoId: dojo.id,
-          update: {
-            status: dojoStatus,
-            hasUsedTrial: true,
-          },
-        }),
-      ]);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static handleDojoAdminSetupIntentSucceeded = async (
+    setupIntent: Stripe.SetupIntent,
+    txInstance?: Transaction,
+  ) => {
+    const execute = async (tx: Transaction) => {
+      if (setupIntent.status !== StripeSetupIntentStatus.Succeeded || setupIntent.payment_method === null) {
+        throw new BadRequestException("Setup not complete");
+      }
+
+      const { dojoId } = setupIntent.metadata as any as DojoSubStripeMetadata;
+
+      let [dojo, sub] = await Promise.all([
+        DojosService.getOneDojoByID(dojoId, tx),
+        SubscriptionRepository.findLatestDojoAdminSub(dojoId, tx),
+      ]);
+
+      if (!dojo ) {
+        throw new NotFoundException("Dojo or Subscription record not found for webhook");
+      }
+
+      if (!sub) {
+        sub = await SubscriptionService.createDojoSub(
+        {
+          dojoId: dojo.id,
+          setupIntent
+        },
+        tx,
+      );
+      }
+
+      await this.processDojoAdminSetupSuccess({
+        dojo,
+        sub,
+        paymentMethodId: isString(setupIntent.payment_method) ? setupIntent.payment_method : setupIntent.payment_method.id,
+        tx,
+      });
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  private static processDojoAdminSetupSuccess = async ({
+    dojo,
+    sub,
+    paymentMethodId,
+    tx,
+  }: {
+    dojo: IDojo;
+    sub: IDojoSub;
+    paymentMethodId: string;
+    tx: Transaction;
+  }) => {
+    // ✅ State-based idempotency
+    if (sub.billingStatus !== BillingStatus.SetupIntentCreated) {
+      return;
+    }
+
+    const grantTrial = !dojo.hasUsedTrial;
+
+    const stripeSub = await StripeService.createDojoSubscription({
+      custId: dojo.stripeCustomerId!,
+      plan: dojo.activeSub,
+      grantTrial,
+      paymentMethodId,
+      dojoId: dojo.id,
+      idempotencyKey: `dojo-admin-sub-${sub.id}`,
+    });
+
+    const billingStatus = this.mapStripeSubStatus(stripeSub.status);
+    const dojoStatus = this.deriveDojoStatus(billingStatus);
+
+    await Promise.all([
+      SubscriptionRepository.updateDojoAdminSub({
+        tx,
+        dojoSubId: sub.id,
+        update: {
+          stripeSubId: stripeSub.id,
+          stripeSubStatus: stripeSub.status as StripeSubscriptionStatus,
+          billingStatus,
+        },
+      }),
+      DojoRepository.update({
+        tx,
+        dojoId: dojo.id,
+        update: {
+          status: dojoStatus,
+          hasUsedTrial: true,
+        },
+      }),
+    ]);
   };
 
   static mapStripeSubStatus(stripeStatus: Stripe.Subscription.Status): BillingStatus {
@@ -267,9 +354,9 @@ export class SubscriptionService {
         classId: metadata.classId,
         studentId: metadata.studentId,
         stripeCustomerId:
-          typeof session.customer === "string" ? session.customer : session.customer.id,
+          isString(session.customer) ? session.customer : session.customer.id,
         stripeSubId:
-          typeof session.subscription === "string" ? session.subscription : session.subscription.id,
+          isString(session.subscription) ? session.subscription : session.subscription.id,
         status: BillingStatus.Trialing,
       },
       tx,
@@ -322,6 +409,110 @@ export class SubscriptionService {
       },
       tx,
     });
+  };
+
+  static syncDojoSub = async (subscription: Stripe.Subscription, tx: Transaction) => {
+    const billingStatus = this.mapStripeSubStatus(subscription.status);
+    const dojoStatus = this.deriveDojoStatus(billingStatus);
+
+    const dojoSub = await SubscriptionRepository.findOneDojoSubByStripeSubId(subscription.id, tx);
+    if (!dojoSub) {
+      throw new BadRequestException("Dojo subscription not found");
+    }
+
+    await Promise.all([
+      SubscriptionRepository.updateDojoAdminSubByStripeSubId({
+        stripeSubId: subscription.id,
+        update: {
+          billingStatus,
+          stripeSubStatus: subscription.status as StripeSubscriptionStatus,
+        },
+        tx,
+      }),
+      DojoRepository.update({
+        tx,
+        dojoId: dojoSub.dojoId,
+        update: {
+          status: dojoStatus,
+        },
+      }),
+    ]);
+  };
+
+  static markDojoSubPastDue = async (subId: string, tx: Transaction) => {
+    const dojoSub = await SubscriptionRepository.findOneDojoSubByStripeSubId(subId, tx);
+    if (!dojoSub) {
+      throw new BadRequestException("Dojo subscription not found");
+    }
+
+    await Promise.all([
+      SubscriptionRepository.updateDojoAdminSubByStripeSubId({
+        stripeSubId: subId,
+        update: {
+          billingStatus: BillingStatus.PastDue,
+        },
+        tx,
+      }),
+      DojoRepository.update({
+        tx,
+        dojoId: dojoSub.dojoId,
+        update: {
+          status: DojoStatus.PastDue,
+        },
+      }),
+    ]);
+  };
+
+  static markDojoSubActive = async (subId: string, tx: Transaction) => {
+    const dojoSub = await SubscriptionRepository.findOneDojoSubByStripeSubId(subId, tx);
+    if (!dojoSub) {
+      throw new BadRequestException("Dojo subscription not found");
+    }
+
+    await Promise.all([
+      SubscriptionRepository.updateDojoAdminSubByStripeSubId({
+        stripeSubId: subId,
+        update: {
+          billingStatus: BillingStatus.Active,
+        },
+        tx,
+      }),
+      DojoRepository.update({
+        tx,
+        dojoId: dojoSub.dojoId,
+        update: {
+          status: DojoStatus.Active,
+        },
+      }),
+    ]);
+  };
+
+  static markDojoSubCancelled = async (subscription: Stripe.Subscription, tx: Transaction) => {
+    const dojoSub = await SubscriptionRepository.findOneDojoSubByStripeSubId(subscription.id, tx);
+    if (!dojoSub) {
+      throw new BadRequestException("Dojo subscription not found");
+    }
+
+    const billingStatus = this.mapStripeSubStatus(subscription.status);
+    const dojoStatus = this.deriveDojoStatus(billingStatus);
+
+    await Promise.all([
+      SubscriptionRepository.updateDojoAdminSubByStripeSubId({
+        stripeSubId: subscription.id,
+        update: {
+          billingStatus,
+          stripeSubStatus: subscription.status as StripeSubscriptionStatus,
+        },
+        tx,
+      }),
+      DojoRepository.update({
+        tx,
+        dojoId: dojoSub.dojoId,
+        update: {
+          status: dojoStatus,
+        },
+      }),
+    ]);
   };
 
   static markClassSubPastDue = async (subId: string, tx: Transaction) => {
@@ -393,7 +584,7 @@ export class SubscriptionService {
       const childrenData = JSON.parse(metadata.children_data) as { id: string }[];
       const priceId = metadata.price_id;
       const classId = metadata.class_id;
-      const customerId = typeof customer === "string" ? customer : customer.id;
+      const customerId = isString(customer) ? customer : customer.id;
 
       const dojoClass = await ClassRepository.findById(classId, tx);
       if (!dojoClass) {
