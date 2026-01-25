@@ -29,12 +29,13 @@ import {
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 requests per window
+  max: 10, // 10 requests per window
   message: {
     message: "Too many authentication attempts",
   },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: true },
 });
 
 const checkAvailabilityRateLimiter = rateLimit({
