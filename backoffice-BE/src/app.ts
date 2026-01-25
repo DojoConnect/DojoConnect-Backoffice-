@@ -10,6 +10,7 @@ import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
+import hpp from "hpp";
 
 import * as dbService from "./services/db.service.js";
 import { MailerService } from "./services/mailer.service.js";
@@ -46,6 +47,9 @@ app.use(
 
 app.use(express.json()); // bodyParser not needed
 app.use(express.urlencoded({ extended: true }));
+
+// use hpp to deal with parameter pollution
+app.use(hpp())
 
 /* ------------------ API Routes ------------------ */
 app.use("/api", routes);
