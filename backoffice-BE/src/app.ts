@@ -67,7 +67,8 @@ app.use(defaultLimiter);
 /* ------------------ API Routes ------------------ */
 app.use("/api", routes);
 
-/* ------------------ Backoffice Utilities (from combine.js) ------------------ */
+/* ------------------ Backoffice Utilities And Routes (Inherited from Previous Developer) ------------------ */
+// TODO: Refactor and move this code into proper services and routes
 
 // Date range utility
 function getDateRange(period, start_date = null, end_date = null) {
