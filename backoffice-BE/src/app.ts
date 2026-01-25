@@ -18,6 +18,7 @@ import { notFound } from "./middlewares/notFound.middleware.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import routes from "./routes/index.js";
 import webhooksRouter from "./routes/webhooks.routes.js";
+import rateLimit from "express-rate-limit";
 
 const corsOptions = {
   origin: [
@@ -49,7 +50,19 @@ app.use(express.json()); // bodyParser not needed
 app.use(express.urlencoded({ extended: true }));
 
 // use hpp to deal with parameter pollution
-app.use(hpp())
+app.use(hpp());
+
+// Restrict all routes to only 100 requests per IP address every 1o minutes
+const defaultLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 100, // 100 requests per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Ensure you trust your proxy (Cloudflare, Nginx, etc.)
+  validate: { trustProxy: true },
+});
+
+app.use(defaultLimiter);
 
 /* ------------------ API Routes ------------------ */
 app.use("/api", routes);
