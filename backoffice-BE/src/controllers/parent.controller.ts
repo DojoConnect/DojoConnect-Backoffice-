@@ -38,7 +38,7 @@ export class ParentController {
     }
   };
 
-  static handleGetClasses = async (req: Request, res: Response, next: NextFunction) => {
+  static handleGetChildrenClasses = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       throw new InternalServerErrorException("User not found");
     }
@@ -52,5 +52,23 @@ export class ParentController {
         data: result,
       }),
     );
+  };
+
+  static handleGetChildClasses = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const childId = req.params.childId as string;
+      const result = await ParentService.getClassesEnrolledByChild({
+        currentUser: req.user!,
+        childId,
+      });
+
+      res.status(200).json(
+        formatApiResponse({
+          data: result,
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
   };
 }
