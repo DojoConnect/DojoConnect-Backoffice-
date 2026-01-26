@@ -4,6 +4,8 @@ import type { Transaction } from "../db/index.js";
 import { dojos } from "../db/schema.js";
 import { DojoRepository, IDojo, INewDojo, IUpdateDojo } from "../repositories/dojo.repository.js";
 import { InviteInstructorDTO } from "../validations/instructors.schemas.js";
+import { UpdateDojoDTO } from "../validations/dojos.schemas.js";
+import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
 import { IUser } from "../repositories/user.repository.js";
 import { assertDojoOwnership } from "../utils/assertions.utils.js";
 import { UsersService } from "./users.service.js";
@@ -20,6 +22,7 @@ import {
   InstructorsRepository,
 } from "../repositories/instructors.repository.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
+import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { ClassRepository } from "../repositories/class.repository.js";
 
 export class DojosService {
@@ -107,6 +110,32 @@ export class DojosService {
   }) => {
     const execute = async (tx: Transaction) => {
       await DojoRepository.update({ dojoId, update, tx });
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static updateMyDojo = async (
+    user: IUser,
+    update: UpdateDojoDTO,
+    txInstance?: Transaction,
+  ): Promise<BaseDojoDTO> => {
+    const execute = async (tx: Transaction) => {
+      const dojo = await DojosService.fetchUserDojo({ user, txInstance: tx });
+
+      if (!dojo) {
+        throw new NotFoundException("Dojo not found for the current user");
+      }
+
+      await DojosService.updateDojo({ dojoId: dojo.id, update, txInstance: tx });
+
+      const updatedDojo = await DojosService.getOneDojoByID(dojo.id, tx);
+
+      if (!updatedDojo) {
+        throw new NotFoundException("Dojo not found after update");
+      }
+
+      return new BaseDojoDTO(updatedDojo);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);

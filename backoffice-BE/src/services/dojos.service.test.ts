@@ -2,12 +2,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { Mock, MockInstance } from "vitest";
 import { createDrizzleDbSpies } from "../tests/spies/drizzle-db.spies.js";
 import { DojosService } from "./dojos.service.js";
-import { buildDojoMock } from "../tests/factories/dojos.factory.js";
+import { buildDojoMock, buildUpdateDojoDTOMock } from "../tests/factories/dojos.factory.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
 import { UsersService } from "./users.service.js";
 import { InstructorService } from "./instructor.service.js";
 import { InvitesRepository } from "../repositories/invites.repository.js";
-import { ClassService } from "./class.service.js";
 import { MailerService } from "./mailer.service.js";
 import * as assertions from "../utils/assertions.utils.js";
 import { ConflictException } from "../core/errors/ConflictException.js";
@@ -23,6 +22,8 @@ import { InstructorsRepository } from "../repositories/instructors.repository.js
 import { DojoRepository } from "../repositories/dojo.repository.js";
 import { buildClassMock } from "../tests/factories/class.factory.js";
 import { ClassRepository } from "../repositories/class.repository.js";
+import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
+import { NotFoundException } from "../core/errors/NotFoundException.js";
 
 describe("Dojo Service", () => {
   let mockExecute: Mock;
@@ -425,6 +426,60 @@ describe("Dojo Service", () => {
       const code1 = DojosService.generateReferralCode();
       const code2 = DojosService.generateReferralCode();
       expect(code1).not.toEqual(code2);
+    });
+  });
+
+  describe("updateMyDojo", () => {
+    let fetchUserDojoSpy: MockInstance;
+    let updateDojoSpy: MockInstance;
+    let getDojoByIdSpy: MockInstance;
+
+    beforeEach(() => {
+      fetchUserDojoSpy = vi.spyOn(DojosService, "fetchUserDojo");
+      updateDojoSpy = vi.spyOn(DojosService, "updateDojo").mockResolvedValue(undefined);
+      getDojoByIdSpy = vi.spyOn(DojosService, "getOneDojoByID");
+    });
+
+    it("should throw NotFoundException if user has no dojo", async () => {
+      const user = buildUserMock();
+      const update = buildUpdateDojoDTOMock({ name: "New Name", tagline: "New Tagline" });
+      fetchUserDojoSpy.mockResolvedValue(null);
+
+      await expect(DojosService.updateMyDojo(user, update)).rejects.toThrow(NotFoundException);
+    });
+
+    it("should update and return BaseDojoDTO when successful", async () => {
+      const user = buildUserMock();
+      const update = buildUpdateDojoDTOMock({ name: "Updated Dojo Name", tagline: "Updated Tagline" });
+      const initialDojo = buildDojoMock({ id: "dojo-1" });
+      const updatedDojo = buildDojoMock({ id: "dojo-1", name: "Updated Dojo Name" });
+
+      fetchUserDojoSpy.mockResolvedValue(initialDojo);
+      getDojoByIdSpy.mockResolvedValue(updatedDojo);
+
+      const result = await DojosService.updateMyDojo(user, update);
+
+      expect(fetchUserDojoSpy).toHaveBeenCalledWith({ user, txInstance: expect.anything() });
+      expect(updateDojoSpy).toHaveBeenCalledWith({
+        dojoId: "dojo-1",
+        update,
+        txInstance: expect.anything(),
+      });
+      expect(result).toBeInstanceOf(BaseDojoDTO);
+      expect(result.name).toBe("Updated Dojo Name");
+    });
+
+    it("should throw NotFoundException if dojo is missing after update", async () => {
+      const user = buildUserMock();
+      const update = buildUpdateDojoDTOMock({ name: "New Name", tagline: "New Tagline" });
+      const dojo = buildDojoMock({ id: "dojo-1" });
+
+      fetchUserDojoSpy.mockResolvedValue(dojo);
+      getDojoByIdSpy.mockResolvedValue(null);
+
+      await expect(DojosService.updateMyDojo(user, update)).rejects.toThrow(
+        new NotFoundException("Dojo not found after update"),
+      );
     });
   });
 });

@@ -8,10 +8,19 @@ import { validateReqBody } from "../middlewares/validate.middleware.js";
 import { InviteInstructorSchema } from "../validations/instructors.schemas.js";
 import { CreateClassSchema } from "../validations/classes.schemas.js";
 import { isDojoMemberMiddleware } from "../middlewares/authorization/is-dojo-member.middleware.js";
+import { UpdateDojoSchema } from "../validations/dojos.schemas.js";
 
 const router = Router();
 
 router.get("/tag/:tag", DojosController.handleFetchDojoByTag);
+
+router.put(
+  "/me",
+  requireAuth,
+  requireRole(Role.DojoAdmin),
+  validateReqBody(UpdateDojoSchema),
+  DojosController.handleUpdateMyDojo,
+);
 
 router.get(
   "/:dojoId/instructors",
