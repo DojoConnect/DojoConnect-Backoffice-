@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { DojosService } from "../services/dojos.service.js";
 import { BadRequestException, InternalServerErrorException } from "../core/errors/index.js";
 import { formatApiResponse } from "../utils/api.utils.js";
-import { NotFoundException } from "../core/errors/index.js";
 import { ClassService } from "../services/class.service.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
 import { StudentService } from "../services/student.service.js";
@@ -15,10 +14,6 @@ export class DojosController {
     }
 
     const dojo = await DojosService.getOneDojoByTag(tag);
-
-    if (!dojo) {
-      throw new NotFoundException(`Dojo with tag ${tag} not found`);
-    }
 
     res.json(formatApiResponse({ data: dojo }));
   }

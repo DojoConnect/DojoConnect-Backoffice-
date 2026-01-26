@@ -1,4 +1,4 @@
-import { eq, InferInsertModel, InferSelectModel, SQL } from "drizzle-orm";
+import { and, eq, InferInsertModel, InferSelectModel, not, SQL } from "drizzle-orm";
 import { userCards, users } from "../db/schema.js";
 import * as dbService from "../db/index.js";
 import type { Transaction } from "../db/index.js";
@@ -9,6 +9,7 @@ import { ParentService } from "./parent.service.js";
 import { UnauthorizedException } from "../core/errors/UnauthorizedException.js";
 import { Role } from "../constants/enums.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
+import { ConflictException } from "../core/errors/ConflictException.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { DojosService } from "./dojos.service.js";
 import {
@@ -16,7 +17,9 @@ import {
   InstructorUserDTO,
   ParentUserDTO,
   StudentUserDTO,
+  UserDTO,
 } from "../dtos/user.dtos.js";
+import { UpdateProfileDTO } from "../validations/users.schemas.js";
 
 export type IUserCard = InferSelectModel<typeof userCards>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
@@ -195,6 +198,37 @@ export class UsersService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
+  static updateProfile = async (
+    userId: string,
+    update: UpdateProfileDTO,
+    txInstance?: Transaction,
+  ): Promise<UserDTO> => {
+    const execute = async (tx: Transaction) => {
+        const existingUser = await UsersService.getOneUser(
+          {
+            whereClause: and(eq(users.username, update.username), not(eq(users.id, userId)))!,
+          },
+          tx,
+        );
+
+        if (existingUser) {
+          throw new ConflictException("Username already taken");
+        }
+
+      await UsersService.updateUser({ userId, update, txInstance: tx });
+
+      const updatedUser = await UsersService.getOneUserByID({ userId, txInstance: tx });
+
+      if (!updatedUser) {
+        throw new NotFoundException("User not found after update");
+      }
+
+      return new UserDTO(updatedUser);
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
   static saveUserCard = async (userCard: INewUserCard, txInstance?: Transaction) => {
     const execute = async (tx: Transaction) => {
       await tx.insert(userCards).values(userCard);
@@ -254,15 +288,26 @@ export class UsersService {
         throw new UnauthorizedException("User is not an Instructor");
       }
 
-      const instructor = await InstructorService.findInstructorByUserId(user.id, tx);
+      const [instructor, dojo] = await Promise.all([
+        InstructorService.findInstructorByUserId(user.id, tx),
+        DojosService.fetchUserDojo({
+          user,
+          txInstance: tx,
+        }),
+      ]);
 
       if (!instructor) {
         throw new NotFoundException("Instructor not found for Instructor");
       }
 
+      if (!dojo) {
+        throw new NotFoundException("Dojo not found for Instructor");
+      }
+
       return new InstructorUserDTO({
         ...user,
         instructor,
+        dojo,
       });
     };
 
