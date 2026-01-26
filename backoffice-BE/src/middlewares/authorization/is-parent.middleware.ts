@@ -10,7 +10,7 @@ import {
 import { StudentService } from "../../services/student.service.js";
 import { ParentService } from "../../services/parent.service.js";
 
-export const isParentOfStudentMiddleware = async (
+export const isParentOfChildrenMiddleware = async (
   req: Request,
   _: Response,
   next: NextFunction,
@@ -44,6 +44,48 @@ export const isParentOfStudentMiddleware = async (
     if (unauthorizedStudent) {
       throw new ForbiddenException(
         "Access Denied: You are not authorized to act as parent for one or more of these students",
+      );
+    }
+
+    next();
+  } catch (error) {
+    if (error instanceof HttpException) {
+      throw error;
+    }
+
+    throw new ForbiddenException("Forbidden: Access Denied");
+  }
+};
+
+export const isParentOfChildMiddleware = async (
+  req: Request,
+  _: Response,
+  next: NextFunction,
+) => {
+  try {
+    const parentUser = req.user;
+    if (!parentUser) {
+      throw new UnauthorizedException("Unauthenticated");
+    }
+
+    const childId = req.params.childId || req.query.childId || req.body.childId;
+
+    if (!childId) {
+      throw new BadRequestException("Missing or invalid childId");
+    }
+
+    const parent = await ParentService.getOneParentByUserId(parentUser.id);
+
+    if (!parent) {
+      throw new NotFoundException("Parent not found");
+    }
+
+    // Verify child belongs to this parent
+    const child = await StudentService.getOneStudentByID(childId);
+
+    if (!child || child.parentId !== parent.id) {
+      throw new ForbiddenException(
+        "Access Denied: You are not authorized to act as parent for this child",
       );
     }
 

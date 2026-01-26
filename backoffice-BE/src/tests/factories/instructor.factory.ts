@@ -1,5 +1,5 @@
 import { faker } from "@faker-js/faker";
-import { InstructorInviteStatus } from "../../constants/enums.js";
+import { InstructorInviteStatus, } from "../../constants/enums.js";
 import { IDojoInstructor } from "../../repositories/instructors.repository.js";
 import {
   IInstructorInvite,
@@ -7,6 +7,8 @@ import {
 } from "../../repositories/invites.repository.js";
 import { AcceptInviteDTO, InviteInstructorDTO } from "../../validations/instructors.schemas.js";
 import { addDays } from "date-fns";
+import { InstructorUserDetails } from "../../repositories/user.repository.js";
+import { buildUserMock } from "./user.factory.js";
 
 export const buildInstructorInviteMock = (
   overrides?: Partial<IInstructorInvite>,
@@ -71,6 +73,14 @@ export const buildAcceptInviteDTOMock = (overrides: Partial<AcceptInviteDTO>): A
   return {
     token: faker.string.alphanumeric(32),
     password: faker.internet.password(),
+    ...overrides,
+  };
+};
+
+export const buildInstructorUserDetailsMock = (overrides?: Partial<InstructorUserDetails>): InstructorUserDetails => {
+  return {
+    ...buildUserMock(),
+    instructorId: faker.string.uuid(),
     ...overrides,
   };
 };

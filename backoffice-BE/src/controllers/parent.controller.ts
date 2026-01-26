@@ -53,4 +53,22 @@ export class ParentController {
       }),
     );
   };
+
+  static handleGetChildClasses = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const childId = req.params.childId as string;
+      const result = await ParentService.getClassesEnrolledByChild({
+        currentUser: req.user!,
+        childId,
+      });
+
+      res.status(200).json(
+        formatApiResponse({
+          data: result,
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
 }

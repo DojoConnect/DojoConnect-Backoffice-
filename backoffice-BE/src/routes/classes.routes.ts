@@ -8,7 +8,7 @@ import { UpdateClassInstructorSchema, UpdateClassSchema } from "../validations/c
 import { isClassDojoOwnerMiddleware } from "../middlewares/authorization/is-dojo-owner.middleware.js";
 import { EnrollmentController } from "../controllers/enrollment.controller.js";
 import { EnrollStudentSchema } from "../validations/classes.schemas.js";
-import { isParentOfStudentMiddleware } from "../middlewares/authorization/is-parent-of-student.middleware.js";
+import { isParentOfChildrenMiddleware } from "../middlewares/authorization/is-parent.middleware.js";
 import { isClassInstructorOrDojoOwnerMiddleware } from "../middlewares/authorization/is-class-instructor-or-dojo-owner.middleware.js";
 import { isClassMemberMiddleware } from "../middlewares/authorization/is-class-member.middleware.js";
 import { MessageController } from "../controllers/message.controller.js";
@@ -50,7 +50,7 @@ router.post(
   "/:classId/enroll",
   requireAuth,
   requireRole(Role.Parent),
-  isParentOfStudentMiddleware,
+  isParentOfChildrenMiddleware,
   validateReqBody(EnrollStudentSchema),
   EnrollmentController.enrollStudent,
 );

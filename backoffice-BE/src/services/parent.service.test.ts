@@ -17,6 +17,10 @@ import { buildClassMock } from "../tests/factories/class.factory.js";
 import { ConflictException, NotFoundException } from "../core/errors/index.js";
 import { Role } from "../constants/enums.js";
 import { AddChildDTO } from "../dtos/parent.dtos.js";
+import { buildStudentMock } from "../tests/factories/student.factory.js";
+import { buildInstructorUserDetailsMock } from "../tests/factories/instructor.factory.js";
+import { ClassDTO } from "../dtos/class.dtos.js";
+import { ClassService } from "./class.service.js";
 
 describe("Parent Service", () => {
   let dbSpies: DbServiceSpies;
@@ -40,6 +44,9 @@ describe("Parent Service", () => {
   let findClassesByIdsSpy: MockInstance;
 
   let getUserProfileByInstructorIdsSpy: MockInstance;
+  let getParentClassesSpy: MockInstance;
+  let fetchClassesByStudentIdSpy: MockInstance;
+  let mapStudentClassesToDTOSpy: MockInstance;
 
   beforeEach(() => {
     dbSpies = createDrizzleDbSpies();
@@ -72,6 +79,10 @@ describe("Parent Service", () => {
     getUserProfileByInstructorIdsSpy = vi.spyOn(UserRepository, "getUserProfileByInstructorIds");
     findClassesByIdsSpy = vi.spyOn(ClassRepository, "findClassesByIds");
 
+    getParentClassesSpy = vi.spyOn(ClassService, "getParentClasses");
+    fetchClassesByStudentIdSpy = vi.spyOn(ClassService, "fetchClassesByStudentId");
+    mapStudentClassesToDTOSpy = vi.spyOn(ParentService, "mapStudentClassesToDTO");
+
     vi.spyOn(UserRepository, "getUserProfileForInstructor");
     vi.spyOn(ClassRepository, "findById");
     
@@ -81,7 +92,7 @@ describe("Parent Service", () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe("addChild", () => {
@@ -171,85 +182,102 @@ describe("Parent Service", () => {
 
   describe("getClassesEnrolledByChildren", () => {
     const currentUser = buildUserMock({ role: Role.Parent });
-    const parent = buildParentMock({ userId: currentUser.id });
-    const studentData = {
-      student: { id: "student-1", parentId: parent.id },
-      user: buildUserMock(),
-    };
-    const enrollment = { classId: "class-1", studentId: "student-1", active: true };
     const classData = buildClassMock({ id: "class-1", instructorId: "instructor-1" });
-    const instructorProfile = {
-      firstName: "Sensei",
-      lastName: "John",
-      instructorId: "instructor-1",
-      id: "instructor-1",
-    };
+    const classDto = new ClassDTO({ ...classData, instructor: null, schedules: [] });
 
-    it("should return enrolled classes", async () => {
-      getOneParentByUserIdSpy.mockResolvedValue(parent);
-      getStudentsByParentIdSpy.mockResolvedValue([studentData]);
-      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([enrollment]);
-      findClassesByIdsSpy.mockResolvedValue([classData]);
-      getUserProfileByInstructorIdsSpy.mockResolvedValue([instructorProfile]);
+    it("should fetch parent classes and map them to DTOs", async () => {
+      getParentClassesSpy.mockResolvedValue([classData]);
+      mapStudentClassesToDTOSpy.mockResolvedValue([classDto]);
 
       const result = await ParentService.getClassesEnrolledByChildren({ currentUser });
+
+      expect(getParentClassesSpy).toHaveBeenCalledWith(currentUser, expect.anything());
+      expect(mapStudentClassesToDTOSpy).toHaveBeenCalledWith([classData], expect.anything());
+      expect(result).toEqual([classDto]);
+    });
+  });
+
+  describe("getClassesEnrolledByChild", () => {
+    const currentUser = buildUserMock({ role: Role.Parent });
+    const parent = buildParentMock({ userId: currentUser.id });
+    const childId = "child-1";
+    const student = buildStudentMock({ id: childId, parentId: parent.id });
+    const classData = buildClassMock({ id: "class-1", instructorId: "instructor-1" });
+    const classDto = new ClassDTO({ ...classData, instructor: null, schedules: [] });
+
+    let getStudentByIdSpy: MockInstance;
+
+    beforeEach(() => {
+      getStudentByIdSpy = vi.spyOn(StudentRepository, "findOneById");
+    });
+
+    it("should fetch child classes and map them to DTOs", async () => {
+      getOneParentByUserIdSpy.mockResolvedValue(parent);
+      getStudentByIdSpy.mockResolvedValue(student);
+      fetchClassesByStudentIdSpy.mockResolvedValue([classData]);
+      mapStudentClassesToDTOSpy.mockResolvedValue([classDto]);
+
+      const result = await ParentService.getClassesEnrolledByChild({ currentUser, childId });
 
       expect(getOneParentByUserIdSpy).toHaveBeenCalledWith(currentUser.id, expect.anything());
-      expect(getStudentsByParentIdSpy).toHaveBeenCalledWith(parent.id, expect.anything());
-      expect(fetchActiveEnrollmentsByStudentIdsSpy).toHaveBeenCalledWith(
-        ["student-1"],
-        expect.anything(),
-      );
-      expect(findClassesByIdsSpy).toHaveBeenCalledWith(["class-1"], expect.anything());
-      expect(getUserProfileByInstructorIdsSpy).toHaveBeenCalledWith(
-        ["instructor-1"],
-        expect.anything(),
-      );
-
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe(classData.id);
-      expect(result[0].instructor).toBeDefined();
-      expect(result[0].schedules).toEqual([]);
-    });
-
-    it("should handle no enrollments", async () => {
-      getOneParentByUserIdSpy.mockResolvedValue(parent);
-      getStudentsByParentIdSpy.mockResolvedValue([studentData]);
-      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([]);
-
-      const result = await ParentService.getClassesEnrolledByChildren({ currentUser });
-
-      expect(result).toHaveLength(0);
-    });
-
-    it("should handle no students", async () => {
-      getOneParentByUserIdSpy.mockResolvedValue(parent);
-      getStudentsByParentIdSpy.mockResolvedValue([]);
-
-      const result = await ParentService.getClassesEnrolledByChildren({ currentUser });
-
-      expect(result).toHaveLength(0);
-    });
-
-    it("should handle no instructor", async () => {
-      getOneParentByUserIdSpy.mockResolvedValue(parent);
-      getStudentsByParentIdSpy.mockResolvedValue([studentData]);
-      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([enrollment]);
-
-      const classNoInstructor = { ...classData, instructorId: null };
-      findClassesByIdsSpy.mockResolvedValue([classNoInstructor]);
-      getUserProfileByInstructorIdsSpy.mockResolvedValue([]);
-
-      const result = await ParentService.getClassesEnrolledByChildren({ currentUser });
-
-      expect(result[0].instructor).toBeNull();
+      expect(getStudentByIdSpy).toHaveBeenCalledWith(childId, expect.anything());
+      expect(fetchClassesByStudentIdSpy).toHaveBeenCalledWith(childId, expect.anything());
+      expect(mapStudentClassesToDTOSpy).toHaveBeenCalledWith([classData], expect.anything());
+      expect(result).toEqual([classDto]);
     });
 
     it("should throw NotFoundException if parent not found", async () => {
       getOneParentByUserIdSpy.mockResolvedValue(null);
-      await expect(ParentService.getClassesEnrolledByChildren({ currentUser })).rejects.toThrow(
+
+      await expect(ParentService.getClassesEnrolledByChild({ currentUser, childId })).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it("should throw NotFoundException if child not found or doesn't belong to parent", async () => {
+      getOneParentByUserIdSpy.mockResolvedValue(parent);
+      getStudentByIdSpy.mockResolvedValue(
+        buildStudentMock({
+          id: childId,
+          parentId: "other-parent",
+        }),
+      );
+
+      await expect(ParentService.getClassesEnrolledByChild({ currentUser, childId })).rejects.toThrow(
+        new NotFoundException("Child not found for this parent"),
+      );
+    });
+  });
+
+  describe("mapStudentClassesToDTO", () => {
+    const classData = buildClassMock({ id: "class-1", instructorId: "instructor-1" });
+    const instructorProfile = buildInstructorUserDetailsMock({
+      firstName: "Sensei",
+      lastName: "John",
+      instructorId: "instructor-1",
+      id: "instructor-user-1",
+    });
+
+    it("should map classes to DTOs and include instructor details", async () => {
+      getUserProfileByInstructorIdsSpy.mockResolvedValue([instructorProfile]);
+
+      const result = await ParentService.mapStudentClassesToDTO([classData], {} as any);
+
+      expect(getUserProfileByInstructorIdsSpy).toHaveBeenCalledWith(["instructor-1"], expect.anything());
+      expect(result).toHaveLength(1);
+      expect(result[0]).toBeInstanceOf(ClassDTO);
+      expect(result[0].instructor?.id).toBe("instructor-user-1");
+    });
+
+    it("should map classes to DTOs and handle null instructor ids", async () => {
+      const classNoInstructor = buildClassMock({ id: "class-2", instructorId: null });
+      getUserProfileByInstructorIdsSpy.mockResolvedValue([]);
+
+      const result = await ParentService.mapStudentClassesToDTO([classNoInstructor], {} as any);
+
+      expect(getUserProfileByInstructorIdsSpy).toHaveBeenCalledWith([], expect.anything());
+      expect(result).toHaveLength(1);
+      expect(result[0].instructor).toBeNull();
     });
   });
 });
