@@ -12,8 +12,7 @@ import { UsersService } from "./users.service.js";
 import { nanoid } from "nanoid";
 import { StudentWihUserDTO } from "../dtos/student.dtos.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
-import { ClassRepository } from "../repositories/class.repository.js";
-import { ClassEnrollmentRepository } from "../repositories/enrollment.repository.js";
+import { IClass } from "../repositories/class.repository.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
 import { UserRepository } from "../repositories/user.repository.js";
 import { ClassService } from "./class.service.js";
@@ -162,13 +161,54 @@ export class ParentService {
     const execute = async (tx: Transaction) => {
       const classes = await ClassService.getParentClasses(currentUser, tx);
 
-      const instructorIds = classes
+      const classesDTOs = await this.mapStudentClassesToDTO(classes, tx);
+
+      return classesDTOs;
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static getClassesEnrolledByChild = async ({
+    currentUser,
+    childId,
+    txInstance,
+  }: {
+    currentUser: IUser;
+    childId: string;
+    txInstance?: Transaction;
+  }): Promise<ClassDTO[]> => {
+    const execute = async (tx: Transaction) => {
+      const parent = await ParentRepository.getOneParentByUserId(currentUser.id, tx);
+
+      if (!parent) {
+        throw new NotFoundException("Parent not found");
+      }
+
+      const student = await StudentRepository.findOneById(childId, tx);
+
+      if (!student || student.parentId !== parent.id) {
+        throw new NotFoundException("Child not found for this parent");
+      }
+
+      const classes = await ClassService.fetchClassesByStudentId(student.id, tx);
+
+      const classesDTOs = await this.mapStudentClassesToDTO(classes, tx);
+
+      return classesDTOs;
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static mapStudentClassesToDTO = async (classes: IClass[], tx: Transaction) => {
+    const instructorIds = classes
         .map((classData) => classData.instructorId)
         .filter((id) => id !== null);
 
       const instructors = await UserRepository.getUserProfileByInstructorIds(instructorIds, tx);
 
-      const instructorMap = new Map(instructors.map((instructor) => [instructor.id, instructor]));
+      const instructorMap = new Map(instructors.map((instructor) => [instructor.instructorId, instructor]));
 
       const classesDTOs = classes.map((classData) => {
         let instructor: InstructorUserDetails | null | undefined = null;
@@ -184,8 +224,5 @@ export class ParentService {
       });
 
       return classesDTOs;
-    };
-
-    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 }

@@ -10,6 +10,7 @@ import ExcelJS from "exceljs";
 import PDFDocument from "pdfkit";
 import fs from "fs";
 import path from "path";
+import hpp from "hpp";
 
 import * as dbService from "./services/db.service.js";
 import { MailerService } from "./services/mailer.service.js";
@@ -17,6 +18,7 @@ import { notFound } from "./middlewares/notFound.middleware.js";
 import { errorHandler } from "./middlewares/errorHandler.middleware.js";
 import routes from "./routes/index.js";
 import webhooksRouter from "./routes/webhooks.routes.js";
+import rateLimit from "express-rate-limit";
 
 const corsOptions = {
   origin: [
@@ -47,10 +49,26 @@ app.use(
 app.use(express.json()); // bodyParser not needed
 app.use(express.urlencoded({ extended: true }));
 
+// use hpp to deal with parameter pollution
+app.use(hpp());
+
+// Restrict all routes to only 100 requests per IP address every 1o minutes
+const defaultLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 100, // 100 requests per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  // Ensure you trust your proxy (Cloudflare, Nginx, etc.)
+  validate: { trustProxy: true },
+});
+
+app.use(defaultLimiter);
+
 /* ------------------ API Routes ------------------ */
 app.use("/api", routes);
 
-/* ------------------ Backoffice Utilities (from combine.js) ------------------ */
+/* ------------------ Backoffice Utilities And Routes (Inherited from Previous Developer) ------------------ */
+// TODO: Refactor and move this code into proper services and routes
 
 // Date range utility
 function getDateRange(period, start_date = null, end_date = null) {

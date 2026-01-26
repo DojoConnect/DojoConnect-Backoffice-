@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { DojosService } from "../services/dojos.service.js";
 import { BadRequestException, InternalServerErrorException } from "../core/errors/index.js";
 import { formatApiResponse } from "../utils/api.utils.js";
-import { NotFoundException } from "../core/errors/index.js";
 import { ClassService } from "../services/class.service.js";
 import { ClassDTO } from "../dtos/class.dtos.js";
 import { StudentService } from "../services/student.service.js";
@@ -15,10 +14,6 @@ export class DojosController {
     }
 
     const dojo = await DojosService.getOneDojoByTag(tag);
-
-    if (!dojo) {
-      throw new NotFoundException(`Dojo with tag ${tag} not found`);
-    }
 
     res.json(formatApiResponse({ data: dojo }));
   }
@@ -105,7 +100,7 @@ export class DojosController {
 
     res.status(200).json(formatApiResponse({ data: classDTOs, message: "Classes fetched." }));
   }
-
+  
   static async handleFetchDojoStudents(req: Request, res: Response) {
     const dojo = req.dojo;
 
@@ -119,6 +114,23 @@ export class DojosController {
       formatApiResponse({
         data: students.map((student) => student.toJSON()),
         message: "Dojo students fetched successfully",
+      }),
+    );
+  }
+
+  static async handleUpdateMyDojo(req: Request, res: Response) {
+    const user = req.user;
+
+    if (!user) {
+      throw new InternalServerErrorException("User is required");
+    }
+
+    const updatedDojo = await DojosService.updateMyDojo(user, req.body);
+
+    res.json(
+      formatApiResponse({
+        data: updatedDojo.toJSON(),
+        message: "Dojo updated successfully",
       }),
     );
   }
