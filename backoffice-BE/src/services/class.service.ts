@@ -553,19 +553,7 @@ export class ClassService {
         throw new NotFoundException("Student not found");
       }
 
-      const enrollments = await ClassEnrollmentRepository.fetchActiveEnrollmentsByStudentIds(
-        [student.id],
-        tx,
-      );
-
-      if (enrollments.length === 0) {
-        return [];
-      }
-
-      const classIds = enrollments.map((enrollment) => enrollment.classId);
-      const uniqueClassIds = Array.from(new Set(classIds));
-
-      return await ClassRepository.findClassesByIds(uniqueClassIds, tx);
+      return await ClassService.fetchClassesByStudentId(student.id, tx);
     };
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };

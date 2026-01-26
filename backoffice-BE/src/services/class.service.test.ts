@@ -49,6 +49,7 @@ import { StudentRepository } from "../repositories/student.repository.js";
 import { StudentWihUserDTO } from "../dtos/student.dtos.js";
 import { DojoRepository } from "../repositories/dojo.repository.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
+import { buildEnrollmentMock } from "../tests/factories/enrollment.factory.js";
 
 describe("Class Service", () => {
   let dbServiceSpy: DbServiceSpies;
@@ -78,6 +79,10 @@ describe("Class Service", () => {
   let userProfileForInstructorSpy: MockInstance;
   let userProfileByInstructorIdsSpy: MockInstance;
   let getClassSchedulesAndInstructorSpy: MockInstance;
+  let fetchClassesByStudentIdSpy: MockInstance;
+  let findClassesByIdsRepoSpy: MockInstance;
+  let fetchActiveEnrollmentsByStudentIdsSpy: MockInstance;
+  let findOneStudentByUserIdSpy: MockInstance;
 
   const mockedNextDay = vi.mocked(nextDay);
   const mockedMapWeekdayToDayNumber = vi.mocked(mapWeekdayToDayNumber);
@@ -120,6 +125,14 @@ describe("Class Service", () => {
     getClassSchedulesAndInstructorSpy = vi
       .spyOn(ClassService, "getClassSchedulesAndInstructor")
       .mockResolvedValue({} as any);
+    fetchClassesByStudentIdSpy = vi.spyOn(ClassService, "fetchClassesByStudentId");
+
+    findClassesByIdsRepoSpy = vi.spyOn(ClassRepository, "findClassesByIds");
+    fetchActiveEnrollmentsByStudentIdsSpy = vi.spyOn(
+      ClassEnrollmentRepository,
+      "fetchActiveEnrollmentsByStudentIds",
+    );
+    findOneStudentByUserIdSpy = vi.spyOn(StudentRepository, "findOneByUserId");
 
     // Default happy path mocks
     getUserByIdSpy.mockImplementation(({ userId }) => {
@@ -133,6 +146,7 @@ describe("Class Service", () => {
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -959,19 +973,6 @@ describe("Class Service", () => {
   });
 
   describe("getStudentClasses", () => {
-    let findOneStudentByUserIdSpy: MockInstance;
-    let fetchActiveEnrollmentsByStudentIdsSpy: MockInstance;
-    let findClassesByIdsSpy: MockInstance;
-
-    beforeEach(() => {
-      findOneStudentByUserIdSpy = vi.spyOn(StudentRepository, "findOneByUserId");
-      fetchActiveEnrollmentsByStudentIdsSpy = vi.spyOn(
-        ClassEnrollmentRepository,
-        "fetchActiveEnrollmentsByStudentIds",
-      );
-      findClassesByIdsSpy = vi.spyOn(ClassRepository, "findClassesByIds");
-    });
-
     it("should throw InternalServerErrorException if user is not a child", async () => {
       const nonChildUser = buildUserMock({ role: Role.Parent });
 
@@ -990,42 +991,19 @@ describe("Class Service", () => {
       );
     });
 
-    it("should return empty array if no active enrollments", async () => {
-      const childUser = buildUserMock({ role: Role.Child });
-      const mockStudent = buildStudentMock({ studentUserId: childUser.id });
-
-      findOneStudentByUserIdSpy.mockResolvedValue(mockStudent);
-      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([]);
-
-      const result = await ClassService.getStudentClasses(childUser);
-
-      expect(result).toEqual([]);
-      expect(findClassesByIdsSpy).not.toHaveBeenCalled();
-    });
-
-    it("should return classes student is enrolled in", async () => {
+    it("should return classes student is enrolled in by calling fetchClassesByStudentId", async () => {
       const childUser = buildUserMock({ role: Role.Child });
       const mockStudent = buildStudentMock({ id: "student-1", studentUserId: childUser.id });
-      const mockClasses = [
-        buildClassMock({ id: "class-1" }),
-        buildClassMock({ id: "class-2" }),
-      ];
+      const mockClasses = [buildClassMock({ id: "class-1" })];
 
       findOneStudentByUserIdSpy.mockResolvedValue(mockStudent);
-      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([
-        { studentId: "student-1", classId: "class-1" },
-        { studentId: "student-1", classId: "class-2" },
-      ]);
-      findClassesByIdsSpy.mockResolvedValue(mockClasses);
+      const internalSpy = vi.spyOn(ClassService, "fetchClassesByStudentId").mockResolvedValue(mockClasses);
 
       const result = await ClassService.getStudentClasses(childUser);
 
       expect(result).toEqual(mockClasses);
-      expect(fetchActiveEnrollmentsByStudentIdsSpy).toHaveBeenCalledWith(
-        ["student-1"],
-        dbServiceSpy.mockTx,
-      );
-      expect(findClassesByIdsSpy).toHaveBeenCalledWith(["class-1", "class-2"], dbServiceSpy.mockTx);
+      expect(findOneStudentByUserIdSpy).toHaveBeenCalledWith(childUser.id, dbServiceSpy.mockTx);
+      expect(internalSpy).toHaveBeenCalledWith(mockStudent.id, dbServiceSpy.mockTx);
     });
   });
 
@@ -1112,6 +1090,39 @@ describe("Class Service", () => {
       const result = await ClassService.getUserClasses(unknownRoleUser.id);
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("fetchClassesByStudentId", () => {
+    it("should return classes student is enrolled in", async () => {
+      const studentId = "student-123";
+      const mockEnrollments = [
+        buildEnrollmentMock({ studentId, classId: "class-1", active: true }),
+        buildEnrollmentMock({ studentId, classId: "class-2", active: true }),
+      ];
+      const mockClasses = [buildClassMock({ id: "class-1" }), buildClassMock({ id: "class-2" })];
+
+      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue(mockEnrollments);
+      findClassesByIdsRepoSpy.mockResolvedValue(mockClasses);
+
+      const result = await ClassService.fetchClassesByStudentId(studentId);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].id).toBe("class-1");
+      expect(result[1].id).toBe("class-2");
+      expect(fetchActiveEnrollmentsByStudentIdsSpy).toHaveBeenCalledWith([studentId], dbServiceSpy.mockTx);
+      expect(findClassesByIdsRepoSpy).toHaveBeenCalledWith(["class-1", "class-2"], dbServiceSpy.mockTx);
+    });
+
+    it("should return empty array if student has no enrollments", async () => {
+      const studentId = "student-456";
+      fetchActiveEnrollmentsByStudentIdsSpy.mockResolvedValue([]);
+
+      const result = await ClassService.fetchClassesByStudentId(studentId);
+
+      expect(result).toEqual([]);
+      expect(fetchActiveEnrollmentsByStudentIdsSpy).toHaveBeenCalledWith([studentId], dbServiceSpy.mockTx);
+      expect(findClassesByIdsRepoSpy).not.toHaveBeenCalled();
     });
   });
 });
