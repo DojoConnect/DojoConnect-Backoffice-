@@ -24,6 +24,8 @@ import {
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { ClassRepository } from "../repositories/class.repository.js";
+import { NotFoundException } from "../core/errors/NotFoundException.js";
+import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
 
 export class DojosService {
   static getOneDojo = async (whereClause: any, txInstance?: Transaction): Promise<IDojo | null> => {
@@ -37,7 +39,12 @@ export class DojosService {
   static getOneDojoByTag = async (tag: string, txInstance?: Transaction): Promise<IDojo | null> => {
     const execute = async (tx: Transaction) => {
       try {
-        return await DojoRepository.getOneByTag(tag, tx);
+        const dojo = await DojoRepository.getOneByTag(tag, tx);
+        if (!dojo) {
+          throw new NotFoundException(`Dojo with tag ${tag} not found`);
+        }
+
+        return new BaseDojoDTO(dojo);
       } catch (err: any) {
         throw err;
       }

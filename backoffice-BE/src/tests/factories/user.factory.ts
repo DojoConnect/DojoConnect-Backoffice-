@@ -3,13 +3,12 @@ import { Role } from "../../constants/enums.js";
 import { UserDTO, UserDTOParams } from "../../dtos/user.dtos.js";
 import { INewUser, IUser } from "../../repositories/user.repository.js";
 import { INewUserCard, IUserCard } from "../../services/users.service.js";
-import { BaseDojoDTO } from "../../dtos/dojo.dtos.js";
-import { buildDojoMock } from "./dojos.factory.js";
+import { UpdateProfileDTO } from "../../validations/users.schemas.js";
 
 export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   return {
     id: faker.string.uuid(),
-    username: "john_d",
+    username: faker.internet.username(),
     firstName: faker.person.firstName(),
     lastName: faker.person.lastName(),
     email: "john@example.com",
@@ -59,4 +58,17 @@ export const buildNewUserCardMock = (overrides?: Partial<INewUserCard>): INewUse
 
 export const buildUserDtoMock = (overrides?: Partial<UserDTOParams>): UserDTO => {
   return new UserDTO({ ...buildUserMock(overrides) });
+};
+
+export const buildUpdateProfileDtoMock = (overrides?: Partial<UpdateProfileDTO>): UpdateProfileDTO => {
+  return {
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
+    username: faker.internet.username(),
+    gender: "male",
+    dob: new Date("1990-05-14"),
+    street: "42 Ikoyi Crescent",
+    city: "Lagos",
+    ...overrides,
+  };
 };

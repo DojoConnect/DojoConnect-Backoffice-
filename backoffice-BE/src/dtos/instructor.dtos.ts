@@ -1,7 +1,9 @@
 import { InstructorInviteStatus } from "../constants/enums.js";
+import { IDojo } from "../repositories/dojo.repository.js";
 import { IDojoInstructor } from "../repositories/instructors.repository.js";
 import { IInstructorInvite, InstructorInviteDetails } from "../repositories/invites.repository.js";
 import { getFullName } from "../utils/text.utils.js";
+import { BaseDojoDTO } from "./dojo.dtos.js";
 
 export class InvitedInstructorDTO implements IInstructorInvite {
   id: string;
@@ -80,16 +82,22 @@ export class InstructorInviteDetailsDTO {
   }
 }
 
+export interface DojoInstructorDTOParams extends IDojoInstructor {
+  dojo: IDojo;
+}
+
 export class DojoInstructorDTO implements IDojoInstructor {
   id: string;
   dojoId: string;
   instructorUserId: string;
+  dojo: BaseDojoDTO;
   createdAt: Date;
 
-  constructor(params: IDojoInstructor) {
+  constructor(params: DojoInstructorDTOParams) {
     this.id = params.id;
     this.dojoId = params.dojoId;
     this.instructorUserId = params.instructorUserId;
+    this.dojo = new BaseDojoDTO(params.dojo);
     this.createdAt = params.createdAt;
   }
 
@@ -98,6 +106,7 @@ export class DojoInstructorDTO implements IDojoInstructor {
       id: this.id,
       dojoId: this.dojoId,
       userId: this.instructorUserId,
+      dojo: this.dojo.toJSON(),
       createdAt: this.createdAt,
     };
   }

@@ -29,6 +29,7 @@ export interface DojoOwnerUserDTOParams extends UserDTOParams {
 
 export interface InstructorUserDTOParams extends UserDTOParams {
   instructor: IDojoInstructor;
+  dojo: IDojo;
 }
 
 export interface ParentUserDTOParams extends UserDTOParams {
@@ -104,10 +105,18 @@ export class DojoAdminUserDTO extends UserDTO implements DojoOwnerUserDTOParams 
 
 export class InstructorUserDTO extends UserDTO implements InstructorUserDTOParams {
   instructor: DojoInstructorDTO;
+  dojo: BaseDojoDTO;
 
   constructor(params: InstructorUserDTOParams) {
     super(params);
-    this.instructor = new DojoInstructorDTO(params.instructor);
+    this.instructor = new DojoInstructorDTO({
+      id: params.instructor.id,
+      dojoId: params.instructor.dojoId,
+      instructorUserId: params.instructor.instructorUserId,
+      dojo: params.dojo,
+      createdAt: params.instructor.createdAt,
+    });
+    this.dojo = new BaseDojoDTO(params.dojo);
   }
 
   toJSON() {
