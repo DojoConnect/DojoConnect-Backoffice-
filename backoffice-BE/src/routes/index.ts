@@ -9,6 +9,7 @@ import uploadRouter from "./upload.routes.js";
 import parentsRouter from "./parent.routes.js";
 import classesRouter from "./classes.routes.js";
 import studentRouter from "./student.routes.js";
+import usersRouter from "./users.routes.js";
 
 const router = Router();
 
@@ -25,6 +26,7 @@ router.use("/instructors", instructorsRouter);
 router.use("/uploads", uploadRouter);
 router.use("/parents", parentsRouter);
 router.use("/students", studentRouter);
+router.use("/users", usersRouter);
 
 router.use("/dev", devRouter);
 

@@ -24,10 +24,12 @@ import {
   InstructorUserDTO,
   ParentUserDTO,
   StudentUserDTO,
+  UserDTO,
 } from "../dtos/user.dtos.js";
 import { UnauthorizedException } from "../core/errors/UnauthorizedException.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
+import { ConflictException } from "../core/errors/ConflictException.js";
 
 describe("Users Service", () => {
   const whereClause = eq(users.id, "1");
@@ -683,6 +685,72 @@ describe("Users Service", () => {
     it("should throw InternalServerErrorException for unknown role", async () => {
       const user = buildUserMock({ role: "ADMIN_OWNER" as any });
       await expect(UsersService.getUserDTO(user)).rejects.toThrow(InternalServerErrorException);
+    });
+  });
+
+  describe("updateProfile", () => {
+    let getOneUserSpy: MockInstance;
+    let updateUserSpy: MockInstance;
+    let getOneUserByIDSpy: MockInstance;
+
+    beforeEach(() => {
+      getOneUserSpy = vi.spyOn(UsersService, "getOneUser");
+      updateUserSpy = vi.spyOn(UsersService, "updateUser").mockResolvedValue(undefined);
+      getOneUserByIDSpy = vi.spyOn(UsersService, "getOneUserByID");
+    });
+
+    afterEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("should throw ConflictException if username is already taken by another user", async () => {
+      const userId = "user-1";
+      const update = { username: "taken-username" } as any;
+      const existingUser = buildUserMock({ id: "user-2", username: "taken-username" });
+
+      getOneUserSpy.mockResolvedValue(existingUser);
+
+      await expect(UsersService.updateProfile(userId, update)).rejects.toThrow(ConflictException);
+      expect(getOneUserSpy).toHaveBeenCalled();
+      expect(updateUserSpy).not.toHaveBeenCalled();
+    });
+
+    it("should update profile successfully when username is available", async () => {
+      const userId = "user-1";
+      const update = { username: "new-username", firstName: "New" } as any;
+      const updatedUser = buildUserMock({ id: userId, ...update });
+
+      getOneUserSpy.mockResolvedValue(null); // No other user with this username
+      getOneUserByIDSpy.mockResolvedValue(updatedUser);
+
+      const result = await UsersService.updateProfile(userId, update);
+
+      expect(updateUserSpy).toHaveBeenCalledWith({ userId, update, txInstance: expect.anything() });
+      expect(result).toBeInstanceOf(UserDTO);
+      expect(result.username).toBe("new-username");
+    });
+
+    it("should update profile without username check if username is not provided", async () => {
+      const userId = "user-1";
+      const update = { firstName: "Only Name" } as any;
+      const updatedUser = buildUserMock({ id: userId, ...update });
+
+      getOneUserByIDSpy.mockResolvedValue(updatedUser);
+
+      const result = await UsersService.updateProfile(userId, update);
+
+      expect(getOneUserSpy).not.toHaveBeenCalled();
+      expect(updateUserSpy).toHaveBeenCalledWith({ userId, update, txInstance: expect.anything() });
+      expect(result).toBeInstanceOf(UserDTO);
+    });
+
+    it("should throw NotFoundException if user is not found after update", async () => {
+      const userId = "user-1";
+      const update = { firstName: "Ghost" } as any;
+
+      getOneUserByIDSpy.mockResolvedValue(null);
+
+      await expect(UsersService.updateProfile(userId, update)).rejects.toThrow(NotFoundException);
     });
   });
 });
