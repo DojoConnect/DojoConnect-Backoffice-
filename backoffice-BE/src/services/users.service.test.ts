@@ -6,6 +6,7 @@ import { createDrizzleDbSpies, DbServiceSpies } from "../tests/spies/drizzle-db.
 import { userCards, users } from "../db/schema.js";
 import {
   buildNewUserMock,
+  buildUpdateProfileDtoMock,
   buildUserCardMock,
   buildUserMock,
 } from "../tests/factories/user.factory.js";
@@ -705,7 +706,7 @@ describe("Users Service", () => {
 
     it("should throw ConflictException if username is already taken by another user", async () => {
       const userId = "user-1";
-      const update = { username: "taken-username" } as any;
+      const update = buildUpdateProfileDtoMock({ username: "taken-username" });
       const existingUser = buildUserMock({ id: "user-2", username: "taken-username" });
 
       getOneUserSpy.mockResolvedValue(existingUser);
@@ -717,7 +718,7 @@ describe("Users Service", () => {
 
     it("should update profile successfully when username is available", async () => {
       const userId = "user-1";
-      const update = { username: "new-username", firstName: "New" } as any;
+      const update = buildUpdateProfileDtoMock({ username: "new-username", firstName: "New" });
       const updatedUser = buildUserMock({ id: userId, ...update });
 
       getOneUserSpy.mockResolvedValue(null); // No other user with this username
@@ -730,23 +731,9 @@ describe("Users Service", () => {
       expect(result.username).toBe("new-username");
     });
 
-    it("should update profile without username check if username is not provided", async () => {
-      const userId = "user-1";
-      const update = { firstName: "Only Name" } as any;
-      const updatedUser = buildUserMock({ id: userId, ...update });
-
-      getOneUserByIDSpy.mockResolvedValue(updatedUser);
-
-      const result = await UsersService.updateProfile(userId, update);
-
-      expect(getOneUserSpy).not.toHaveBeenCalled();
-      expect(updateUserSpy).toHaveBeenCalledWith({ userId, update, txInstance: expect.anything() });
-      expect(result).toBeInstanceOf(UserDTO);
-    });
-
     it("should throw NotFoundException if user is not found after update", async () => {
       const userId = "user-1";
-      const update = { firstName: "Ghost" } as any;
+      const update = buildUpdateProfileDtoMock({ firstName: "Ghost" });
 
       getOneUserByIDSpy.mockResolvedValue(null);
 

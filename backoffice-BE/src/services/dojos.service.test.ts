@@ -23,6 +23,7 @@ import { InstructorsRepository } from "../repositories/instructors.repository.js
 import { DojoRepository } from "../repositories/dojo.repository.js";
 import { buildClassMock } from "../tests/factories/class.factory.js";
 import { ClassRepository } from "../repositories/class.repository.js";
+import { NotFoundException } from "../core/errors/NotFoundException.js";
 
 describe("Dojo Service", () => {
   let mockExecute: Mock;
@@ -68,9 +69,15 @@ describe("Dojo Service", () => {
   });
 
   describe("fetchDojoByTag", () => {
+    let getOneByTagSpy: MockInstance;
+    beforeEach(() => {
+      vi.clearAllMocks();
+      getOneByTagSpy = vi.spyOn(DojoRepository, "getOneByTag");
+    });
+
     it("should return a dojo object when the database finds a match", async () => {
       const mockDojo = buildDojoMock({ tag: "test-dojo" });
-      const getOneByTagSpy = vi.spyOn(DojoRepository, "getOneByTag").mockResolvedValue(mockDojo);
+      getOneByTagSpy.mockResolvedValue(mockDojo);
 
       const result = await DojosService.getOneDojoByTag("test-dojo");
 
@@ -78,11 +85,9 @@ describe("Dojo Service", () => {
       expect(getOneByTagSpy).toHaveBeenCalled();
     });
 
-    it("should return null when the database finds no match", async () => {
-      const getOneByTagSpy = vi.spyOn(DojoRepository, "getOneByTag").mockResolvedValue(null);
-      const result = await DojosService.getOneDojoByTag("non-existent-dojo");
-
-      expect(result).toEqual(null);
+    it("should throw NotFoundException when the database finds no match", async () => {
+      getOneByTagSpy.mockResolvedValue(null);
+      await expect(DojosService.getOneDojoByTag("non-existent-dojo")).rejects.toThrow(NotFoundException);
     });
   });
 
