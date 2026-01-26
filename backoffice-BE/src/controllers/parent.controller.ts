@@ -38,7 +38,7 @@ export class ParentController {
     }
   };
 
-  static handleGetClasses = async (req: Request, res: Response, next: NextFunction) => {
+  static handleGetChildrenClasses = async (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
       throw new InternalServerErrorException("User not found");
     }

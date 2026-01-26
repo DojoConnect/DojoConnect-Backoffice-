@@ -11,9 +11,11 @@ const router = Router();
 // All routes here should be protected and only for Parents
 router.use(requireAuth, requireRole(Role.Parent));
 
-router.get("/children", ParentController.handleGetChildren);
+router.get("/me/children", ParentController.handleGetChildren);
 
-router.get("/classes", ParentController.handleGetClasses);
+router.post("/me/children", validateReqBody(AddChildSchema), ParentController.handleAddChild);
+
+router.get("/me/children/classes", ParentController.handleGetChildrenClasses);
 
 router.post("/children", validateReqBody(AddChildSchema), ParentController.handleAddChild);
 

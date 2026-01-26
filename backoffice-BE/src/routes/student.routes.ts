@@ -7,7 +7,7 @@ import { requireRole } from "../middlewares/authorization/require-role.middlewar
 const router = Router();
 
 router.get(
-  "/classes",
+  "/me/classes",
   requireAuth,
   requireRole(Role.Child),
   StudentController.handleGetEnrolledClasses,
