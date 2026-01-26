@@ -204,7 +204,6 @@ export class UsersService {
     txInstance?: Transaction,
   ): Promise<UserDTO> => {
     const execute = async (tx: Transaction) => {
-      if (update.username) {
         const existingUser = await UsersService.getOneUser(
           {
             whereClause: and(eq(users.username, update.username), not(eq(users.id, userId)))!,
@@ -215,7 +214,6 @@ export class UsersService {
         if (existingUser) {
           throw new ConflictException("Username already taken");
         }
-      }
 
       await UsersService.updateUser({ userId, update, txInstance: tx });
 
