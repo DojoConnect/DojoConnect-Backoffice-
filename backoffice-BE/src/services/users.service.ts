@@ -254,15 +254,26 @@ export class UsersService {
         throw new UnauthorizedException("User is not an Instructor");
       }
 
-      const instructor = await InstructorService.findInstructorByUserId(user.id, tx);
+      const [instructor, dojo] = await Promise.all([
+        InstructorService.findInstructorByUserId(user.id, tx),
+        DojosService.fetchUserDojo({
+          user,
+          txInstance: tx,
+        }),
+      ]);
 
       if (!instructor) {
         throw new NotFoundException("Instructor not found for Instructor");
       }
 
+      if (!dojo) {
+        throw new NotFoundException("Dojo not found for Instructor");
+      }
+
       return new InstructorUserDTO({
         ...user,
         instructor,
+        dojo,
       });
     };
 
