@@ -100,7 +100,7 @@ export class DojosController {
 
     res.status(200).json(formatApiResponse({ data: classDTOs, message: "Classes fetched." }));
   }
-
+  
   static async handleFetchDojoStudents(req: Request, res: Response) {
     const dojo = req.dojo;
 
@@ -114,6 +114,23 @@ export class DojosController {
       formatApiResponse({
         data: students.map((student) => student.toJSON()),
         message: "Dojo students fetched successfully",
+      }),
+    );
+  }
+
+  static async handleUpdateMyDojo(req: Request, res: Response) {
+    const user = req.user;
+
+    if (!user) {
+      throw new InternalServerErrorException("User is required");
+    }
+
+    const updatedDojo = await DojosService.updateMyDojo(user, req.body);
+
+    res.json(
+      formatApiResponse({
+        data: updatedDojo.toJSON(),
+        message: "Dojo updated successfully",
       }),
     );
   }
