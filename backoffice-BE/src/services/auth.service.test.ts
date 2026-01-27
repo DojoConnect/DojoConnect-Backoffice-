@@ -765,20 +765,18 @@ describe("Auth Service", () => {
     const dto = { email: "test@example.com" };
     const user = buildUserMock({ email: dto.email });
 
-    let updateOTPSpy: MockInstance;
     let createOTPSpy: MockInstance;
-    let generateOTPSpy: MockInstance;
-    let hashTokenSpy: MockInstance;
     let sendPasswordResetMailSpy: MockInstance;
 
     beforeEach(() => {
-      updateOTPSpy = vi.spyOn(OTPRepository, "updateByUserId").mockResolvedValue(undefined);
-      createOTPSpy = vi.spyOn(OTPRepository, "createOTP").mockResolvedValue(undefined);
-      generateOTPSpy = vi.spyOn(authUtils, "generateOTP").mockReturnValue("123456");
-      hashTokenSpy = vi.spyOn(authUtils, "hashToken").mockReturnValue("hashed_otp");
+      createOTPSpy = vi.spyOn(AuthService, "createOTP").mockResolvedValue("123456");
       sendPasswordResetMailSpy = vi
         .spyOn(MailerService, "sendPasswordResetMail")
         .mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      createOTPSpy.mockRestore();
     });
 
     it("should initiate password reset for existing user", async () => {
@@ -790,22 +788,7 @@ describe("Auth Service", () => {
         email: dto.email,
         txInstance: expect.anything(),
       });
-      expect(updateOTPSpy).toHaveBeenCalledWith({
-        tx: expect.anything(),
-        update: { used: true },
-        userId: user.id,
-      });
-      expect(generateOTPSpy).toHaveBeenCalled();
-      expect(hashTokenSpy).toHaveBeenCalledWith("123456");
-      expect(createOTPSpy).toHaveBeenCalledWith({
-        tx: expect.anything(),
-        dto: expect.objectContaining({
-          userId: user.id,
-          type: OTPType.PasswordReset,
-          hashedOTP: "hashed_otp",
-          attempts: 0,
-        }),
-      });
+      expect(createOTPSpy).toHaveBeenCalledWith(user, OTPType.PasswordReset, expect.anything());
       expect(sendPasswordResetMailSpy).toHaveBeenCalledWith({
         dest: user.email,
         name: user.firstName,
@@ -819,7 +802,7 @@ describe("Auth Service", () => {
       await expect(AuthService.initForgetPassword({ dto })).rejects.toThrow(NotFoundException);
 
       expect(getOneUserByEmailSpy).toHaveBeenCalled();
-      expect(updateOTPSpy).not.toHaveBeenCalled();
+      expect(createOTPSpy).not.toHaveBeenCalled();
       expect(sendPasswordResetMailSpy).not.toHaveBeenCalled();
     });
   });
@@ -914,7 +897,7 @@ describe("Auth Service", () => {
         txInstance: expect.anything(),
       });
       expect(AuthService.verifyOtp).toHaveBeenCalledWith({
-        dto,
+        otp: dto.otp,
         user,
         type: OTPType.PasswordReset,
         txInstance: expect.anything(),
@@ -964,7 +947,7 @@ describe("Auth Service", () => {
     it("should successfully burn OTP if valid", async () => {
       findOneActiveOTPSpy.mockResolvedValue(otpRecord);
 
-      await AuthService.verifyOtp({ dto, type, user });
+      await AuthService.verifyOtp({ otp: dto.otp, type, user });
 
       expect(findOneActiveOTPSpy).toHaveBeenCalled();
       expect(updateByIdSpy).toHaveBeenCalledWith({
@@ -977,7 +960,7 @@ describe("Auth Service", () => {
     it("should increment attempts and throw if OTP not found", async () => {
       findOneActiveOTPSpy.mockResolvedValue(null);
 
-      await expect(AuthService.verifyOtp({ dto, type, user })).rejects.toThrow(BadRequestException);
+      await expect(AuthService.verifyOtp({ otp: dto.otp, type, user })).rejects.toThrow(BadRequestException);
 
       expect(incrementAttemptsSpy).toHaveBeenCalledWith({
         tx: expect.anything(),
@@ -989,7 +972,7 @@ describe("Auth Service", () => {
       const exhaustedOtp = { ...otpRecord, attempts: AppConstants.MAX_OTP_VERIFICATION_ATTEMPTS };
       findOneActiveOTPSpy.mockResolvedValue(exhaustedOtp);
 
-      await expect(AuthService.verifyOtp({ dto, type, user })).rejects.toThrow(TooManyRequestsException);
+      await expect(AuthService.verifyOtp({ otp: dto.otp, type, user })).rejects.toThrow(TooManyRequestsException);
 
       expect(updateByIdSpy).toHaveBeenCalledWith({
         tx: expect.anything(),
@@ -999,6 +982,118 @@ describe("Auth Service", () => {
           attempts: exhaustedOtp.attempts + 1,
         },
       });
+    });
+  });
+
+  describe("createOTP", () => {
+    const user = buildUserMock({ id: "user-123" });
+    const type = OTPType.EmailVerification;
+
+    let updateByUserIdSpy: MockInstance;
+    let createOTPSpy: MockInstance;
+    let generateOTPSpy: MockInstance;
+    let hashTokenSpy: MockInstance;
+
+    beforeEach(() => {
+      updateByUserIdSpy = vi.spyOn(OTPRepository, "updateByUserId").mockResolvedValue(undefined);
+      createOTPSpy = vi.spyOn(OTPRepository, "createOTP").mockResolvedValue(undefined);
+      generateOTPSpy = vi.spyOn(authUtils, "generateOTP").mockReturnValue("123456");
+      hashTokenSpy = vi.spyOn(authUtils, "hashToken").mockReturnValue("hashed_otp");
+    });
+
+    it("should generate, hash, and save OTP after invalidating old ones", async () => {
+      const result = await AuthService.createOTP(user, type, dbSpies.mockTx as any);
+
+      expect(updateByUserIdSpy).toHaveBeenCalledWith({
+        tx: dbSpies.mockTx,
+        update: { used: true },
+        userId: user.id,
+      });
+      expect(generateOTPSpy).toHaveBeenCalled();
+      expect(hashTokenSpy).toHaveBeenCalledWith("123456");
+      expect(createOTPSpy).toHaveBeenCalledWith({
+        tx: dbSpies.mockTx,
+        dto: expect.objectContaining({
+          userId: user.id,
+          type,
+          hashedOTP: "hashed_otp",
+          attempts: 0,
+        }),
+      });
+      expect(result).toBe("123456");
+    });
+  });
+
+  describe("requestEmailVerification", () => {
+    const user = buildUserMock({ id: "user-123", emailVerified: false });
+
+    let createOTPSpy: MockInstance;
+    let sendEmailVerificationMailSpy: MockInstance;
+
+    beforeEach(() => {
+      createOTPSpy = vi.spyOn(AuthService, "createOTP").mockResolvedValue("123456");
+      sendEmailVerificationMailSpy = vi
+        .spyOn(MailerService, "sendEmailVerificationMail")
+        .mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      createOTPSpy.mockRestore();
+    });
+
+    it("should initiate email verification for unverified user", async () => {
+      await AuthService.requestEmailVerification({ user });
+
+      expect(createOTPSpy).toHaveBeenCalledWith(user, OTPType.EmailVerification, expect.anything());
+      expect(sendEmailVerificationMailSpy).toHaveBeenCalledWith({
+        dest: user.email,
+        name: user.firstName,
+        otp: "123456",
+      });
+    });
+
+    it("should throw BadRequestException if email is already verified", async () => {
+      const verifiedUser = { ...user, emailVerified: true };
+      await expect(AuthService.requestEmailVerification({ user: verifiedUser })).rejects.toThrow(BadRequestException);
+      expect(createOTPSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("verifyEmailVerification", () => {
+    const user = buildUserMock({ id: "user-123", email: "test@test.com", firstName: "Test" });
+    const dto = { otp: "123456" };
+
+    let verifyOtpSpy: MockInstance;
+    let updateUserSpy: MockInstance;
+    let sendEmailVerifiedNotificationSpy: MockInstance;
+
+    beforeEach(() => {
+      verifyOtpSpy = vi.spyOn(AuthService, "verifyOtp").mockResolvedValue(undefined);
+      updateUserSpy = vi.spyOn(UsersService, "updateUser").mockResolvedValue(undefined);
+      sendEmailVerifiedNotificationSpy = vi
+        .spyOn(MailerService, "sendEmailVerifiedNotification")
+        .mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      verifyOtpSpy.mockRestore();
+    });
+
+    it("should verify OTP, update user, and send notification", async () => {
+      await AuthService.verifyEmailVerification({ dto, user });
+
+      expect(verifyOtpSpy).toHaveBeenCalledWith({
+        otp: dto.otp,
+        user,
+        type: OTPType.EmailVerification,
+        txInstance: expect.anything(),
+      });
+      expect(updateUserSpy).toHaveBeenCalledWith({
+        txInstance: expect.anything(),
+        userId: user.id,
+        update: { emailVerified: true },
+      });
+      expect(sendEmailVerifiedNotificationSpy).toHaveBeenCalledWith(user.email, user.firstName);
     });
   });
 

@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 
 import { AuthService } from "../services/auth.service.js";
 import { formatApiResponse } from "../utils/api.utils.js";
-import { BadRequestException } from "../core/errors/index.js";
+import { BadRequestException, UnauthorizedException } from "../core/errors/index.js";
 
 export const handleRegisterDojoAdmin = async (req: Request, res: Response) => {
   const userIp = req.ip;
@@ -137,4 +137,39 @@ export const handleResetPassword = async (req: Request, res: Response) => {
   } catch (error) {
     throw new BadRequestException("Reset Password Token expired or invalid");
   }
+};
+
+export const handleVerifyEmailRequest = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not found");
+  }
+
+  const user = req.user;
+  await AuthService.requestEmailVerification({ user });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Verification code sent to your email",
+    }),
+  );
+};
+
+export const handleVerifyEmail = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not found");
+  }
+
+  const user = req.user;
+  await AuthService.verifyEmailVerification({
+    dto: req.body,
+    user,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Email verified successfully",
+    }),
+  );
 };

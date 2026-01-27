@@ -32,8 +32,9 @@ import {
   RefreshTokenDTO,
   RegisterDojoAdminDTO,
   ResetPasswordDTO,
-  VerifyOtpDTO,
+  VerifyPasswordResetOtpDTO,
   RegisterParentDTO,
+  VerifyEmailOtpDTO,
 } from "../validations/auth.schemas.js";
 import type { Transaction } from "../db/index.js";
 import { DojoStatus, OTPType, Role } from "../constants/enums.js";
@@ -635,31 +636,7 @@ export class AuthService {
         throw new NotFoundException("User not found");
       }; 
 
-      // Invalidate ANY previous unused tokens for this user
-      // (Prevents stacking valid OTPs)
-      await OTPRepository.updateByUserId({
-        tx,
-        update: { used: true },
-        userId: user.id,
-      });
-
-      // Generate  OTP
-      const otp = generateOTP();
-      const hashedOTP = hashToken(otp); // Still hash it!
-
-      // Short Expiry (15 Minutes max for OTPs)
-      const expiresAt = addMinutes(new Date(), 15);
-
-      await OTPRepository.createOTP({
-        tx,
-        dto: {
-          userId: user.id,
-          type: OTPType.PasswordReset,
-          hashedOTP,
-          expiresAt,
-          attempts: 0,
-        },
-      });
+      const otp = await this.createOTP(user, OTPType.PasswordReset, tx);
 
       await MailerService.sendPasswordResetMail({
         dest: user.email,
@@ -675,7 +652,7 @@ export class AuthService {
     dto,
     txInstance,
   }: {
-    dto: VerifyOtpDTO;
+    dto: VerifyPasswordResetOtpDTO;
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
@@ -689,7 +666,7 @@ export class AuthService {
       }
 
       await this.verifyOtp({
-        dto,
+        otp: dto.otp,
         user,
         type: OTPType.PasswordReset,
         txInstance: tx,
@@ -706,19 +683,19 @@ export class AuthService {
   };
 
   static verifyOtp = async ({
-    dto,
+    otp,
     type,
     user,
     txInstance,
   }: {
-    dto: VerifyOtpDTO;
+    otp: string;
     type: OTPType;
     user: IUser;
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
       // Hash the provided OTP
-      const otpHash = hashToken(dto.otp);
+      const otpHash = hashToken(otp);
 
       const otpRecord = await OTPRepository.findOneActiveOTP({
         tx,
@@ -764,7 +741,6 @@ export class AuthService {
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
-  
 
   static resetPassword = async ({
     txInstance,
@@ -823,6 +799,89 @@ export class AuthService {
       }
 
       return username;
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static createOTP = async (user: IUser, type: OTPType, tx: Transaction) => {
+    // Invalidate ANY previous unused tokens for this user
+      // (Prevents stacking valid OTPs)
+      await OTPRepository.updateByUserId({
+        tx,
+        update: { used: true },
+        userId: user.id,
+      });
+
+      // Generate  OTP
+      const otp = generateOTP();
+      const hashedOTP = hashToken(otp);
+
+      // Short Expiry (15 Minutes max for OTPs)
+      const expiresAt = addMinutes(new Date(), 15);
+
+      await OTPRepository.createOTP({
+        tx,
+        dto: {
+          userId: user.id,
+          type,
+          hashedOTP,
+          expiresAt,
+          attempts: 0,
+        },
+      });
+
+      return otp;
+  };
+
+  static requestEmailVerification = async ({
+    user,
+    txInstance,
+  }: {
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      if (user.emailVerified) {
+        throw new BadRequestException("Email already verified");
+      }
+
+      const otp = await this.createOTP(user, OTPType.EmailVerification, tx);
+
+      await MailerService.sendEmailVerificationMail({
+        dest: user.email,
+        name: user.firstName,
+        otp,
+      });
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static verifyEmailVerification = async ({
+    dto,
+    user,
+    txInstance,
+  }: {
+    dto: VerifyEmailOtpDTO;
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      await this.verifyOtp({
+        otp: dto.otp,
+        user,
+        type: OTPType.EmailVerification,
+        txInstance: tx,
+      });
+
+      await UsersService.updateUser({
+        txInstance: tx,
+        userId: user.id,
+        update: { emailVerified: true },
+      });
+
+      await MailerService.sendEmailVerifiedNotification(user.email, user.firstName);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);

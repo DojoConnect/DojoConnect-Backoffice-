@@ -14,7 +14,10 @@ import {
   handleVerifyOtp,
   handleResetPassword,
   handleIsDojoTagAvailable,
+  handleVerifyEmailRequest,
+  handleVerifyEmail,
 } from "../controllers/auth.controller.js";
+import { requireAuth } from "../middlewares/require-auth.middleware.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
 import {
   FirebaseSignInSchema,
@@ -24,7 +27,8 @@ import {
   RegisterDojoAdminSchema,
   RegisterParentSchema,
   ResetPasswordSchema,
-  VerifyOtpSchema,
+  VerifyPasswordResetOtpSchema,
+  VerifyEmailOtpSchema,
 } from "../validations/auth.schemas.js";
 
 const authLimiter = rateLimit({
@@ -128,10 +132,22 @@ router.post(
   "/verify-otp",
   otpVerifyLimiter,
   otpVerifyIpLimiter,
-  validateReqBody(VerifyOtpSchema),
+  validateReqBody(VerifyPasswordResetOtpSchema),
   handleVerifyOtp,
 );
 
 router.post("/reset-password", validateReqBody(ResetPasswordSchema), handleResetPassword);
+
+router.post("/email/verification/request", requireAuth, otpVerifyLimiter,
+  otpVerifyIpLimiter, handleVerifyEmailRequest);
+
+router.post(
+  "/email/verification/confirm",
+  requireAuth,
+  otpVerifyLimiter,
+  otpVerifyIpLimiter,
+  validateReqBody(VerifyEmailOtpSchema),
+  handleVerifyEmail,
+);
 
 export default router;
