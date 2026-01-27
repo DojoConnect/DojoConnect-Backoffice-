@@ -604,6 +604,26 @@ export class MailerService {
     await this.getTransporter().sendMail(mailOptions);
   };
 
+  static sendPasswordChangedNotification = async (dest: string, name: string) => {
+    try {
+      const mailOptions = {
+        from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+        to: dest,
+        subject: "Your Dojo Connect Password Has Been Changed",
+        html: `
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>This is a notification that your Dojo Connect password has been successfully changed.</p>
+      <p>If you did not make this change, please contact our support team immediately.</p>
+      <p>– Dojo Connect Team</p>
+    `,
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(`Password changed notification email failed to ${dest}: ${error.message}`);
+    }
+  };
+
   static sendEmailVerificationMail = async ({
     dest,
     name,

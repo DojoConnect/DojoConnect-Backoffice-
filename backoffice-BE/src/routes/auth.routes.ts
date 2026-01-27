@@ -14,6 +14,7 @@ import {
   handleVerifyOtp,
   handleResetPassword,
   handleIsDojoTagAvailable,
+  handleChangePassword,
   handleVerifyEmailRequest,
   handleVerifyEmail,
 } from "../controllers/auth.controller.js";
@@ -29,6 +30,7 @@ import {
   ResetPasswordSchema,
   VerifyPasswordResetOtpSchema,
   VerifyEmailOtpSchema,
+  ChangePasswordSchema,
 } from "../validations/auth.schemas.js";
 
 const authLimiter = rateLimit({
@@ -148,6 +150,14 @@ router.post(
   otpVerifyIpLimiter,
   validateReqBody(VerifyEmailOtpSchema),
   handleVerifyEmail,
+);
+
+router.post(
+  "/change-password",
+  authLimiter,
+  requireAuth,
+  validateReqBody(ChangePasswordSchema),
+  handleChangePassword,
 );
 
 export default router;

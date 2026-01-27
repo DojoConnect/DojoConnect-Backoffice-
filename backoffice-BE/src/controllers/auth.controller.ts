@@ -139,6 +139,26 @@ export const handleResetPassword = async (req: Request, res: Response) => {
   }
 };
 
+export const handleChangePassword = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not authenticated");
+  }
+
+  const userId = req.user.id;
+
+  await AuthService.changePassword({
+    userId,
+    dto: req.body,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Password changed successfully",
+    }),
+  );
+};
+
 export const handleVerifyEmailRequest = async (req: Request, res: Response) => {
   if (!req.user) {
     throw new UnauthorizedException("User not found");

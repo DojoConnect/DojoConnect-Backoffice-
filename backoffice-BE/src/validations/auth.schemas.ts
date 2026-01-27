@@ -74,6 +74,11 @@ export const ResetPasswordSchema = z.object({
   newPassword: PasswordSchema,
 });
 
+export const ChangePasswordSchema = z.object({
+  oldPassword: z.string().trim().nonempty(),
+  newPassword: PasswordSchema,
+});
+
 export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> & {
   dob?: z.infer<typeof DateOnlySchema>;
 };
@@ -86,3 +91,4 @@ export type ForgotPasswordDTO = z.infer<typeof ForgotPasswordSchema>;
 export type VerifyPasswordResetOtpDTO = z.infer<typeof VerifyPasswordResetOtpSchema>;
 export type VerifyEmailOtpDTO = z.infer<typeof VerifyEmailOtpSchema>;
 export type ResetPasswordDTO = z.infer<typeof ResetPasswordSchema>;
+export type ChangePasswordDTO = z.infer<typeof ChangePasswordSchema>;

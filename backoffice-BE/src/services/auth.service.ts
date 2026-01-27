@@ -34,6 +34,7 @@ import {
   ResetPasswordDTO,
   VerifyPasswordResetOtpDTO,
   RegisterParentDTO,
+  ChangePasswordDTO,
   VerifyEmailOtpDTO,
 } from "../validations/auth.schemas.js";
 import type { Transaction } from "../db/index.js";
@@ -799,6 +800,44 @@ export class AuthService {
       }
 
       return username;
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static changePassword = async ({
+    userId,
+    dto,
+    txInstance,
+  }: {
+    userId: string;
+    dto: ChangePasswordDTO;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      const user = await UsersService.getOneUserByID({ userId, txInstance: tx, withPassword: true });
+      if (!user || !user.passwordHash) {
+        throw new NotFoundException("User not found");
+      }
+
+      const isPasswordValid = await verifyPassword(user.passwordHash, dto.oldPassword);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException("Invalid Credentials");
+      }
+
+      const hashedNewPassword = await hashPassword(dto.newPassword);
+
+      await UsersService.updateUser({
+        userId,
+        update: { passwordHash: hashedNewPassword },
+        txInstance: tx,
+      });
+
+      // Kill all auth sessions
+      await RefreshTokenRepository.deleteByUserId(userId, tx);
+
+      // Send email notification
+      await MailerService.sendPasswordChangedNotification(user.email, user.firstName);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
