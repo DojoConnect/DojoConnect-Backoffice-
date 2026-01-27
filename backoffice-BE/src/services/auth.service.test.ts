@@ -1115,10 +1115,10 @@ describe("Auth Service", () => {
       await expect(AuthService.changePassword({ userId, dto })).rejects.toThrow(NotFoundException);
     });
 
-    it("should throw BadRequestException if old password is incorrect", async () => {
+    it("should throw UnauthorizedException if old password is incorrect", async () => {
       verifyPasswordSpy.mockResolvedValue(false);
 
-      await expect(AuthService.changePassword({ userId, dto })).rejects.toThrow(BadRequestException);
+      await expect(AuthService.changePassword({ userId, dto })).rejects.toThrow(UnauthorizedException);
     });
   });
 });

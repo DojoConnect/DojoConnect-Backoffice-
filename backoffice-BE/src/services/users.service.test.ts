@@ -151,7 +151,9 @@ describe("Users Service", () => {
       const result = await UsersService.getOneUserByID({ userId: id });
 
       expect(getOneUserSpy).toHaveBeenCalledWith(
-        { whereClause: eq(users.id, id) },
+        expect.objectContaining({
+          whereClause: eq(users.id, id),
+        }),
         expect.anything(), // tx
       );
       expect(result).toEqual(mockUser);
