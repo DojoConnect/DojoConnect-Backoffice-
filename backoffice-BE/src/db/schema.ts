@@ -37,6 +37,7 @@ import {
   Weekday,
   ClassOccurrenceStatus,
   ChatType,
+  OTPType,
 } from "../constants/enums.js";
 
 const activeBillingStatusesSql = sql.join(
@@ -551,18 +552,21 @@ export const parents = mysqlTable(
   (table) => [],
 );
 
-export const passwordResetOTPs = mysqlTable("password_reset_otps", {
+export const otps = mysqlTable("otps", {
   id: uuidPrimaryKey(),
   userId: varchar("user_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  type: mysqlEnum(OTPType).notNull(),
   hashedOTP: varchar("hashed_otp", { length: 255 }).notNull(),
   attempts: int("attempts").default(0).notNull(),
   expiresAt: datetime("expires_at").notNull(),
   used: boolean("used").default(false).notNull(),
   blockedAt: datetime("blocked_at"), // Block after max attempts
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  index("user_id").on(table.userId),
+]);
 
 export const sessions = mysqlTable(
   "sessions",

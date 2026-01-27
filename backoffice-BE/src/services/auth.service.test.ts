@@ -35,7 +35,7 @@ import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { UserDTO } from "../dtos/user.dtos.js";
 import { buildFirebaseUserMock } from "../tests/factories/firebase.factory.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
-import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
+import { OTPRepository } from "../repositories/otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
 import { AuthResponseDTO } from "../dtos/auth.dtos.js";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
@@ -772,8 +772,8 @@ describe("Auth Service", () => {
     let sendPasswordResetMailSpy: MockInstance;
 
     beforeEach(() => {
-      updateOTPSpy = vi.spyOn(PasswordResetOTPRepository, "updateOTP").mockResolvedValue(undefined);
-      createOTPSpy = vi.spyOn(PasswordResetOTPRepository, "createOTP").mockResolvedValue(undefined);
+      updateOTPSpy = vi.spyOn(OTPRepository, "updateOTP").mockResolvedValue(undefined);
+      createOTPSpy = vi.spyOn(OTPRepository, "createOTP").mockResolvedValue(undefined);
       generateOTPSpy = vi.spyOn(authUtils, "generateOTP").mockReturnValue("123456");
       hashTokenSpy = vi.spyOn(authUtils, "hashToken").mockReturnValue("hashed_otp");
       sendPasswordResetMailSpy = vi
@@ -866,7 +866,7 @@ describe("Auth Service", () => {
     });
   });
 
-  describe("verifyOtp", () => {
+  describe("verifyPasswordResetOtp", () => {
     const dto = { email: "test@example.com", otp: "123456" };
     const user = buildUserMock({ email: dto.email });
     const otpRecord = {
@@ -886,12 +886,12 @@ describe("Auth Service", () => {
 
     beforeEach(() => {
       vi.useFakeTimers();
-      findOneOTPSpy = vi.spyOn(PasswordResetOTPRepository, "findOne");
+      findOneOTPSpy = vi.spyOn(OTPRepository, "findOne");
       incrementAttemptsSpy = vi
-        .spyOn(PasswordResetOTPRepository, "incrementActiveOTPsAttempts")
+        .spyOn(OTPRepository, "incrementActiveOTPsAttempts")
         .mockResolvedValue(undefined);
       updateOneOTPSpy = vi
-        .spyOn(PasswordResetOTPRepository, "updateOneOTP")
+        .spyOn(OTPRepository, "updateById")
         .mockResolvedValue(undefined);
       generateResetTokenSpy = vi
         .spyOn(authUtils, "generatePasswordResetToken")
@@ -907,7 +907,7 @@ describe("Auth Service", () => {
       getOneUserByEmailSpy.mockResolvedValue(user);
       findOneOTPSpy.mockResolvedValue(otpRecord);
 
-      const result = await AuthService.verifyOtp({ dto });
+      const result = await AuthService.verifyPasswordResetOtp({ dto });
 
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
         email: dto.email,
@@ -926,14 +926,14 @@ describe("Auth Service", () => {
 
     it("should throw BadRequestException if user not found", async () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
-      await expect(AuthService.verifyOtp({ dto })).rejects.toThrow(BadRequestException);
+      await expect(AuthService.verifyPasswordResetOtp({ dto })).rejects.toThrow(BadRequestException);
     }, 10000);
 
     it("should throw BadRequestException if OTP not found or invalid", async () => {
       getOneUserByEmailSpy.mockResolvedValue(user);
       findOneOTPSpy.mockResolvedValue(null);
 
-      await expect(AuthService.verifyOtp({ dto })).rejects.toThrow(BadRequestException);
+      await expect(AuthService.verifyPasswordResetOtp({ dto })).rejects.toThrow(BadRequestException);
 
       expect(incrementAttemptsSpy).toHaveBeenCalledWith({
         tx: expect.anything(),
@@ -949,7 +949,7 @@ describe("Auth Service", () => {
       };
       findOneOTPSpy.mockResolvedValue(exhaustedOtp);
 
-      await expect(AuthService.verifyOtp({ dto })).rejects.toThrow(TooManyRequestsException);
+      await expect(AuthService.verifyPasswordResetOtp({ dto })).rejects.toThrow(TooManyRequestsException);
 
       expect(updateOneOTPSpy).toHaveBeenCalledWith({
         tx: expect.anything(),

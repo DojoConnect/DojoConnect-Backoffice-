@@ -37,6 +37,11 @@ export enum Role {
   Child = "child",
 }
 
+export enum OTPType {
+  PasswordReset = "password_reset",
+  EmailVerification = "email_verification",
+}
+
 export enum StripePlans {
   Monthly = "monthly",
   Yearly = "yearly",

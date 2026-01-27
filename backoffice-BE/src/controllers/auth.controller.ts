@@ -118,7 +118,7 @@ export const handleInitForgetPassword = async (req: Request, res: Response) => {
 
 export const handleVerifyOtp = async (req: Request, res: Response) => {
   try {
-    const result = await AuthService.verifyOtp({ dto: req.body });
+    const result = await AuthService.verifyPasswordResetOtp({ dto: req.body });
     res.json(formatApiResponse({ data: result }));
   } catch (error) {
     throw new BadRequestException("Invalid OTP or expired");

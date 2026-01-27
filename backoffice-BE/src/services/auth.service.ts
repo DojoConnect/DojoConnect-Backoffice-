@@ -1,7 +1,5 @@
 // src/services/auth.service.ts
 import * as dbService from "../db/index.js";
-import { passwordResetOTPs } from "../db/schema.js";
-import { and, eq, gt, isNull } from "drizzle-orm";
 import {
   generateAccessToken,
   generateOTP,
@@ -38,10 +36,10 @@ import {
   RegisterParentDTO,
 } from "../validations/auth.schemas.js";
 import type { Transaction } from "../db/index.js";
-import { DojoStatus, Role } from "../constants/enums.js";
+import { DojoStatus, OTPType, Role } from "../constants/enums.js";
 import { AuthResponseDTO, RegisterDojoAdminResponseDTO } from "../dtos/auth.dtos.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
-import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
+import { OTPRepository } from "../repositories/otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
 import { IUser } from "../repositories/user.repository.js";
@@ -632,14 +630,17 @@ export class AuthService {
         txInstance: tx,
       });
 
-      if (!user) return; // Silent fail (security: prevent email enumeration)
+      // Ensure to Silent fail in the controller (security: prevent email enumeration)
+      if (!user) {
+        throw new NotFoundException("User not found");
+      }; 
 
       // Invalidate ANY previous unused tokens for this user
       // (Prevents stacking valid OTPs)
-      await PasswordResetOTPRepository.updateOTP({
+      await OTPRepository.updateByUserId({
         tx,
         update: { used: true },
-        whereClause: eq(passwordResetOTPs.userId, user.id),
+        userId: user.id,
       });
 
       // Generate  OTP
@@ -649,13 +650,14 @@ export class AuthService {
       // Short Expiry (15 Minutes max for OTPs)
       const expiresAt = addMinutes(new Date(), 15);
 
-      await PasswordResetOTPRepository.createOTP({
+      await OTPRepository.createOTP({
         tx,
         dto: {
           userId: user.id,
+          type: OTPType.PasswordReset,
           hashedOTP,
           expiresAt,
-          attempts: 0, // Reset attempts
+          attempts: 0,
         },
       });
 
@@ -669,7 +671,7 @@ export class AuthService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static verifyOtp = async ({
+  static verifyPasswordResetOtp = async ({
     dto,
     txInstance,
   }: {
@@ -686,23 +688,48 @@ export class AuthService {
         throw new BadRequestException("Invalid OTP");
       }
 
+      await this.verifyOtp({
+        dto,
+        user,
+        type: OTPType.PasswordReset,
+        txInstance: tx,
+      });
+
+      // D. ISSUE THE "PERMISSION SLIP" (Exchange Token)
+      // This is a JWT specifically for resetting the password.
+      // It expires in 5 minutes (enough time to type a new password).
+      const resetToken = generatePasswordResetToken(user.id);
+      return { resetToken };
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static verifyOtp = async ({
+    dto,
+    type,
+    user,
+    txInstance,
+  }: {
+    dto: VerifyOtpDTO;
+    type: OTPType;
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
       // Hash the provided OTP
       const otpHash = hashToken(dto.otp);
 
-      const otpRecord = await PasswordResetOTPRepository.findOne({
+      const otpRecord = await OTPRepository.findOneActiveOTP({
         tx,
-        whereClause: and(
-          eq(passwordResetOTPs.userId, user.id),
-          eq(passwordResetOTPs.hashedOTP, otpHash),
-          eq(passwordResetOTPs.used, false),
-          isNull(passwordResetOTPs.blockedAt),
-          gt(passwordResetOTPs.expiresAt, new Date()),
-        ),
+        userId: user.id,
+        otpHash,
+        type,
       });
 
       if (!otpRecord) {
         // OTP not found - increment attempts on all active OTPs
-        await PasswordResetOTPRepository.incrementActiveOTPsAttempts({
+        await OTPRepository.incrementActiveOTPsAttempts({
           tx,
           userId: user.id,
         });
@@ -712,7 +739,7 @@ export class AuthService {
       // CHECK ATTEMPTS (Security Critical)
       if (otpRecord.attempts! >= AppConstants.MAX_OTP_VERIFICATION_ATTEMPTS) {
         // Burn the token immediately if it hasn't been burned yet
-        await PasswordResetOTPRepository.updateOneOTP({
+        await OTPRepository.updateById({
           tx,
           otpID: otpRecord.id,
           update: {
@@ -726,23 +753,18 @@ export class AuthService {
 
       // SUCCESS: Burn the OTP immediately!
       // The OTP is now dead. It cannot be used again.
-      await PasswordResetOTPRepository.updateOneOTP({
+      await OTPRepository.updateById({
         tx,
         otpID: otpRecord.id,
         update: {
           used: true,
         },
       });
-
-      // D. ISSUE THE "PERMISSION SLIP" (Exchange Token)
-      // This is a JWT specifically for resetting the password.
-      // It expires in 5 minutes (enough time to type a new password).
-      const resetToken = generatePasswordResetToken(user.id);
-      return { resetToken };
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
+  
 
   static resetPassword = async ({
     txInstance,
