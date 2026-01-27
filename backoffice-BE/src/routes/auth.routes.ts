@@ -121,7 +121,7 @@ router.get(
 router.get("/availability/dojo-tags/:tag", checkAvailabilityRateLimiter, handleIsDojoTagAvailable);
 
 router.post(
-  "/forgot-password",
+  "/password/reset/request",
   otpRequestLimiter,
   otpIpLimiter,
   validateReqBody(ForgotPasswordSchema),
@@ -129,14 +129,14 @@ router.post(
 );
 
 router.post(
-  "/verify-otp",
+  "/password/reset/verify",
   otpVerifyLimiter,
   otpVerifyIpLimiter,
   validateReqBody(VerifyPasswordResetOtpSchema),
   handleVerifyOtp,
 );
 
-router.post("/reset-password", validateReqBody(ResetPasswordSchema), handleResetPassword);
+router.post("/password/reset", validateReqBody(ResetPasswordSchema), handleResetPassword);
 
 router.post("/email/verification/request", requireAuth, otpVerifyLimiter,
   otpVerifyIpLimiter, handleVerifyEmailRequest);
