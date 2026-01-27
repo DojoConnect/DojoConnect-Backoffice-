@@ -24,6 +24,7 @@ import { addDays, subDays } from "date-fns";
 import { refreshTokens } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import {
+  buildChangePasswordDTOMock,
   buildLoginDTOMock,
   buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
@@ -1052,6 +1053,72 @@ describe("Auth Service", () => {
       await expect(AuthService.registerParent({ dto: parentDto })).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe("changePassword", () => {
+    const userId = "user-123";
+    const dto = buildChangePasswordDTOMock({
+      oldPassword: "oldPassword123",
+      newPassword: "newPassword123!",
+    });
+    
+    const mockUser = buildUserMock({
+      id: userId,
+      passwordHash: "oldHashedPassword",
+      email: "test@example.com",
+      firstName: "Test",
+    });
+
+    let verifyPasswordSpy: MockInstance;
+    let hashPasswordSpy: MockInstance;
+    let updateUserSpy: MockInstance;
+    let deleteByUserIdSpy: MockInstance;
+    let sendNotificationSpy: MockInstance;
+
+    beforeEach(() => {
+      verifyPasswordSpy = vi.spyOn(authUtils, "verifyPassword");
+      hashPasswordSpy = vi.spyOn(authUtils, "hashPassword").mockResolvedValue("newHashedPassword");
+      updateUserSpy = vi.spyOn(UsersService, "updateUser").mockResolvedValue();
+      deleteByUserIdSpy = vi.spyOn(RefreshTokenRepository, "deleteByUserId").mockResolvedValue();
+      sendNotificationSpy = vi
+        .spyOn(MailerService, "sendPasswordChangedNotification")
+        .mockResolvedValue();
+
+      getOneUserByIDSpy.mockResolvedValue(mockUser);
+    });
+
+    it("should successfully change password", async () => {
+      verifyPasswordSpy.mockResolvedValue(true);
+
+      await AuthService.changePassword({ userId, dto });
+
+      expect(getOneUserByIDSpy).toHaveBeenCalledWith({
+        userId,
+        txInstance: dbSpies.mockTx,
+        withPassword: true,
+      });
+      expect(verifyPasswordSpy).toHaveBeenCalledWith("oldHashedPassword", dto.oldPassword);
+      expect(hashPasswordSpy).toHaveBeenCalledWith(dto.newPassword);
+      expect(updateUserSpy).toHaveBeenCalledWith({
+        userId,
+        update: { passwordHash: "newHashedPassword" },
+        txInstance: dbSpies.mockTx,
+      });
+      expect(deleteByUserIdSpy).toHaveBeenCalledWith(userId, dbSpies.mockTx);
+      expect(sendNotificationSpy).toHaveBeenCalledWith(mockUser.email, mockUser.firstName);
+    });
+
+    it("should throw NotFoundException if user is not found", async () => {
+      getOneUserByIDSpy.mockResolvedValue(null);
+
+      await expect(AuthService.changePassword({ userId, dto })).rejects.toThrow(NotFoundException);
+    });
+
+    it("should throw BadRequestException if old password is incorrect", async () => {
+      verifyPasswordSpy.mockResolvedValue(false);
+
+      await expect(AuthService.changePassword({ userId, dto })).rejects.toThrow(BadRequestException);
     });
   });
 });

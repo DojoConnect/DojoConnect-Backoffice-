@@ -55,14 +55,16 @@ export class UsersService {
 
   static getOneUserByID = async ({
     userId,
+    withPassword = false,
     txInstance,
   }: {
     userId: string;
+    withPassword?: boolean;
     txInstance?: Transaction;
   }): Promise<IUser | null> => {
     const execute = async (tx: Transaction) => {
       try {
-        return await UsersService.getOneUser({ whereClause: eq(users.id, userId) }, tx);
+        return await UsersService.getOneUser({ whereClause: eq(users.id, userId), withPassword }, tx);
       } catch (err: any) {
         console.error(`Error fetching user by ID: ${userId}`, { err });
         throw err;

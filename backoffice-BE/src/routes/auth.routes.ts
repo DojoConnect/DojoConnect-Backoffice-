@@ -14,6 +14,7 @@ import {
   handleVerifyOtp,
   handleResetPassword,
   handleIsDojoTagAvailable,
+  handleChangePassword,
 } from "../controllers/auth.controller.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
 import {
@@ -25,7 +26,9 @@ import {
   RegisterParentSchema,
   ResetPasswordSchema,
   VerifyOtpSchema,
+  ChangePasswordSchema,
 } from "../validations/auth.schemas.js";
+import { requireAuth } from "../middlewares/require-auth.middleware.js";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -133,5 +136,13 @@ router.post(
 );
 
 router.post("/reset-password", validateReqBody(ResetPasswordSchema), handleResetPassword);
+
+router.post(
+  "/change-password",
+  authLimiter,
+  requireAuth,
+  validateReqBody(ChangePasswordSchema),
+  handleChangePassword,
+);
 
 export default router;
