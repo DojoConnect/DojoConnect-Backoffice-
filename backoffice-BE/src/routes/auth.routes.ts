@@ -140,6 +140,14 @@ router.post(
 
 router.post("/password/reset", validateReqBody(ResetPasswordSchema), handleResetPassword);
 
+router.post(
+  "/password/change",
+  authLimiter,
+  requireAuth,
+  validateReqBody(ChangePasswordSchema),
+  handleChangePassword,
+);
+
 router.post("/email/verification/request", requireAuth, otpVerifyLimiter,
   otpVerifyIpLimiter, handleVerifyEmailRequest);
 
@@ -150,14 +158,6 @@ router.post(
   otpVerifyIpLimiter,
   validateReqBody(VerifyEmailOtpSchema),
   handleVerifyEmail,
-);
-
-router.post(
-  "/change-password",
-  authLimiter,
-  requireAuth,
-  validateReqBody(ChangePasswordSchema),
-  handleChangePassword,
 );
 
 export default router;
