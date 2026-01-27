@@ -19,7 +19,7 @@ import {
   UnauthorizedException,
   TooManyRequestsException,
 } from "../core/errors/index.js";
-import { Role, StripePlans, SupportedOAuthProviders } from "../constants/enums.js";
+import { Role, StripePlans, SupportedOAuthProviders, OTPType } from "../constants/enums.js";
 import { addDays, subDays } from "date-fns";
 import { refreshTokens } from "../db/schema.js";
 import { eq } from "drizzle-orm";
@@ -772,7 +772,7 @@ describe("Auth Service", () => {
     let sendPasswordResetMailSpy: MockInstance;
 
     beforeEach(() => {
-      updateOTPSpy = vi.spyOn(OTPRepository, "updateOTP").mockResolvedValue(undefined);
+      updateOTPSpy = vi.spyOn(OTPRepository, "updateByUserId").mockResolvedValue(undefined);
       createOTPSpy = vi.spyOn(OTPRepository, "createOTP").mockResolvedValue(undefined);
       generateOTPSpy = vi.spyOn(authUtils, "generateOTP").mockReturnValue("123456");
       hashTokenSpy = vi.spyOn(authUtils, "hashToken").mockReturnValue("hashed_otp");
@@ -793,7 +793,7 @@ describe("Auth Service", () => {
       expect(updateOTPSpy).toHaveBeenCalledWith({
         tx: expect.anything(),
         update: { used: true },
-        whereClause: expect.anything(),
+        userId: user.id,
       });
       expect(generateOTPSpy).toHaveBeenCalled();
       expect(hashTokenSpy).toHaveBeenCalledWith("123456");
@@ -801,6 +801,7 @@ describe("Auth Service", () => {
         tx: expect.anything(),
         dto: expect.objectContaining({
           userId: user.id,
+          type: OTPType.PasswordReset,
           hashedOTP: "hashed_otp",
           attempts: 0,
         }),
@@ -812,10 +813,10 @@ describe("Auth Service", () => {
       });
     });
 
-    it("should silently fail if user is not found", async () => {
+    it("should throw NotFoundException if user is not found", async () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
 
-      await AuthService.initForgetPassword({ dto });
+      await expect(AuthService.initForgetPassword({ dto })).rejects.toThrow(NotFoundException);
 
       expect(getOneUserByEmailSpy).toHaveBeenCalled();
       expect(updateOTPSpy).not.toHaveBeenCalled();
@@ -880,7 +881,7 @@ describe("Auth Service", () => {
 
     let findOneOTPSpy: MockInstance;
     let incrementAttemptsSpy: MockInstance;
-    let updateOneOTPSpy: MockInstance;
+    let updateByIdSpy: MockInstance;
     let generateResetTokenSpy: MockInstance;
     let hashTokenSpy: MockInstance;
 
@@ -890,22 +891,21 @@ describe("Auth Service", () => {
       incrementAttemptsSpy = vi
         .spyOn(OTPRepository, "incrementActiveOTPsAttempts")
         .mockResolvedValue(undefined);
-      updateOneOTPSpy = vi
-        .spyOn(OTPRepository, "updateById")
-        .mockResolvedValue(undefined);
+      updateByIdSpy = vi.spyOn(OTPRepository, "updateById").mockResolvedValue(undefined);
       generateResetTokenSpy = vi
         .spyOn(authUtils, "generatePasswordResetToken")
         .mockReturnValue("reset_token");
       hashTokenSpy = vi.spyOn(authUtils, "hashToken").mockReturnValue("hashed_otp");
+      vi.spyOn(AuthService, "verifyOtp").mockResolvedValue(undefined);
     });
 
     afterEach(() => {
       vi.useRealTimers();
+      vi.spyOn(AuthService, "verifyOtp").mockRestore();
     });
 
     it("should verify OTP successfully and return reset token", async () => {
       getOneUserByEmailSpy.mockResolvedValue(user);
-      findOneOTPSpy.mockResolvedValue(otpRecord);
 
       const result = await AuthService.verifyPasswordResetOtp({ dto });
 
@@ -913,12 +913,11 @@ describe("Auth Service", () => {
         email: dto.email,
         txInstance: expect.anything(),
       });
-      expect(hashTokenSpy).toHaveBeenCalledWith(dto.otp);
-      expect(findOneOTPSpy).toHaveBeenCalled();
-      expect(updateOneOTPSpy).toHaveBeenCalledWith({
-        tx: expect.anything(),
-        otpID: otpRecord.id,
-        update: { used: true },
+      expect(AuthService.verifyOtp).toHaveBeenCalledWith({
+        dto,
+        user,
+        type: OTPType.PasswordReset,
+        txInstance: expect.anything(),
       });
       expect(generateResetTokenSpy).toHaveBeenCalledWith(user.id);
       expect(result).toEqual({ resetToken: "reset_token" });
@@ -929,11 +928,56 @@ describe("Auth Service", () => {
       await expect(AuthService.verifyPasswordResetOtp({ dto })).rejects.toThrow(BadRequestException);
     }, 10000);
 
-    it("should throw BadRequestException if OTP not found or invalid", async () => {
+    it("should throw TooManyRequestsException if verifyOtp throws it", async () => {
       getOneUserByEmailSpy.mockResolvedValue(user);
-      findOneOTPSpy.mockResolvedValue(null);
+      vi.spyOn(AuthService, "verifyOtp").mockRejectedValue(new TooManyRequestsException("Too many attempts"));
 
-      await expect(AuthService.verifyPasswordResetOtp({ dto })).rejects.toThrow(BadRequestException);
+      await expect(AuthService.verifyPasswordResetOtp({ dto })).rejects.toThrow(TooManyRequestsException);
+    });
+  });
+
+  describe("verifyOtp", () => {
+    const user = buildUserMock({ id: "user-123" });
+    const dto = { email: user.email, otp: "123456" };
+    const type = OTPType.PasswordReset;
+    const otpRecord = {
+      id: "otp-id",
+      userId: user.id,
+      hashedOTP: "hashed_otp",
+      attempts: 0,
+      expiresAt: addDays(new Date(), 1),
+      used: false,
+    };
+
+    let findOneActiveOTPSpy: MockInstance;
+    let incrementAttemptsSpy: MockInstance;
+    let updateByIdSpy: MockInstance;
+
+    beforeEach(() => {
+      findOneActiveOTPSpy = vi.spyOn(OTPRepository, "findOneActiveOTP");
+      incrementAttemptsSpy = vi
+        .spyOn(OTPRepository, "incrementActiveOTPsAttempts")
+        .mockResolvedValue(undefined);
+      updateByIdSpy = vi.spyOn(OTPRepository, "updateById").mockResolvedValue(undefined);
+    });
+
+    it("should successfully burn OTP if valid", async () => {
+      findOneActiveOTPSpy.mockResolvedValue(otpRecord);
+
+      await AuthService.verifyOtp({ dto, type, user });
+
+      expect(findOneActiveOTPSpy).toHaveBeenCalled();
+      expect(updateByIdSpy).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        otpID: otpRecord.id,
+        update: { used: true },
+      });
+    });
+
+    it("should increment attempts and throw if OTP not found", async () => {
+      findOneActiveOTPSpy.mockResolvedValue(null);
+
+      await expect(AuthService.verifyOtp({ dto, type, user })).rejects.toThrow(BadRequestException);
 
       expect(incrementAttemptsSpy).toHaveBeenCalledWith({
         tx: expect.anything(),
@@ -941,17 +985,13 @@ describe("Auth Service", () => {
       });
     });
 
-    it("should throw TooManyRequestsException if max attempts reached", async () => {
-      getOneUserByEmailSpy.mockResolvedValue(user);
-      const exhaustedOtp = {
-        ...otpRecord,
-        attempts: AppConstants.MAX_OTP_VERIFICATION_ATTEMPTS,
-      };
-      findOneOTPSpy.mockResolvedValue(exhaustedOtp);
+    it("should burn OTP and throw if max attempts reached", async () => {
+      const exhaustedOtp = { ...otpRecord, attempts: AppConstants.MAX_OTP_VERIFICATION_ATTEMPTS };
+      findOneActiveOTPSpy.mockResolvedValue(exhaustedOtp);
 
-      await expect(AuthService.verifyPasswordResetOtp({ dto })).rejects.toThrow(TooManyRequestsException);
+      await expect(AuthService.verifyOtp({ dto, type, user })).rejects.toThrow(TooManyRequestsException);
 
-      expect(updateOneOTPSpy).toHaveBeenCalledWith({
+      expect(updateByIdSpy).toHaveBeenCalledWith({
         tx: expect.anything(),
         otpID: exhaustedOtp.id,
         update: {
