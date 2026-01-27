@@ -4,6 +4,7 @@ import { AuthResponseDTO, AuthResponseDTOParams } from "../../dtos/auth.dtos.js"
 import { IOAuthAcct } from "../../repositories/oauth-providers.repository.js";
 import { INewRefreshToken, IRefreshToken } from "../../repositories/refresh-token.repository.js";
 import {
+  ChangePasswordDTO,
   LoginDTO,
   RefreshTokenDTO,
   RegisterDojoAdminDTO,
@@ -117,6 +118,14 @@ export const buildOAuthAcctMock = (overrides?: Partial<IOAuthAcct>): IOAuthAcct 
     profileData: {},
     createdAt: new Date(),
     updatedAt: new Date(),
+    ...overrides,
+  };
+};
+
+export const buildChangePasswordDTOMock = (overrides?: Partial<ChangePasswordDTO>): ChangePasswordDTO => {
+  return {
+    oldPassword: "old-password",
+    newPassword: "new-password",
     ...overrides,
   };
 };

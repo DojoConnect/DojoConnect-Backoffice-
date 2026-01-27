@@ -66,6 +66,11 @@ export const ResetPasswordSchema = z.object({
   newPassword: PasswordSchema,
 });
 
+export const ChangePasswordSchema = z.object({
+  oldPassword: z.string().trim().nonempty(),
+  newPassword: PasswordSchema,
+});
+
 export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> & {
   dob?: z.infer<typeof DateOnlySchema>;
 };
@@ -77,3 +82,4 @@ export type FirebaseSignInDTO = z.infer<typeof FirebaseSignInSchema>;
 export type ForgotPasswordDTO = z.infer<typeof ForgotPasswordSchema>;
 export type VerifyOtpDTO = z.infer<typeof VerifyOtpSchema>;
 export type ResetPasswordDTO = z.infer<typeof ResetPasswordSchema>;
+export type ChangePasswordDTO = z.infer<typeof ChangePasswordSchema>;

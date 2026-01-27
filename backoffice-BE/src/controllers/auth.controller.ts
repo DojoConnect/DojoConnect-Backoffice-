@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 
 import { AuthService } from "../services/auth.service.js";
 import { formatApiResponse } from "../utils/api.utils.js";
-import { BadRequestException } from "../core/errors/index.js";
+import { BadRequestException, UnauthorizedException } from "../core/errors/index.js";
 
 export const handleRegisterDojoAdmin = async (req: Request, res: Response) => {
   const userIp = req.ip;
@@ -137,4 +137,24 @@ export const handleResetPassword = async (req: Request, res: Response) => {
   } catch (error) {
     throw new BadRequestException("Reset Password Token expired or invalid");
   }
+};
+
+export const handleChangePassword = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not authenticated");
+  }
+
+  const userId = req.user.id;
+
+  await AuthService.changePassword({
+    userId,
+    dto: req.body,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Password changed successfully",
+    }),
+  );
 };
