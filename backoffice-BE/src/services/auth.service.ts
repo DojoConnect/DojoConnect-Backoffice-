@@ -762,22 +762,42 @@ export class AuthService {
   }) => {
     const execute = async (tx: Transaction) => {
       const decoded = verifyPasswordResetToken(dto.resetToken);
+      
+      const user = await UsersService.getOneUserByID({ userId: decoded.userId, txInstance: tx });
+      if (!user) throw new NotFoundException("User not found");
 
-      // Hash new password
-      const newPasswordHash = await hashPassword(dto.newPassword);
-
-      // Update Password
-      await UsersService.updateUser({
-        txInstance: tx,
+      await this.updatePassword({
+        newPassword: dto.newPassword,
         userId: decoded.userId,
-        update: { passwordHash: newPasswordHash },
+        tx,
       });
 
-      // Security: Kill all sessions (Log out all devices)
-      await RefreshTokenRepository.deleteByUserId(decoded.userId, tx);
+      await MailerService.sendPasswordChangedNotification(user.email, user.firstName);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  /* Utility function for updating password. Either for reset password or authenticated user changing their password */
+  private static updatePassword = async ({newPassword, userId, tx}: {newPassword: string, userId: string, tx: Transaction}) => {
+      // Hash new password
+      const newPasswordHash = await hashPassword(newPassword);
+      
+      // Update Password
+      // Security: Kill all sessions (Log out all devices)
+      // Security: Revoke all pending OTPs
+      await Promise.all([
+        UsersService.updateUser({
+          txInstance: tx,
+          userId,
+          update: { passwordHash: newPasswordHash },
+        }),
+        RefreshTokenRepository.deleteByUserId(userId, tx),
+        OTPRepository.revokeUserPendingOTPs({
+          tx,
+          userId,
+        })
+      ]);
   };
 
   static generateUsername = async ({
@@ -835,16 +855,12 @@ export class AuthService {
         throw new UnauthorizedException("Invalid Credentials");
       }
 
-      const hashedNewPassword = await hashPassword(dto.newPassword);
-
-      await UsersService.updateUser({
+      // Update password
+      await this.updatePassword({
+        newPassword: dto.newPassword,
         userId,
-        update: { passwordHash: hashedNewPassword },
-        txInstance: tx,
+        tx,
       });
-
-      // Kill all auth sessions
-      await RefreshTokenRepository.deleteByUserId(userId, tx);
 
       // Send email notification
       await MailerService.sendPasswordChangedNotification(user.email, user.firstName);
@@ -854,11 +870,12 @@ export class AuthService {
   };
 
   static createOTP = async (user: IUser, type: OtpType, tx: Transaction) => {
-    // Invalidate ANY previous unused tokens for this user
+      // Delete previous unused tokens for this user
       // (Prevents stacking valid OTPs)
-      await OTPRepository.revokeUserPendingOTPs({
+      await OTPRepository.deleteByUserIdAndType({
         tx,
         userId: user.id,
+        type,
       });
 
       // Generate  OTP
@@ -1056,6 +1073,7 @@ export class AuthService {
 
       // Update user's email and mark as verified
       // Update email update request status to verified
+      // Security: Revoke all pending OTPs
       await Promise.all([
         UsersService.updateUser({
         txInstance: tx,
@@ -1065,12 +1083,16 @@ export class AuthService {
           emailVerified: true,
         },
       }),
-      EmailUpdateRequestRepository.updateStatus({
-        id: emailUpdateRequest.id,
-        status: EmailUpdateStatus.Verified,
+        EmailUpdateRequestRepository.updateStatus({
+          id: emailUpdateRequest.id,
+          status: EmailUpdateStatus.Verified,
+          tx,
+        }),
+        OTPRepository.revokeUserPendingOTPs({
         tx,
+        userId: user.id,
       })
-    ]);
+      ]);
 
       // Send confirmation emails to both addresses
       await Promise.allSettled([
