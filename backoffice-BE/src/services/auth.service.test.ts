@@ -37,6 +37,7 @@ import {
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { UserDTO } from "../dtos/user.dtos.js";
 import { buildFirebaseUserMock } from "../tests/factories/firebase.factory.js";
+import { DojoRepository } from "../repositories/dojo.repository.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
 import { OTPRepository } from "../repositories/otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
@@ -74,7 +75,7 @@ describe("Auth Service", () => {
     getOneUserByEmailSpy = vi.spyOn(UsersService, "getOneUserByEmail");
     getOneUserByIDSpy = vi.spyOn(UsersService, "getOneUserByID");
     getOneUserByUsernameSpy = vi.spyOn(UsersService, "getOneUserByUserName");
-    getOneDojoByTagSpy = vi.spyOn(DojosService, "getOneDojoByTag");
+    getOneDojoByTagSpy = vi.spyOn(DojoRepository, "getOneByTag");
     saveUserSpy = vi.spyOn(UsersService, "saveUser");
     getUserDojoSpy = vi.spyOn(DojosService, "fetchUserDojo").mockResolvedValue(mockDojo);
     vi.spyOn(UsersService, "getUserDTO").mockImplementation(

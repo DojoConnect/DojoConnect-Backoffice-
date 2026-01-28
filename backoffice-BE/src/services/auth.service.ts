@@ -43,6 +43,7 @@ import type { Transaction } from "../db/index.js";
 import { DojoStatus, Role } from "../constants/enums.js";
 import { AuthResponseDTO, RegisterDojoAdminResponseDTO } from "../dtos/auth.dtos.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
+import { DojoRepository } from "../repositories/dojo.repository.js";
 import { OTPRepository } from "../repositories/otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
@@ -287,7 +288,7 @@ export class AuthService {
               username: dto.username,
               txInstance: tx,
             }),
-            DojosService.getOneDojoByTag(dto.dojoTag, tx),
+            DojoRepository.getOneByTag(dto.dojoTag, tx),
           ]);
 
         if (existingUserWithEmail) {
@@ -520,7 +521,7 @@ export class AuthService {
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
-      const dojo = await DojosService.getOneDojoByTag(tag, tx);
+      const dojo = await DojoRepository.getOneByTag(tag, tx);
 
       if (dojo) {
         return false;
