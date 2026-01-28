@@ -763,11 +763,16 @@ export class AuthService {
     const execute = async (tx: Transaction) => {
       const decoded = verifyPasswordResetToken(dto.resetToken);
       
+      const user = await UsersService.getOneUserByID({ userId: decoded.userId, txInstance: tx });
+      if (!user) throw new NotFoundException("User not found");
+
       await this.updatePassword({
         newPassword: dto.newPassword,
         userId: decoded.userId,
         tx,
       });
+
+      await MailerService.sendPasswordChangedNotification(user.email, user.firstName);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
