@@ -854,11 +854,12 @@ export class AuthService {
   };
 
   static createOTP = async (user: IUser, type: OtpType, tx: Transaction) => {
-    // Invalidate ANY previous unused tokens for this user
+      // Delete previous unused tokens for this user
       // (Prevents stacking valid OTPs)
-      await OTPRepository.revokeUserPendingOTPs({
+      await OTPRepository.deleteByUserIdAndType({
         tx,
         userId: user.id,
+        type,
       });
 
       // Generate  OTP

@@ -991,13 +991,13 @@ describe("Auth Service", () => {
     const user = buildUserMock({ id: "user-123" });
     const type = OtpType.EmailVerification;
 
-    let revokePendingOtpsSpy: MockInstance;
+    let deleteExistingOtpsSpy: MockInstance;
     let createOTPSpy: MockInstance;
     let generateOTPSpy: MockInstance;
     let hashTokenSpy: MockInstance;
 
     beforeEach(() => {
-      revokePendingOtpsSpy = vi.spyOn(OTPRepository, "revokeUserPendingOTPs").mockResolvedValue(undefined);
+      deleteExistingOtpsSpy = vi.spyOn(OTPRepository, "deleteByUserIdAndType").mockResolvedValue(undefined);
       createOTPSpy = vi.spyOn(OTPRepository, "createOTP").mockResolvedValue("otp-id");
       generateOTPSpy = vi.spyOn(authUtils, "generateOTP").mockReturnValue("123456");
       hashTokenSpy = vi.spyOn(authUtils, "hashToken").mockReturnValue("hashed_otp");
@@ -1006,9 +1006,10 @@ describe("Auth Service", () => {
     it("should generate, hash, and save OTP after invalidating old ones", async () => {
       const result = await AuthService.createOTP(user, type, dbSpies.mockTx);
 
-      expect(revokePendingOtpsSpy).toHaveBeenCalledWith({
+      expect(deleteExistingOtpsSpy).toHaveBeenCalledWith({
         tx: dbSpies.mockTx,
         userId: user.id,
+        type
       });
       expect(generateOTPSpy).toHaveBeenCalled();
       expect(hashTokenSpy).toHaveBeenCalledWith("123456");
