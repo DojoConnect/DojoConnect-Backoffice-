@@ -9,3 +9,10 @@ export enum OtpStatus {
     Used = "used",
     Revoked = "revoked",
 }
+
+export enum EmailUpdateStatus {
+  Pending = "pending",
+  Verified = "verified",
+  Canceled = "canceled",
+  Revoked = "revoked",
+}

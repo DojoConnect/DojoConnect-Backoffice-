@@ -37,9 +37,8 @@ import {
   Weekday,
   ClassOccurrenceStatus,
   ChatType,
-  OTPType,
 } from "../constants/enums.js";
-import { OtpStatus, OtpType } from "../core/constants/auth.constants.js";
+import { OtpStatus, OtpType, EmailUpdateStatus } from "../core/constants/auth.constants.js";
 
 const activeBillingStatusesSql = sql.join(
   ACTIVE_BILLING_STATUSES.map((status) => sql.raw(`'${status}'`)),
@@ -299,6 +298,21 @@ export const oneTimeClassPayments = mysqlTable("one_time_class_payments", {
   amount: decimal({ precision: 10, scale: 2 }).notNull(),
   status: mysqlEnum(BillingStatus).notNull(),
   paidAt: timestamp("paid_at"),
+});
+
+export const emailUpdateRequests = mysqlTable("email_update_requests", {
+  id: uuidPrimaryKey(),
+  userId: varchar("user_id", { length: UUID_LENGTH })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  oldEmail: varchar("old_email", { length: 255 }).notNull(),
+  newEmail: varchar("new_email", { length: 255 }).notNull(),
+  status: mysqlEnum(EmailUpdateStatus).default(EmailUpdateStatus.Pending),
+  otpId: varchar("otp_id", { length: UUID_LENGTH })
+    .references(() => otps.id, { onDelete: "set null" }),
+  requestedAt: timestamp("requested_at",)
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
 });
 
 export const deletionRequests = mysqlTable("deletion_requests", {

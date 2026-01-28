@@ -17,6 +17,8 @@ import {
   handleChangePassword,
   handleVerifyEmailRequest,
   handleVerifyEmail,
+  handleRequestEmailUpdate,
+  handleVerifyEmailUpdate,
 } from "../controllers/auth.controller.js";
 import { requireAuth } from "../middlewares/require-auth.middleware.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
@@ -31,6 +33,8 @@ import {
   VerifyPasswordResetOtpSchema,
   VerifyEmailOtpSchema,
   ChangePasswordSchema,
+  RequestEmailUpdateSchema,
+  VerifyEmailUpdateSchema,
 } from "../validations/auth.schemas.js";
 
 const authLimiter = rateLimit({
@@ -158,6 +162,24 @@ router.post(
   otpVerifyIpLimiter,
   validateReqBody(VerifyEmailOtpSchema),
   handleVerifyEmail,
+);
+
+router.post(
+  "/email/update/request",
+  requireAuth,
+  otpRequestLimiter,
+  otpIpLimiter,
+  validateReqBody(RequestEmailUpdateSchema),
+  handleRequestEmailUpdate,
+);
+
+router.post(
+  "/email/update/verify",
+  requireAuth,
+  otpVerifyLimiter,
+  otpVerifyIpLimiter,
+  validateReqBody(VerifyEmailUpdateSchema),
+  handleVerifyEmailUpdate,
 );
 
 export default router;

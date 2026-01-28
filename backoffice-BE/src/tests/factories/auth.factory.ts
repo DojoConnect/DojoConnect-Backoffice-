@@ -12,7 +12,8 @@ import {
 } from "../../validations/auth.schemas.js";
 import { buildUserDtoMock } from "./user.factory.js";
 import { IOTP } from "../../repositories/otps.repository.js";
-import { OtpStatus, OtpType } from "../../core/constants/auth.constants.js";
+import { EmailUpdateStatus, OtpStatus, OtpType } from "../../core/constants/auth.constants.js";
+import { IEmailUpdateRequest } from "../../repositories/email-update-request.repository.js";
 
 export const buildRegisterDojoAdminDTOMock = (
   overrides?: Partial<RegisterDojoAdminDTO>,
@@ -143,6 +144,19 @@ export const buildIOtpMock = (overrides?: Partial<IOTP>): IOTP => {
     status: OtpStatus.Pending,
     revokedAt: null,
     createdAt: new Date(),
+    ...overrides,
+  };
+};
+
+export const buildEmailUpdateRequestMock = (overrides?: Partial<IEmailUpdateRequest>): IEmailUpdateRequest => {
+  return {
+    id: faker.string.uuid(),
+    userId: faker.string.uuid(),
+    oldEmail: faker.internet.email(),
+    newEmail: faker.internet.email(),
+    status: EmailUpdateStatus.Pending,
+    otpId: faker.string.uuid(),
+    requestedAt: new Date(),
     ...overrides,
   };
 };

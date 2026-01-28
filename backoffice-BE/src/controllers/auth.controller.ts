@@ -193,3 +193,41 @@ export const handleVerifyEmail = async (req: Request, res: Response) => {
     }),
   );
 };
+
+export const handleRequestEmailUpdate = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not authenticated");
+  }
+
+  const user = req.user;
+  await AuthService.requestEmailUpdate({
+    dto: req.body,
+    user,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Verification code sent to new email",
+    }),
+  );
+};
+
+export const handleVerifyEmailUpdate = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not authenticated");
+  }
+
+  const user = req.user;
+  await AuthService.verifyEmailUpdate({
+    dto: req.body,
+    user,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Email updated successfully",
+    }),
+  );
+};

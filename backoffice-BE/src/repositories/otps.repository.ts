@@ -11,8 +11,8 @@ export type IUpdateOTP = Partial<Omit<INewOTP, "type" | "userId" | "hashedOTP">>
 
 export class OTPRepository {
   static async createOTP({ dto, tx }: { dto: INewOTP; tx: Transaction }) {
-    // Create OAuth link
-    await tx.insert(otps).values(dto);
+    const [result] = await tx.insert(otps).values(dto).$returningId();
+    return result.id;
   }
 
   static async updateOTP({

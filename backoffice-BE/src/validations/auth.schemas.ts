@@ -79,6 +79,15 @@ export const ChangePasswordSchema = z.object({
   newPassword: PasswordSchema,
 });
 
+export const RequestEmailUpdateSchema = z.object({
+  newEmail: z.email().trim(),
+  password: z.string().trim().nonempty(),
+});
+
+export const VerifyEmailUpdateSchema = z.object({
+  otp: OtpSchema,
+});
+
 export type CreateUserBaseDTO = z.infer<typeof CreateUserBaseSchema> & {
   dob?: z.infer<typeof DateOnlySchema>;
 };
@@ -92,3 +101,5 @@ export type VerifyPasswordResetOtpDTO = z.infer<typeof VerifyPasswordResetOtpSch
 export type VerifyEmailOtpDTO = z.infer<typeof VerifyEmailOtpSchema>;
 export type ResetPasswordDTO = z.infer<typeof ResetPasswordSchema>;
 export type ChangePasswordDTO = z.infer<typeof ChangePasswordSchema>;
+export type RequestEmailUpdateDTO = z.infer<typeof RequestEmailUpdateSchema>;
+export type VerifyEmailUpdateDTO = z.infer<typeof VerifyEmailUpdateSchema>;

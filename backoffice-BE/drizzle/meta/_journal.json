@@ -22,6 +22,13 @@
       "when": 1769538198822,
       "tag": "0002_daffy_true_believers",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1769589682337,
+      "tag": "0003_sad_colossus",
+      "breakpoints": true
     }
   ]
 }
