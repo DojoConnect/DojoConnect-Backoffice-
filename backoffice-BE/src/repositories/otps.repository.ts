@@ -109,4 +109,12 @@ export class OTPRepository {
         ),
       );
   }
+
+  static deleteById = async ({ tx, otpID }: { otpID: string; tx: Transaction }) => {
+    await tx.delete(otps).where(eq(otps.id, otpID));
+  }
+
+  static async deleteByUserIdAndType({ tx, userId, type }: { userId: string; type: OtpType; tx: Transaction }) {
+    await tx.delete(otps).where(and(eq(otps.userId, userId), eq(otps.type, type)));
+  }
 }

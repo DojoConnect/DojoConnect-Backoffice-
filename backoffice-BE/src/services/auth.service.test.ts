@@ -37,6 +37,7 @@ import {
 import { buildDojoMock } from "../tests/factories/dojos.factory.js";
 import { UserDTO } from "../dtos/user.dtos.js";
 import { buildFirebaseUserMock } from "../tests/factories/firebase.factory.js";
+import { DojoRepository } from "../repositories/dojo.repository.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
 import { OTPRepository } from "../repositories/otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
@@ -66,6 +67,7 @@ describe("Auth Service", () => {
   let getOneUserByIDSpy: MockInstance;
   let createStripeCustomerSpy: MockInstance;
   let getUserDojoSpy: MockInstance;
+  let revokePendingOTPSpy: MockInstance;
 
   beforeEach(() => {
     dbSpies = createDrizzleDbSpies();
@@ -73,7 +75,7 @@ describe("Auth Service", () => {
     getOneUserByEmailSpy = vi.spyOn(UsersService, "getOneUserByEmail");
     getOneUserByIDSpy = vi.spyOn(UsersService, "getOneUserByID");
     getOneUserByUsernameSpy = vi.spyOn(UsersService, "getOneUserByUserName");
-    getOneDojoByTagSpy = vi.spyOn(DojosService, "getOneDojoByTag");
+    getOneDojoByTagSpy = vi.spyOn(DojoRepository, "getOneByTag");
     saveUserSpy = vi.spyOn(UsersService, "saveUser");
     getUserDojoSpy = vi.spyOn(DojosService, "fetchUserDojo").mockResolvedValue(mockDojo);
     vi.spyOn(UsersService, "getUserDTO").mockImplementation(
@@ -86,6 +88,7 @@ describe("Auth Service", () => {
 
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
+    revokePendingOTPSpy = vi.spyOn(OTPRepository, "revokeUserPendingOTPs").mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -818,6 +821,7 @@ describe("Auth Service", () => {
     let verifyTokenSpy: MockInstance;
     let hashPasswordSpy: MockInstance;
     let updateUserSpy: MockInstance;
+    let sendMailSpy: MockInstance
 
     beforeEach(() => {
       verifyTokenSpy = vi
@@ -827,6 +831,8 @@ describe("Auth Service", () => {
         .spyOn(authUtils, "hashPassword")
         .mockResolvedValue("new_hashed_password");
       updateUserSpy = vi.spyOn(UsersService, "updateUser").mockResolvedValue(undefined);
+      getOneUserByIDSpy.mockResolvedValue(buildUserMock({ id: decodedToken.userId }));
+      sendMailSpy = vi.spyOn(MailerService, "sendPasswordChangedNotification").mockResolvedValue(undefined);
     });
 
     it("should reset password and revoke refresh tokens", async () => {
@@ -842,6 +848,12 @@ describe("Auth Service", () => {
 
       expect(dbSpies.mockDelete).toHaveBeenCalledWith(refreshTokens);
       expect(dbSpies.mockWhere).toHaveBeenCalledWith(eq(refreshTokens.userId, decodedToken.userId));
+      expect(revokePendingOTPSpy).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        userId: decodedToken.userId,
+      });
+
+      expect(sendMailSpy).toHaveBeenCalled();
     });
 
     it("should throw if token verification fails", async () => {
@@ -991,13 +1003,13 @@ describe("Auth Service", () => {
     const user = buildUserMock({ id: "user-123" });
     const type = OtpType.EmailVerification;
 
-    let revokePendingOtpsSpy: MockInstance;
+    let deleteExistingOtpsSpy: MockInstance;
     let createOTPSpy: MockInstance;
     let generateOTPSpy: MockInstance;
     let hashTokenSpy: MockInstance;
 
     beforeEach(() => {
-      revokePendingOtpsSpy = vi.spyOn(OTPRepository, "revokeUserPendingOTPs").mockResolvedValue(undefined);
+      deleteExistingOtpsSpy = vi.spyOn(OTPRepository, "deleteByUserIdAndType").mockResolvedValue(undefined);
       createOTPSpy = vi.spyOn(OTPRepository, "createOTP").mockResolvedValue("otp-id");
       generateOTPSpy = vi.spyOn(authUtils, "generateOTP").mockReturnValue("123456");
       hashTokenSpy = vi.spyOn(authUtils, "hashToken").mockReturnValue("hashed_otp");
@@ -1006,9 +1018,10 @@ describe("Auth Service", () => {
     it("should generate, hash, and save OTP after invalidating old ones", async () => {
       const result = await AuthService.createOTP(user, type, dbSpies.mockTx);
 
-      expect(revokePendingOtpsSpy).toHaveBeenCalledWith({
+      expect(deleteExistingOtpsSpy).toHaveBeenCalledWith({
         tx: dbSpies.mockTx,
         userId: user.id,
+        type
       });
       expect(generateOTPSpy).toHaveBeenCalled();
       expect(hashTokenSpy).toHaveBeenCalledWith("123456");
@@ -1242,6 +1255,10 @@ describe("Auth Service", () => {
         txInstance: dbSpies.mockTx,
       });
       expect(deleteByUserIdSpy).toHaveBeenCalledWith(userId, dbSpies.mockTx);
+      expect(revokePendingOTPSpy).toHaveBeenCalledWith({
+        tx: dbSpies.mockTx,
+        userId,
+      });
       expect(sendNotificationSpy).toHaveBeenCalledWith(mockUser.email, mockUser.firstName);
     });
 
@@ -1412,6 +1429,10 @@ describe("Auth Service", () => {
         status: EmailUpdateStatus.Verified,
         tx: expect.anything(),
       });
+      expect(revokePendingOTPSpy).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        userId: user.id,
+      });
       expect(sendEmailUpdateConfirmationSpy).toHaveBeenCalledWith({
         dest: emailUpdateRequest.newEmail,
         name: user.firstName,
@@ -1432,8 +1453,3 @@ describe("Auth Service", () => {
     });
   });
 });
-
-const impoev = `This test suite provides a solid foundation for your authentication service. It uses Jest's mocking capabilities to isolate the service and test its logic in a controlled environment, ensuring each part works as expected. <!--
-[PROMPT_SUGGESTION]Can you write integration tests for the user registration endpoint ('/auth/register')?[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]Refactor the test setup to reduce boilerplate code across the different test files.[/PROMPT_SUGGESTION]
-`;
