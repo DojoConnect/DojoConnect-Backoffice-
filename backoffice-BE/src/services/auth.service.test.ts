@@ -626,8 +626,6 @@ describe("Auth Service", () => {
   });
 
   describe("firebaseSignIn", () => {
-    const tx = dbSpies.mockTx;
-
     const dto = {
       idToken: "firebase-token",
     };
@@ -656,7 +654,7 @@ describe("Auth Service", () => {
     beforeEach(() => {
       vi.clearAllMocks();
 
-      runInTxSpy = vi.spyOn(dbService, "runInTransaction").mockImplementation(async (cb) => cb(tx));
+      runInTxSpy = vi.spyOn(dbService, "runInTransaction").mockImplementation(async (cb) => cb(dbSpies.mockTx));
 
       verifyTokenSpy = vi
         .spyOn(FirebaseService, "verifyFirebaseToken")
@@ -697,11 +695,11 @@ describe("Auth Service", () => {
         emailVerified: false,
       });
 
-      await expect(AuthService.firebaseSignIn({ dto, txInstance: tx })).rejects.toThrow(
+      await expect(AuthService.firebaseSignIn({ dto, txInstance: dbSpies.mockTx })).rejects.toThrow(
         UnauthorizedException,
       );
 
-      await expect(AuthService.firebaseSignIn({ dto, txInstance: tx })).rejects.toThrow(
+      await expect(AuthService.firebaseSignIn({ dto, txInstance: dbSpies.mockTx })).rejects.toThrow(
         "Social Auth Email not verified",
       );
     });
@@ -709,7 +707,7 @@ describe("Auth Service", () => {
     it("should throw NotFoundException if user does not exist", async () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
 
-      await expect(AuthService.firebaseSignIn({ dto, txInstance: tx })).rejects.toThrow(
+      await expect(AuthService.firebaseSignIn({ dto, txInstance: dbSpies.mockTx })).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -719,7 +717,7 @@ describe("Auth Service", () => {
 
       const result = await AuthService.firebaseSignIn({
         dto,
-        txInstance: tx,
+        txInstance: dbSpies.mockTx,
       });
 
       expect(createOAuthAcctSpy).toHaveBeenCalledWith(
@@ -740,7 +738,7 @@ describe("Auth Service", () => {
 
       const result = await AuthService.firebaseSignIn({
         dto,
-        txInstance: tx,
+        txInstance: dbSpies.mockTx,
       });
 
       expect(updateSpy).toHaveBeenCalled();
@@ -754,7 +752,7 @@ describe("Auth Service", () => {
         dto,
         userIp: "127.0.0.1",
         userAgent: "vi",
-        txInstance: tx,
+        txInstance: dbSpies.mockTx,
       });
 
       expect(generateTokenSpy).toHaveBeenCalledWith(
