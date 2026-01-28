@@ -11,6 +11,8 @@ import {
   RegisterParentDTO,
 } from "../../validations/auth.schemas.js";
 import { buildUserDtoMock } from "./user.factory.js";
+import { IOTP } from "../../repositories/otps.repository.js";
+import { OtpStatus, OtpType } from "../../core/constants/auth.constants.js";
 
 export const buildRegisterDojoAdminDTOMock = (
   overrides?: Partial<RegisterDojoAdminDTO>,
@@ -129,3 +131,19 @@ export const buildChangePasswordDTOMock = (overrides?: Partial<ChangePasswordDTO
     ...overrides,
   };
 };
+
+export const buildIOtpMock = (overrides?: Partial<IOTP>): IOTP => {
+  return {
+    id: faker.string.uuid(),
+    userId: faker.string.uuid(),
+    hashedOTP: faker.string.uuid(),
+    expiresAt: faker.date.future(),
+    type: OtpType.PasswordReset,
+    attempts: 0,
+    status: OtpStatus.Pending,
+    revokedAt: null,
+    createdAt: new Date(),
+    ...overrides,
+  };
+};
+

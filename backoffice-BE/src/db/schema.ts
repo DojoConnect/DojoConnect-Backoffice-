@@ -39,6 +39,7 @@ import {
   ChatType,
   OTPType,
 } from "../constants/enums.js";
+import { OtpStatus, OtpType } from "../core/constants/auth.constants.js";
 
 const activeBillingStatusesSql = sql.join(
   ACTIVE_BILLING_STATUSES.map((status) => sql.raw(`'${status}'`)),
@@ -557,12 +558,12 @@ export const otps = mysqlTable("otps", {
   userId: varchar("user_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  type: mysqlEnum(OTPType).notNull(),
+  type: mysqlEnum(OtpType).notNull(),
   hashedOTP: varchar("hashed_otp", { length: 255 }).notNull(),
   attempts: int("attempts").default(0).notNull(),
+  status: mysqlEnum(OtpStatus).default(OtpStatus.Pending).notNull(),
   expiresAt: datetime("expires_at").notNull(),
-  used: boolean("used").default(false).notNull(),
-  blockedAt: datetime("blocked_at"), // Block after max attempts
+  revokedAt: datetime("revoked_at"), // Block after max attempts
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
 }, (table) => [
   index("user_id").on(table.userId),

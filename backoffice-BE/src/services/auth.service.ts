@@ -38,7 +38,7 @@ import {
   VerifyEmailOtpDTO,
 } from "../validations/auth.schemas.js";
 import type { Transaction } from "../db/index.js";
-import { DojoStatus, OTPType, Role } from "../constants/enums.js";
+import { DojoStatus, Role } from "../constants/enums.js";
 import { AuthResponseDTO, RegisterDojoAdminResponseDTO } from "../dtos/auth.dtos.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
 import { OTPRepository } from "../repositories/otps.repository.js";
@@ -49,6 +49,7 @@ import { SubscriptionService } from "./subscription.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { StripeService } from "./stripe.service.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
+import { OtpStatus, OtpType } from "../core/constants/auth.constants.js";
 
 export class AuthService {
   static generateAuthTokens = async ({
@@ -637,7 +638,7 @@ export class AuthService {
         throw new NotFoundException("User not found");
       }; 
 
-      const otp = await this.createOTP(user, OTPType.PasswordReset, tx);
+      const otp = await this.createOTP(user, OtpType.PasswordReset, tx);
 
       await MailerService.sendPasswordResetMail({
         dest: user.email,
@@ -669,7 +670,7 @@ export class AuthService {
       await this.verifyOtp({
         otp: dto.otp,
         user,
-        type: OTPType.PasswordReset,
+        type: OtpType.PasswordReset,
         txInstance: tx,
       });
 
@@ -690,7 +691,7 @@ export class AuthService {
     txInstance,
   }: {
     otp: string;
-    type: OTPType;
+    type: OtpType;
     user: IUser;
     txInstance?: Transaction;
   }) => {
@@ -721,7 +722,7 @@ export class AuthService {
           tx,
           otpID: otpRecord.id,
           update: {
-            used: true,
+            status: OtpStatus.Revoked,
             attempts: otpRecord.attempts! + 1,
           },
         });
@@ -735,7 +736,7 @@ export class AuthService {
         tx,
         otpID: otpRecord.id,
         update: {
-          used: true,
+          status: OtpStatus.Used,
         },
       });
     };
@@ -843,12 +844,11 @@ export class AuthService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static createOTP = async (user: IUser, type: OTPType, tx: Transaction) => {
+  static createOTP = async (user: IUser, type: OtpType, tx: Transaction) => {
     // Invalidate ANY previous unused tokens for this user
       // (Prevents stacking valid OTPs)
-      await OTPRepository.updateByUserId({
+      await OTPRepository.revokeUserPendingOTPs({
         tx,
-        update: { used: true },
         userId: user.id,
       });
 
@@ -885,7 +885,7 @@ export class AuthService {
         throw new BadRequestException("Email already verified");
       }
 
-      const otp = await this.createOTP(user, OTPType.EmailVerification, tx);
+      const otp = await this.createOTP(user, OtpType.EmailVerification, tx);
 
       await MailerService.sendEmailVerificationMail({
         dest: user.email,
@@ -910,7 +910,7 @@ export class AuthService {
       await this.verifyOtp({
         otp: dto.otp,
         user,
-        type: OTPType.EmailVerification,
+        type: OtpType.EmailVerification,
         txInstance: tx,
       });
 

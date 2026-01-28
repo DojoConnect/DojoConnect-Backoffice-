@@ -3,7 +3,7 @@ import type { Transaction } from "../db/index.js";
 import { otps } from "../db/schema.js";
 import { returnFirst } from "../utils/db.utils.js";
 import AppConstants from "../constants/AppConstants.js";
-import { OTPType } from "../constants/enums.js";
+import { OtpStatus, OtpType } from "../core/constants/auth.constants.js";
 
 export type IOTP = InferSelectModel<typeof otps>;
 export type INewOTP = Omit<InferInsertModel<typeof otps>, "id" | "createdAt">;
@@ -21,7 +21,7 @@ export class OTPRepository {
     whereClause,
   }: {
     update: IUpdateOTP;
-    whereClause: SQL;
+    whereClause: SQL|undefined;
     tx: Transaction;
   }) {
     await tx.update(otps).set(update).where(whereClause);
@@ -57,20 +57,37 @@ export class OTPRepository {
     await this.updateOTP({ whereClause, tx, update });
   }
 
+  static async revokeUserPendingOTPs({ tx, userId }: { userId: string; tx: Transaction }) {
+    await this.updateOTP({
+      whereClause: and(eq(otps.userId, userId), eq(otps.status, OtpStatus.Pending)),
+      update: {
+        status: OtpStatus.Revoked,
+      },
+      tx,
+    });
+  }
+
   static async findOne({ whereClause, tx }: { whereClause: SQL | undefined; tx: Transaction }) {
     return returnFirst(
       await tx.select().from(otps).where(whereClause).limit(1).execute(),
     );
   }
 
-  static async findOneActiveOTP({ tx, userId, otpHash, type }: { userId: string; otpHash: string; type: OTPType; tx: Transaction }) {
+  static async findById({ otpID, tx }: { otpID: string; tx: Transaction }) {
+    return this.findOne({
+      whereClause: eq(otps.id, otpID),
+      tx,
+    });
+  }
+
+  static async findOneActiveOTP({ tx, userId, otpHash, type }: { userId: string; otpHash: string; type: OtpType; tx: Transaction }) {
     return this.findOne({
       whereClause: and(
                 eq(otps.type, type),
                 eq(otps.userId, userId),
                 eq(otps.hashedOTP, otpHash),
-                eq(otps.used, false),
-                isNull(otps.blockedAt),
+                eq(otps.status, OtpStatus.Pending),
+                isNull(otps.revokedAt),
                 gt(otps.expiresAt, new Date()),
               ),
       tx,
@@ -82,12 +99,12 @@ export class OTPRepository {
       .update(otps)
       .set({
         attempts: sql`${otps.attempts} + 1`,
-        blockedAt: sql`CASE WHEN ${otps.attempts} + 1 >= ${AppConstants.MAX_OTP_VERIFICATION_ATTEMPTS} THEN NOW() ELSE NULL END`,
+        revokedAt: sql`CASE WHEN ${otps.attempts} + 1 >= ${AppConstants.MAX_OTP_VERIFICATION_ATTEMPTS} THEN NOW() ELSE NULL END`,
       })
       .where(
         and(
           eq(otps.userId, userId),
-          eq(otps.used, false),
+          eq(otps.status, OtpStatus.Pending),
           gt(otps.expiresAt, new Date()),
         ),
       );

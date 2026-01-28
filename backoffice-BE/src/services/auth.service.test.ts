@@ -19,12 +19,13 @@ import {
   UnauthorizedException,
   TooManyRequestsException,
 } from "../core/errors/index.js";
-import { Role, StripePlans, SupportedOAuthProviders, OTPType } from "../constants/enums.js";
+import { Role, StripePlans, SupportedOAuthProviders } from "../constants/enums.js";
 import { addDays, subDays } from "date-fns";
 import { refreshTokens } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import {
   buildChangePasswordDTOMock,
+  buildIOtpMock,
   buildLoginDTOMock,
   buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
@@ -45,6 +46,7 @@ import { NotificationService } from "./notifications.service.js";
 import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
 import { buildParentMock } from "../tests/factories/parent.factory.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
+import { OtpStatus, OtpType } from "../core/constants/auth.constants.js";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -789,7 +791,7 @@ describe("Auth Service", () => {
         email: dto.email,
         txInstance: expect.anything(),
       });
-      expect(createOTPSpy).toHaveBeenCalledWith(user, OTPType.PasswordReset, expect.anything());
+      expect(createOTPSpy).toHaveBeenCalledWith(user, OtpType.PasswordReset, expect.anything());
       expect(sendPasswordResetMailSpy).toHaveBeenCalledWith({
         dest: user.email,
         name: user.firstName,
@@ -854,14 +856,13 @@ describe("Auth Service", () => {
   describe("verifyPasswordResetOtp", () => {
     const dto = { email: "test@example.com", otp: "123456" };
     const user = buildUserMock({ email: dto.email });
-    const otpRecord = {
+    const otpRecord = buildIOtpMock({
       id: "otp-id",
       userId: user.id,
       hashedOTP: "hashed_otp",
       attempts: 0,
       expiresAt: addDays(new Date(), 1),
-      used: false,
-    };
+    });
 
     let findOneOTPSpy: MockInstance;
     let incrementAttemptsSpy: MockInstance;
@@ -900,7 +901,7 @@ describe("Auth Service", () => {
       expect(AuthService.verifyOtp).toHaveBeenCalledWith({
         otp: dto.otp,
         user,
-        type: OTPType.PasswordReset,
+        type: OtpType.PasswordReset,
         txInstance: expect.anything(),
       });
       expect(generateResetTokenSpy).toHaveBeenCalledWith(user.id);
@@ -923,15 +924,14 @@ describe("Auth Service", () => {
   describe("verifyOtp", () => {
     const user = buildUserMock({ id: "user-123" });
     const dto = { email: user.email, otp: "123456" };
-    const type = OTPType.PasswordReset;
-    const otpRecord = {
+    const type = OtpType.PasswordReset;
+    const otpRecord = buildIOtpMock({
       id: "otp-id",
       userId: user.id,
       hashedOTP: "hashed_otp",
       attempts: 0,
       expiresAt: addDays(new Date(), 1),
-      used: false,
-    };
+    });
 
     let findOneActiveOTPSpy: MockInstance;
     let incrementAttemptsSpy: MockInstance;
@@ -954,7 +954,7 @@ describe("Auth Service", () => {
       expect(updateByIdSpy).toHaveBeenCalledWith({
         tx: expect.anything(),
         otpID: otpRecord.id,
-        update: { used: true },
+        update: { status: OtpStatus.Used },
       });
     });
 
@@ -979,7 +979,7 @@ describe("Auth Service", () => {
         tx: expect.anything(),
         otpID: exhaustedOtp.id,
         update: {
-          used: true,
+          status: OtpStatus.Revoked,
           attempts: exhaustedOtp.attempts + 1,
         },
       });
@@ -988,15 +988,15 @@ describe("Auth Service", () => {
 
   describe("createOTP", () => {
     const user = buildUserMock({ id: "user-123" });
-    const type = OTPType.EmailVerification;
+    const type = OtpType.EmailVerification;
 
-    let updateByUserIdSpy: MockInstance;
+    let revokePendingOtpsSpy: MockInstance;
     let createOTPSpy: MockInstance;
     let generateOTPSpy: MockInstance;
     let hashTokenSpy: MockInstance;
 
     beforeEach(() => {
-      updateByUserIdSpy = vi.spyOn(OTPRepository, "updateByUserId").mockResolvedValue(undefined);
+      revokePendingOtpsSpy = vi.spyOn(OTPRepository, "revokeUserPendingOTPs").mockResolvedValue(undefined);
       createOTPSpy = vi.spyOn(OTPRepository, "createOTP").mockResolvedValue(undefined);
       generateOTPSpy = vi.spyOn(authUtils, "generateOTP").mockReturnValue("123456");
       hashTokenSpy = vi.spyOn(authUtils, "hashToken").mockReturnValue("hashed_otp");
@@ -1005,9 +1005,8 @@ describe("Auth Service", () => {
     it("should generate, hash, and save OTP after invalidating old ones", async () => {
       const result = await AuthService.createOTP(user, type, dbSpies.mockTx as any);
 
-      expect(updateByUserIdSpy).toHaveBeenCalledWith({
+      expect(revokePendingOtpsSpy).toHaveBeenCalledWith({
         tx: dbSpies.mockTx,
-        update: { used: true },
         userId: user.id,
       });
       expect(generateOTPSpy).toHaveBeenCalled();
@@ -1045,7 +1044,7 @@ describe("Auth Service", () => {
     it("should initiate email verification for unverified user", async () => {
       await AuthService.requestEmailVerification({ user });
 
-      expect(createOTPSpy).toHaveBeenCalledWith(user, OTPType.EmailVerification, expect.anything());
+      expect(createOTPSpy).toHaveBeenCalledWith(user, OtpType.EmailVerification, expect.anything());
       expect(sendEmailVerificationMailSpy).toHaveBeenCalledWith({
         dest: user.email,
         name: user.firstName,
@@ -1086,7 +1085,7 @@ describe("Auth Service", () => {
       expect(verifyOtpSpy).toHaveBeenCalledWith({
         otp: dto.otp,
         user,
-        type: OTPType.EmailVerification,
+        type: OtpType.EmailVerification,
         txInstance: expect.anything(),
       });
       expect(updateUserSpy).toHaveBeenCalledWith({
