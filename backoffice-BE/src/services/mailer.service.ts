@@ -603,4 +603,175 @@ export class MailerService {
 
     await this.getTransporter().sendMail(mailOptions);
   };
+
+  static sendPasswordChangedNotification = async (dest: string, name: string) => {
+    try {
+      const mailOptions = {
+        from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+        to: dest,
+        subject: "Your Dojo Connect Password Has Been Changed",
+        html: `
+      <p>Hi <strong>${name}</strong>,</p>
+      <p>This is a notification that your Dojo Connect password has been successfully changed.</p>
+      <p>If you did not make this change, please contact our support team immediately.</p>
+      <p>– Dojo Connect Team</p>
+    `,
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(`Password changed notification email failed to ${dest}: ${error.message}`);
+    }
+  };
+
+  static sendEmailVerificationMail = async ({
+    dest,
+    name,
+    otp,
+  }: {
+    dest: string;
+    name: string;
+    otp: string;
+  }) => {
+    const mailOptions = {
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+      to: dest,
+      subject: "Dojo Connect - Verify Your Email",
+      html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #E51B1B; text-align: center;">Welcome to Dojo Connect!</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Thank you for signing up. Please use the following One-Time Password (OTP) to verify your email address. This code is valid for 15 minutes.</p>
+        <div style="background: #f9f9f9; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #E51B1B; border-radius: 5px; margin: 20px 0;">
+          ${otp}
+        </div>
+        <p>If you did not request this verification, please ignore this email.</p>
+        <p>Best regards,<br/>The Dojo Connect Team</p>
+      </div>
+      `,
+    };
+
+    await this.getTransporter().sendMail(mailOptions);
+  };
+
+  static sendEmailVerifiedNotification = async (dest: string, name: string) => {
+    try {
+      const mailOptions = {
+        from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+        to: dest,
+        subject: "Email Verified - Dojo Connect",
+        html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #4CAF50; text-align: center;">Verification Successful!</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Your email address has been successfully verified. You now have full access to your Dojo Connect account.</p>
+        <p>Happy training!</p>
+        <p>Best regards,<br/>The Dojo Connect Team</p>
+      </div>
+      `,
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(`Email verified notification failed to ${dest}: ${error.message}`);
+    }
+  };
+
+  static sendEmailUpdateOtp = async ({
+    dest,
+    name,
+    otp,
+  }: {
+    dest: string;
+    name: string;
+    otp: string;
+  }) => {
+    const mailOptions = {
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+      to: dest,
+      subject: "Dojo Connect - Verify Your New Email",
+      html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #E51B1B; text-align: center;">Email Update Request</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>You requested to update your email address. Please use the following One-Time Password (OTP) to verify this new email. This code is valid for 15 minutes.</p>
+        <div style="background: #f9f9f9; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #E51B1B; border-radius: 5px; margin: 20px 0;">
+          ${otp}
+        </div>
+        <p>If you did not request this email update, please ignore this email and contact support immediately.</p>
+        <p>Best regards,<br/>The Dojo Connect Team</p>
+      </div>
+      `,
+    };
+
+    await this.getTransporter().sendMail(mailOptions);
+  };
+
+  static sendEmailUpdateNotification = async ({
+    dest,
+    name,
+    newEmail,
+  }: {
+    dest: string;
+    name: string;
+    newEmail: string;
+  }) => {
+    try {
+      const mailOptions = {
+        from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+        to: dest,
+        subject: "Email Update Request - Dojo Connect",
+        html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #FF9800; text-align: center;">Email Update Request</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>A request was made to change your Dojo Connect email address from this email to <strong>${newEmail}</strong>.</p>
+        <p>If you made this request, you can safely ignore this email. The change will only take effect after the new email address is verified.</p>
+        <p><strong>If you did not make this request</strong>, please secure your account immediately by changing your password and contacting our support team.</p>
+        <p>Best regards,<br/>The Dojo Connect Team</p>
+      </div>
+      `,
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(`Email update notification failed to ${dest}: ${error.message}`);
+    }
+  };
+
+  static sendEmailUpdateConfirmation = async ({
+    dest,
+    name,
+    isNewEmail,
+  }: {
+    dest: string;
+    name: string;
+    isNewEmail: boolean;
+  }) => {
+    try {
+      const mailOptions = {
+        from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+        to: dest,
+        subject: "Email Successfully Updated - Dojo Connect",
+        html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #4CAF50; text-align: center;">Email Update Successful!</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        ${
+          isNewEmail
+            ? `<p>Your Dojo Connect account email has been successfully updated to this email address. You can now use this email to log in.</p>`
+            : `<p>Your Dojo Connect account email has been successfully updated to a new address. This email address is no longer associated with your account.</p>`
+        }
+        <p>If you did not make this change, please contact our support team immediately.</p>
+        <p>Best regards,<br/>The Dojo Connect Team</p>
+      </div>
+      `,
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(`Email update confirmation failed to ${dest}: ${error.message}`);
+    }
+  };
 }
+

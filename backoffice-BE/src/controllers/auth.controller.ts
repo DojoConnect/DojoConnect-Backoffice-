@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 
 import { AuthService } from "../services/auth.service.js";
 import { formatApiResponse } from "../utils/api.utils.js";
-import { BadRequestException } from "../core/errors/index.js";
+import { BadRequestException, UnauthorizedException } from "../core/errors/index.js";
 
 export const handleRegisterDojoAdmin = async (req: Request, res: Response) => {
   const userIp = req.ip;
@@ -103,7 +103,7 @@ export const handleFirebaseLogin = async (req: Request, res: Response) => {
 
 export const handleInitForgetPassword = async (req: Request, res: Response) => {
   try {
-    await AuthService.initForgetPassword({ dto: req.body });
+    await AuthService.requestPasswordReset({ dto: req.body });
   } catch (err) {
     console.log("Error while trying to Init forget password: ", err);
   } finally {
@@ -118,7 +118,7 @@ export const handleInitForgetPassword = async (req: Request, res: Response) => {
 
 export const handleVerifyOtp = async (req: Request, res: Response) => {
   try {
-    const result = await AuthService.verifyOtp({ dto: req.body });
+    const result = await AuthService.verifyPasswordResetOtp({ dto: req.body });
     res.json(formatApiResponse({ data: result }));
   } catch (error) {
     throw new BadRequestException("Invalid OTP or expired");
@@ -137,4 +137,97 @@ export const handleResetPassword = async (req: Request, res: Response) => {
   } catch (error) {
     throw new BadRequestException("Reset Password Token expired or invalid");
   }
+};
+
+export const handleChangePassword = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not authenticated");
+  }
+
+  const userId = req.user.id;
+
+  await AuthService.changePassword({
+    userId,
+    dto: req.body,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Password changed successfully",
+    }),
+  );
+};
+
+export const handleVerifyEmailRequest = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not found");
+  }
+
+  const user = req.user;
+  await AuthService.requestEmailVerification({ user });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Verification code sent to your email",
+    }),
+  );
+};
+
+export const handleVerifyEmail = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not found");
+  }
+
+  const user = req.user;
+  await AuthService.verifyEmailVerification({
+    dto: req.body,
+    user,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Email verified successfully",
+    }),
+  );
+};
+
+export const handleRequestEmailUpdate = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not authenticated");
+  }
+
+  const user = req.user;
+  await AuthService.requestEmailUpdate({
+    dto: req.body,
+    user,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Verification code sent to new email",
+    }),
+  );
+};
+
+export const handleVerifyEmailUpdate = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not authenticated");
+  }
+
+  const user = req.user;
+  await AuthService.verifyEmailUpdate({
+    dto: req.body,
+    user,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Email updated successfully",
+    }),
+  );
 };

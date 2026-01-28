@@ -38,6 +38,7 @@ import {
   ClassOccurrenceStatus,
   ChatType,
 } from "../constants/enums.js";
+import { OtpStatus, OtpType, EmailUpdateStatus } from "../core/constants/auth.constants.js";
 
 const activeBillingStatusesSql = sql.join(
   ACTIVE_BILLING_STATUSES.map((status) => sql.raw(`'${status}'`)),
@@ -299,6 +300,21 @@ export const oneTimeClassPayments = mysqlTable("one_time_class_payments", {
   paidAt: timestamp("paid_at"),
 });
 
+export const emailUpdateRequests = mysqlTable("email_update_requests", {
+  id: uuidPrimaryKey(),
+  userId: varchar("user_id", { length: UUID_LENGTH })
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  oldEmail: varchar("old_email", { length: 255 }).notNull(),
+  newEmail: varchar("new_email", { length: 255 }).notNull(),
+  status: mysqlEnum(EmailUpdateStatus).default(EmailUpdateStatus.Pending),
+  otpId: varchar("otp_id", { length: UUID_LENGTH })
+    .references(() => otps.id, { onDelete: "set null" }),
+  requestedAt: timestamp("requested_at",)
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+});
+
 export const deletionRequests = mysqlTable("deletion_requests", {
   id: uuidPrimaryKey(),
   title: varchar({ length: 50 }).notNull(),
@@ -551,18 +567,21 @@ export const parents = mysqlTable(
   (table) => [],
 );
 
-export const passwordResetOTPs = mysqlTable("password_reset_otps", {
+export const otps = mysqlTable("otps", {
   id: uuidPrimaryKey(),
   userId: varchar("user_id", { length: UUID_LENGTH })
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  type: mysqlEnum(OtpType).notNull(),
   hashedOTP: varchar("hashed_otp", { length: 255 }).notNull(),
   attempts: int("attempts").default(0).notNull(),
+  status: mysqlEnum(OtpStatus).default(OtpStatus.Pending).notNull(),
   expiresAt: datetime("expires_at").notNull(),
-  used: boolean("used").default(false).notNull(),
-  blockedAt: datetime("blocked_at"), // Block after max attempts
+  revokedAt: datetime("revoked_at"), // Block after max attempts
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`),
-});
+}, (table) => [
+  index("user_id").on(table.userId),
+]);
 
 export const sessions = mysqlTable(
   "sessions",

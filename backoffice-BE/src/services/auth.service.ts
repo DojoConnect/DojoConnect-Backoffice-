@@ -1,7 +1,5 @@
 // src/services/auth.service.ts
 import * as dbService from "../db/index.js";
-import { passwordResetOTPs } from "../db/schema.js";
-import { and, eq, gt, isNull } from "drizzle-orm";
 import {
   generateAccessToken,
   generateOTP,
@@ -34,14 +32,18 @@ import {
   RefreshTokenDTO,
   RegisterDojoAdminDTO,
   ResetPasswordDTO,
-  VerifyOtpDTO,
+  VerifyPasswordResetOtpDTO,
   RegisterParentDTO,
+  ChangePasswordDTO,
+  VerifyEmailOtpDTO,
+  RequestEmailUpdateDTO,
+  VerifyEmailUpdateDTO,
 } from "../validations/auth.schemas.js";
 import type { Transaction } from "../db/index.js";
 import { DojoStatus, Role } from "../constants/enums.js";
 import { AuthResponseDTO, RegisterDojoAdminResponseDTO } from "../dtos/auth.dtos.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
-import { PasswordResetOTPRepository } from "../repositories/password-reset-otps.repository.js";
+import { OTPRepository } from "../repositories/otps.repository.js";
 import AppConstants from "../constants/AppConstants.js";
 import { RefreshTokenRepository } from "../repositories/refresh-token.repository.js";
 import { IUser } from "../repositories/user.repository.js";
@@ -49,6 +51,8 @@ import { SubscriptionService } from "./subscription.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { StripeService } from "./stripe.service.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
+import { OtpStatus, OtpType, EmailUpdateStatus } from "../core/constants/auth.constants.js";
+import { EmailUpdateRequestRepository } from "../repositories/email-update-request.repository.js";
 
 export class AuthService {
   static generateAuthTokens = async ({
@@ -619,7 +623,7 @@ export class AuthService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static initForgetPassword = async ({
+  static requestPasswordReset = async ({
     dto,
     txInstance,
   }: {
@@ -632,32 +636,12 @@ export class AuthService {
         txInstance: tx,
       });
 
-      if (!user) return; // Silent fail (security: prevent email enumeration)
+      // Ensure to Silent fail in the controller (security: prevent email enumeration)
+      if (!user) {
+        throw new NotFoundException("User not found");
+      }; 
 
-      // Invalidate ANY previous unused tokens for this user
-      // (Prevents stacking valid OTPs)
-      await PasswordResetOTPRepository.updateOTP({
-        tx,
-        update: { used: true },
-        whereClause: eq(passwordResetOTPs.userId, user.id),
-      });
-
-      // Generate  OTP
-      const otp = generateOTP();
-      const hashedOTP = hashToken(otp); // Still hash it!
-
-      // Short Expiry (15 Minutes max for OTPs)
-      const expiresAt = addMinutes(new Date(), 15);
-
-      await PasswordResetOTPRepository.createOTP({
-        tx,
-        dto: {
-          userId: user.id,
-          hashedOTP,
-          expiresAt,
-          attempts: 0, // Reset attempts
-        },
-      });
+      const { otp } = await this.createOTP(user, OtpType.PasswordReset, tx);
 
       await MailerService.sendPasswordResetMail({
         dest: user.email,
@@ -669,11 +653,11 @@ export class AuthService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static verifyOtp = async ({
+  static verifyPasswordResetOtp = async ({
     dto,
     txInstance,
   }: {
-    dto: VerifyOtpDTO;
+    dto: VerifyPasswordResetOtpDTO;
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
@@ -686,23 +670,50 @@ export class AuthService {
         throw new BadRequestException("Invalid OTP");
       }
 
-      // Hash the provided OTP
-      const otpHash = hashToken(dto.otp);
+      await this.verifyOtp({
+        otp: dto.otp,
+        user,
+        type: OtpType.PasswordReset,
+        txInstance: tx,
+      });
 
-      const otpRecord = await PasswordResetOTPRepository.findOne({
+      // D. ISSUE THE "PERMISSION SLIP" (Exchange Token)
+      // This is a JWT specifically for resetting the password.
+      // It expires in 5 minutes (enough time to type a new password).
+      const resetToken = generatePasswordResetToken(user.id);
+      return { resetToken };
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static verifyOtp = async ({
+    otp,
+    type,
+    user,
+    onRevoke,
+    txInstance,
+  }: {
+    otp: string;
+    type: OtpType;
+    user: IUser;
+    onRevoke?: () => Promise<void>;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      // Hash the provided OTP
+      const otpHash = hashToken(otp);
+
+      const otpRecord = await OTPRepository.findOneActiveOTP({
         tx,
-        whereClause: and(
-          eq(passwordResetOTPs.userId, user.id),
-          eq(passwordResetOTPs.hashedOTP, otpHash),
-          eq(passwordResetOTPs.used, false),
-          isNull(passwordResetOTPs.blockedAt),
-          gt(passwordResetOTPs.expiresAt, new Date()),
-        ),
+        userId: user.id,
+        otpHash,
+        type,
       });
 
       if (!otpRecord) {
         // OTP not found - increment attempts on all active OTPs
-        await PasswordResetOTPRepository.incrementActiveOTPsAttempts({
+        await OTPRepository.incrementActiveOTPsAttempts({
           tx,
           userId: user.id,
         });
@@ -712,33 +723,31 @@ export class AuthService {
       // CHECK ATTEMPTS (Security Critical)
       if (otpRecord.attempts! >= AppConstants.MAX_OTP_VERIFICATION_ATTEMPTS) {
         // Burn the token immediately if it hasn't been burned yet
-        await PasswordResetOTPRepository.updateOneOTP({
+        await OTPRepository.updateById({
           tx,
           otpID: otpRecord.id,
           update: {
-            used: true,
+            status: OtpStatus.Revoked,
             attempts: otpRecord.attempts! + 1,
           },
         });
+
+        if (onRevoke) {
+          await onRevoke();
+        }
 
         throw new TooManyRequestsException("Too many failed attempts. Request a new code.");
       }
 
       // SUCCESS: Burn the OTP immediately!
       // The OTP is now dead. It cannot be used again.
-      await PasswordResetOTPRepository.updateOneOTP({
+      await OTPRepository.updateById({
         tx,
         otpID: otpRecord.id,
         update: {
-          used: true,
+          status: OtpStatus.Used,
         },
       });
-
-      // D. ISSUE THE "PERMISSION SLIP" (Exchange Token)
-      // This is a JWT specifically for resetting the password.
-      // It expires in 5 minutes (enough time to type a new password).
-      const resetToken = generatePasswordResetToken(user.id);
-      return { resetToken };
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
@@ -801,6 +810,281 @@ export class AuthService {
       }
 
       return username;
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static changePassword = async ({
+    userId,
+    dto,
+    txInstance,
+  }: {
+    userId: string;
+    dto: ChangePasswordDTO;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      const user = await UsersService.getOneUserByID({ userId, txInstance: tx, withPassword: true });
+      if (!user || !user.passwordHash) {
+        throw new NotFoundException("User not found");
+      }
+
+      const isPasswordValid = await verifyPassword(user.passwordHash, dto.oldPassword);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException("Invalid Credentials");
+      }
+
+      const hashedNewPassword = await hashPassword(dto.newPassword);
+
+      await UsersService.updateUser({
+        userId,
+        update: { passwordHash: hashedNewPassword },
+        txInstance: tx,
+      });
+
+      // Kill all auth sessions
+      await RefreshTokenRepository.deleteByUserId(userId, tx);
+
+      // Send email notification
+      await MailerService.sendPasswordChangedNotification(user.email, user.firstName);
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static createOTP = async (user: IUser, type: OtpType, tx: Transaction) => {
+    // Invalidate ANY previous unused tokens for this user
+      // (Prevents stacking valid OTPs)
+      await OTPRepository.revokeUserPendingOTPs({
+        tx,
+        userId: user.id,
+      });
+
+      // Generate  OTP
+      const otp = generateOTP();
+      const hashedOTP = hashToken(otp);
+
+      // Short Expiry (15 Minutes max for OTPs)
+      const expiresAt = addMinutes(new Date(), 15);
+
+      const otpId = await OTPRepository.createOTP({
+        tx,
+        dto: {
+          userId: user.id,
+          type,
+          hashedOTP,
+          expiresAt,
+          attempts: 0,
+        },
+      });
+
+      return { otp, otpId };
+  };
+
+  static requestEmailVerification = async ({
+    user,
+    txInstance,
+  }: {
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      if (user.emailVerified) {
+        throw new BadRequestException("Email already verified");
+      }
+
+      const { otp } = await this.createOTP(user, OtpType.EmailVerification, tx);
+
+      await MailerService.sendEmailVerificationMail({
+        dest: user.email,
+        name: user.firstName,
+        otp,
+      });
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static verifyEmailVerification = async ({
+    dto,
+    user,
+    txInstance,
+  }: {
+    dto: VerifyEmailOtpDTO;
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      await this.verifyOtp({
+        otp: dto.otp,
+        user,
+        type: OtpType.EmailVerification,
+        txInstance: tx,
+      });
+
+      await UsersService.updateUser({
+        txInstance: tx,
+        userId: user.id,
+        update: { emailVerified: true },
+      });
+
+      await MailerService.sendEmailVerifiedNotification(user.email, user.firstName);
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static requestEmailUpdate = async ({
+    dto,
+    user,
+    txInstance,
+  }: {
+    dto: RequestEmailUpdateDTO;
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      // Fetch user with password
+      const userWithPassword = await UsersService.getOneUserByID({
+        userId: user.id,
+        txInstance: tx,
+        withPassword: true,
+      });
+
+      if (!userWithPassword || !userWithPassword.passwordHash) {
+        throw new UnauthorizedException("Invalid credentials");
+      }
+
+      // Verify password
+      const isPasswordValid = await verifyPassword(userWithPassword.passwordHash, dto.password);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException("Invalid credentials");
+      }
+
+      // Verify new email is different
+      if (dto.newEmail.toLowerCase() === user.email.toLowerCase()) {
+        throw new BadRequestException("New email must be different from current email");
+      }
+
+      // Check new email is not already registered
+      const existingUser = await UsersService.getOneUserByEmail({
+        email: dto.newEmail,
+        txInstance: tx,
+      });
+
+      if (existingUser) {
+        throw new ConflictException("Email already registered");
+      }
+
+      // Revoke all pending email update requests
+      await EmailUpdateRequestRepository.revokePendingByUserId({
+        userId: user.id,
+        tx,
+      });
+
+      // Create OTP (which also revokes pending OTPs)
+      const { otp, otpId } = await this.createOTP(user, OtpType.EmailUpdate, tx);
+
+      // Create email update request record
+      await EmailUpdateRequestRepository.create({
+        dto: {
+          userId: user.id,
+          oldEmail: user.email,
+          newEmail: dto.newEmail,
+          otpId,
+          status: EmailUpdateStatus.Pending,
+        },
+        tx,
+      });
+
+      // Send OTP to new email and notification to old email
+      await Promise.allSettled([
+        MailerService.sendEmailUpdateOtp({
+          dest: dto.newEmail,
+          name: user.firstName,
+          otp,
+        }),
+        MailerService.sendEmailUpdateNotification({
+          dest: user.email,
+          name: user.firstName,
+          newEmail: dto.newEmail,
+        }),
+      ]);
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static verifyEmailUpdate = async ({
+    dto,
+    user,
+    txInstance,
+  }: {
+    dto: VerifyEmailUpdateDTO;
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      // Find pending email update request
+      const emailUpdateRequest = await EmailUpdateRequestRepository.findLatestPendingByUserId({
+        userId: user.id,
+        tx,
+      });
+
+      if (!emailUpdateRequest) {
+        throw new BadRequestException("No pending email update request found");
+      }
+
+      // Verify OTP with onRevoke callback
+      await this.verifyOtp({
+        otp: dto.otp,
+        user,
+        type: OtpType.EmailUpdate,
+        onRevoke: async () => {
+          await EmailUpdateRequestRepository.updateStatus({
+            id: emailUpdateRequest.id,
+            status: EmailUpdateStatus.Revoked,
+            tx,
+          });
+        },
+        txInstance: tx,
+      });
+
+      const oldEmail = user.email;
+      const newEmail = emailUpdateRequest.newEmail;
+
+      // Update user's email and mark as verified
+      // Update email update request status to verified
+      await Promise.all([
+        UsersService.updateUser({
+        txInstance: tx,
+        userId: user.id,
+        update: { 
+          email: newEmail,
+          emailVerified: true,
+        },
+      }),
+      EmailUpdateRequestRepository.updateStatus({
+        id: emailUpdateRequest.id,
+        status: EmailUpdateStatus.Verified,
+        tx,
+      })
+    ]);
+
+      // Send confirmation emails to both addresses
+      await Promise.allSettled([
+        MailerService.sendEmailUpdateConfirmation({
+          dest: newEmail,
+          name: user.firstName,
+          isNewEmail: true,
+        }),
+        MailerService.sendEmailUpdateConfirmation({
+          dest: oldEmail,
+          name: user.firstName,
+          isNewEmail: false,
+        }),
+      ]);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
