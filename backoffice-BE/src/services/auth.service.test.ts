@@ -86,6 +86,7 @@ describe("Auth Service", () => {
 
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(OTPRepository, "revokeUserPendingOTPs").mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -842,6 +843,10 @@ describe("Auth Service", () => {
 
       expect(dbSpies.mockDelete).toHaveBeenCalledWith(refreshTokens);
       expect(dbSpies.mockWhere).toHaveBeenCalledWith(eq(refreshTokens.userId, decodedToken.userId));
+      expect(OTPRepository.revokeUserPendingOTPs).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        userId: decodedToken.userId,
+      });
     });
 
     it("should throw if token verification fails", async () => {
@@ -1243,6 +1248,10 @@ describe("Auth Service", () => {
         txInstance: dbSpies.mockTx,
       });
       expect(deleteByUserIdSpy).toHaveBeenCalledWith(userId, dbSpies.mockTx);
+      expect(OTPRepository.revokeUserPendingOTPs).toHaveBeenCalledWith({
+        tx: dbSpies.mockTx,
+        userId,
+      });
       expect(sendNotificationSpy).toHaveBeenCalledWith(mockUser.email, mockUser.firstName);
     });
 
@@ -1412,6 +1421,10 @@ describe("Auth Service", () => {
         id: emailUpdateRequest.id,
         status: EmailUpdateStatus.Verified,
         tx: expect.anything(),
+      });
+      expect(OTPRepository.revokeUserPendingOTPs).toHaveBeenCalledWith({
+        tx: expect.anything(),
+        userId: user.id,
       });
       expect(sendEmailUpdateConfirmationSpy).toHaveBeenCalledWith({
         dest: emailUpdateRequest.newEmail,
