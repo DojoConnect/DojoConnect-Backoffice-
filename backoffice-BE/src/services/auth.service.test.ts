@@ -19,12 +19,14 @@ import {
   UnauthorizedException,
   TooManyRequestsException,
 } from "../core/errors/index.js";
-import { Role, StripePlans, SupportedOAuthProviders, OTPType } from "../constants/enums.js";
+import { Role, StripePlans, SupportedOAuthProviders } from "../constants/enums.js";
 import { addDays, subDays } from "date-fns";
 import { refreshTokens } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import {
   buildChangePasswordDTOMock,
+  buildEmailUpdateRequestMock,
+  buildIOtpMock,
   buildLoginDTOMock,
   buildOAuthAcctMock,
   buildRefreshTokenDtoMock,
@@ -45,6 +47,9 @@ import { NotificationService } from "./notifications.service.js";
 import { BaseDojoDTO } from "../dtos/dojo.dtos.js";
 import { buildParentMock } from "../tests/factories/parent.factory.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
+import { OtpStatus, OtpType, EmailUpdateStatus } from "../core/constants/auth.constants.js";
+import { EmailUpdateRequestRepository } from "../repositories/email-update-request.repository.js";
+import { IUser } from "../repositories/user.repository.js";
 
 describe("Auth Service", () => {
   let dbSpies: DbServiceSpies;
@@ -72,7 +77,7 @@ describe("Auth Service", () => {
     saveUserSpy = vi.spyOn(UsersService, "saveUser");
     getUserDojoSpy = vi.spyOn(DojosService, "fetchUserDojo").mockResolvedValue(mockDojo);
     vi.spyOn(UsersService, "getUserDTO").mockImplementation(
-      async (user: any) => new UserDTO(user) as any,
+      async (user: IUser) => new UserDTO(user) as any,
     );
 
     createStripeCustomerSpy = vi
@@ -227,7 +232,7 @@ describe("Auth Service", () => {
     });
 
     it("should use provided transaction instance", async () => {
-      const tx = {} as any;
+      const tx = dbSpies.mockTx;
       await AuthService.getAuthResponseDTO({ user: mockUser, txInstance: tx });
 
       expect(AuthService.generateAuthTokens).toHaveBeenCalledWith(
@@ -621,8 +626,6 @@ describe("Auth Service", () => {
   });
 
   describe("firebaseSignIn", () => {
-    const tx = {} as any;
-
     const dto = {
       idToken: "firebase-token",
     };
@@ -651,7 +654,7 @@ describe("Auth Service", () => {
     beforeEach(() => {
       vi.clearAllMocks();
 
-      runInTxSpy = vi.spyOn(dbService, "runInTransaction").mockImplementation(async (cb) => cb(tx));
+      runInTxSpy = vi.spyOn(dbService, "runInTransaction").mockImplementation(async (cb) => cb(dbSpies.mockTx));
 
       verifyTokenSpy = vi
         .spyOn(FirebaseService, "verifyFirebaseToken")
@@ -692,11 +695,11 @@ describe("Auth Service", () => {
         emailVerified: false,
       });
 
-      await expect(AuthService.firebaseSignIn({ dto, txInstance: tx })).rejects.toThrow(
+      await expect(AuthService.firebaseSignIn({ dto, txInstance: dbSpies.mockTx })).rejects.toThrow(
         UnauthorizedException,
       );
 
-      await expect(AuthService.firebaseSignIn({ dto, txInstance: tx })).rejects.toThrow(
+      await expect(AuthService.firebaseSignIn({ dto, txInstance: dbSpies.mockTx })).rejects.toThrow(
         "Social Auth Email not verified",
       );
     });
@@ -704,7 +707,7 @@ describe("Auth Service", () => {
     it("should throw NotFoundException if user does not exist", async () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
 
-      await expect(AuthService.firebaseSignIn({ dto, txInstance: tx })).rejects.toThrow(
+      await expect(AuthService.firebaseSignIn({ dto, txInstance: dbSpies.mockTx })).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -714,7 +717,7 @@ describe("Auth Service", () => {
 
       const result = await AuthService.firebaseSignIn({
         dto,
-        txInstance: tx,
+        txInstance: dbSpies.mockTx,
       });
 
       expect(createOAuthAcctSpy).toHaveBeenCalledWith(
@@ -735,7 +738,7 @@ describe("Auth Service", () => {
 
       const result = await AuthService.firebaseSignIn({
         dto,
-        txInstance: tx,
+        txInstance: dbSpies.mockTx,
       });
 
       expect(updateSpy).toHaveBeenCalled();
@@ -749,7 +752,7 @@ describe("Auth Service", () => {
         dto,
         userIp: "127.0.0.1",
         userAgent: "vi",
-        txInstance: tx,
+        txInstance: dbSpies.mockTx,
       });
 
       expect(generateTokenSpy).toHaveBeenCalledWith(
@@ -762,7 +765,7 @@ describe("Auth Service", () => {
     });
   });
 
-  describe("initForgetPassword", () => {
+  describe("requestPasswordReset", () => {
     const dto = { email: "test@example.com" };
     const user = buildUserMock({ email: dto.email });
 
@@ -770,7 +773,7 @@ describe("Auth Service", () => {
     let sendPasswordResetMailSpy: MockInstance;
 
     beforeEach(() => {
-      createOTPSpy = vi.spyOn(AuthService, "createOTP").mockResolvedValue("123456");
+      createOTPSpy = vi.spyOn(AuthService, "createOTP").mockResolvedValue({ otp: "123456", otpId: "otp-id" });
       sendPasswordResetMailSpy = vi
         .spyOn(MailerService, "sendPasswordResetMail")
         .mockResolvedValue(undefined);
@@ -783,13 +786,13 @@ describe("Auth Service", () => {
     it("should initiate password reset for existing user", async () => {
       getOneUserByEmailSpy.mockResolvedValue(user);
 
-      await AuthService.initForgetPassword({ dto });
+      await AuthService.requestPasswordReset({ dto });
 
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
         email: dto.email,
         txInstance: expect.anything(),
       });
-      expect(createOTPSpy).toHaveBeenCalledWith(user, OTPType.PasswordReset, expect.anything());
+      expect(createOTPSpy).toHaveBeenCalledWith(user, OtpType.PasswordReset, expect.anything());
       expect(sendPasswordResetMailSpy).toHaveBeenCalledWith({
         dest: user.email,
         name: user.firstName,
@@ -800,7 +803,7 @@ describe("Auth Service", () => {
     it("should throw NotFoundException if user is not found", async () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
 
-      await expect(AuthService.initForgetPassword({ dto })).rejects.toThrow(NotFoundException);
+      await expect(AuthService.requestPasswordReset({ dto })).rejects.toThrow(NotFoundException);
 
       expect(getOneUserByEmailSpy).toHaveBeenCalled();
       expect(createOTPSpy).not.toHaveBeenCalled();
@@ -854,14 +857,13 @@ describe("Auth Service", () => {
   describe("verifyPasswordResetOtp", () => {
     const dto = { email: "test@example.com", otp: "123456" };
     const user = buildUserMock({ email: dto.email });
-    const otpRecord = {
+    const otpRecord = buildIOtpMock({
       id: "otp-id",
       userId: user.id,
       hashedOTP: "hashed_otp",
       attempts: 0,
       expiresAt: addDays(new Date(), 1),
-      used: false,
-    };
+    });
 
     let findOneOTPSpy: MockInstance;
     let incrementAttemptsSpy: MockInstance;
@@ -900,7 +902,7 @@ describe("Auth Service", () => {
       expect(AuthService.verifyOtp).toHaveBeenCalledWith({
         otp: dto.otp,
         user,
-        type: OTPType.PasswordReset,
+        type: OtpType.PasswordReset,
         txInstance: expect.anything(),
       });
       expect(generateResetTokenSpy).toHaveBeenCalledWith(user.id);
@@ -923,15 +925,14 @@ describe("Auth Service", () => {
   describe("verifyOtp", () => {
     const user = buildUserMock({ id: "user-123" });
     const dto = { email: user.email, otp: "123456" };
-    const type = OTPType.PasswordReset;
-    const otpRecord = {
+    const type = OtpType.PasswordReset;
+    const otpRecord = buildIOtpMock({
       id: "otp-id",
       userId: user.id,
       hashedOTP: "hashed_otp",
       attempts: 0,
       expiresAt: addDays(new Date(), 1),
-      used: false,
-    };
+    });
 
     let findOneActiveOTPSpy: MockInstance;
     let incrementAttemptsSpy: MockInstance;
@@ -954,7 +955,7 @@ describe("Auth Service", () => {
       expect(updateByIdSpy).toHaveBeenCalledWith({
         tx: expect.anything(),
         otpID: otpRecord.id,
-        update: { used: true },
+        update: { status: OtpStatus.Used },
       });
     });
 
@@ -979,7 +980,7 @@ describe("Auth Service", () => {
         tx: expect.anything(),
         otpID: exhaustedOtp.id,
         update: {
-          used: true,
+          status: OtpStatus.Revoked,
           attempts: exhaustedOtp.attempts + 1,
         },
       });
@@ -988,26 +989,25 @@ describe("Auth Service", () => {
 
   describe("createOTP", () => {
     const user = buildUserMock({ id: "user-123" });
-    const type = OTPType.EmailVerification;
+    const type = OtpType.EmailVerification;
 
-    let updateByUserIdSpy: MockInstance;
+    let revokePendingOtpsSpy: MockInstance;
     let createOTPSpy: MockInstance;
     let generateOTPSpy: MockInstance;
     let hashTokenSpy: MockInstance;
 
     beforeEach(() => {
-      updateByUserIdSpy = vi.spyOn(OTPRepository, "updateByUserId").mockResolvedValue(undefined);
-      createOTPSpy = vi.spyOn(OTPRepository, "createOTP").mockResolvedValue(undefined);
+      revokePendingOtpsSpy = vi.spyOn(OTPRepository, "revokeUserPendingOTPs").mockResolvedValue(undefined);
+      createOTPSpy = vi.spyOn(OTPRepository, "createOTP").mockResolvedValue("otp-id");
       generateOTPSpy = vi.spyOn(authUtils, "generateOTP").mockReturnValue("123456");
       hashTokenSpy = vi.spyOn(authUtils, "hashToken").mockReturnValue("hashed_otp");
     });
 
     it("should generate, hash, and save OTP after invalidating old ones", async () => {
-      const result = await AuthService.createOTP(user, type, dbSpies.mockTx as any);
+      const result = await AuthService.createOTP(user, type, dbSpies.mockTx);
 
-      expect(updateByUserIdSpy).toHaveBeenCalledWith({
+      expect(revokePendingOtpsSpy).toHaveBeenCalledWith({
         tx: dbSpies.mockTx,
-        update: { used: true },
         userId: user.id,
       });
       expect(generateOTPSpy).toHaveBeenCalled();
@@ -1021,7 +1021,7 @@ describe("Auth Service", () => {
           attempts: 0,
         }),
       });
-      expect(result).toBe("123456");
+      expect(result).toEqual({ otp: "123456", otpId: "otp-id" });
     });
   });
 
@@ -1032,7 +1032,7 @@ describe("Auth Service", () => {
     let sendEmailVerificationMailSpy: MockInstance;
 
     beforeEach(() => {
-      createOTPSpy = vi.spyOn(AuthService, "createOTP").mockResolvedValue("123456");
+      createOTPSpy = vi.spyOn(AuthService, "createOTP").mockResolvedValue({ otp: "123456", otpId: "otp-id" });
       sendEmailVerificationMailSpy = vi
         .spyOn(MailerService, "sendEmailVerificationMail")
         .mockResolvedValue(undefined);
@@ -1045,7 +1045,7 @@ describe("Auth Service", () => {
     it("should initiate email verification for unverified user", async () => {
       await AuthService.requestEmailVerification({ user });
 
-      expect(createOTPSpy).toHaveBeenCalledWith(user, OTPType.EmailVerification, expect.anything());
+      expect(createOTPSpy).toHaveBeenCalledWith(user, OtpType.EmailVerification, expect.anything());
       expect(sendEmailVerificationMailSpy).toHaveBeenCalledWith({
         dest: user.email,
         name: user.firstName,
@@ -1063,6 +1063,7 @@ describe("Auth Service", () => {
   describe("verifyEmailVerification", () => {
     const user = buildUserMock({ id: "user-123", email: "test@test.com", firstName: "Test" });
     const dto = { otp: "123456" };
+    const otpRecord = buildIOtpMock({ userId: user.id, type: OtpType.EmailVerification });
 
     let verifyOtpSpy: MockInstance;
     let updateUserSpy: MockInstance;
@@ -1086,7 +1087,7 @@ describe("Auth Service", () => {
       expect(verifyOtpSpy).toHaveBeenCalledWith({
         otp: dto.otp,
         user,
-        type: OTPType.EmailVerification,
+        type: OtpType.EmailVerification,
         txInstance: expect.anything(),
       });
       expect(updateUserSpy).toHaveBeenCalledWith({
@@ -1254,6 +1255,180 @@ describe("Auth Service", () => {
       verifyPasswordSpy.mockResolvedValue(false);
 
       await expect(AuthService.changePassword({ userId, dto })).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  describe("requestEmailUpdate", () => {
+    const user = buildUserMock({ id: "user-123", email: "old@test.com", firstName: "Test" });
+    const dto = { newEmail: "new@test.com", password: "password123" };
+
+    let getOneUserByIDSpy: MockInstance;
+    let verifyPasswordSpy: MockInstance;
+    let createOTPSpy: MockInstance;
+    let revokePendingByUserIdSpy: MockInstance;
+    let emailUpdateCreateSpy: MockInstance;
+    let sendEmailUpdateOtpSpy: MockInstance;
+    let sendEmailUpdateNotificationSpy: MockInstance;
+
+    beforeEach(() => {
+      getOneUserByIDSpy = vi.spyOn(UsersService, "getOneUserByID").mockResolvedValue({
+        ...user,
+        passwordHash: "hashed_password",
+      });
+      getOneUserByEmailSpy.mockResolvedValue(null);
+      verifyPasswordSpy = vi.spyOn(authUtils, "verifyPassword").mockResolvedValue(true);
+      createOTPSpy = vi.spyOn(AuthService, "createOTP").mockResolvedValue({ otp: "123456", otpId: "otp-id" });
+      revokePendingByUserIdSpy = vi
+        .spyOn(EmailUpdateRequestRepository, "revokePendingByUserId")
+        .mockResolvedValue(undefined);
+      emailUpdateCreateSpy = vi
+        .spyOn(EmailUpdateRequestRepository, "create")
+        .mockResolvedValue("email-update-id");
+      sendEmailUpdateOtpSpy = vi.spyOn(MailerService, "sendEmailUpdateOtp").mockResolvedValue(undefined);
+      sendEmailUpdateNotificationSpy = vi
+        .spyOn(MailerService, "sendEmailUpdateNotification")
+        .mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      createOTPSpy.mockRestore();
+    });
+
+    it("should successfully request email update", async () => {
+      await AuthService.requestEmailUpdate({ dto, user });
+
+      expect(verifyPasswordSpy).toHaveBeenCalledWith("hashed_password", dto.password);
+      expect(revokePendingByUserIdSpy).toHaveBeenCalledWith({
+        userId: user.id,
+        tx: expect.anything(),
+      });
+      expect(createOTPSpy).toHaveBeenCalledWith(user, OtpType.EmailUpdate, expect.anything());
+      expect(emailUpdateCreateSpy).toHaveBeenCalledWith({
+        dto: expect.objectContaining({
+          userId: user.id,
+          oldEmail: user.email,
+          newEmail: dto.newEmail,
+          otpId: "otp-id",
+          status: EmailUpdateStatus.Pending,
+        }),
+        tx: expect.anything(),
+      });
+      expect(sendEmailUpdateOtpSpy).toHaveBeenCalledWith({
+        dest: dto.newEmail,
+        name: user.firstName,
+        otp: "123456",
+      });
+      expect(sendEmailUpdateNotificationSpy).toHaveBeenCalledWith({
+        dest: user.email,
+        name: user.firstName,
+        newEmail: dto.newEmail,
+      });
+    });
+
+    it("should throw UnauthorizedException if password is invalid", async () => {
+      verifyPasswordSpy.mockResolvedValue(false);
+
+      await expect(AuthService.requestEmailUpdate({ dto, user })).rejects.toThrow(UnauthorizedException);
+      expect(createOTPSpy).not.toHaveBeenCalled();
+    });
+
+    it("should throw BadRequestException if new email is same as current", async () => {
+      const sameEmailDto = { newEmail: user.email, password: "password123" };
+
+      await expect(AuthService.requestEmailUpdate({ dto: sameEmailDto, user })).rejects.toThrow(BadRequestException);
+      expect(createOTPSpy).not.toHaveBeenCalled();
+    });
+
+    it("should throw ConflictException if new email is already registered", async () => {
+      getOneUserByEmailSpy.mockResolvedValue(buildUserMock({ email: dto.newEmail }));
+
+      await expect(AuthService.requestEmailUpdate({ dto, user })).rejects.toThrow(ConflictException);
+      expect(createOTPSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("verifyEmailUpdate", () => {
+    const user = buildUserMock({ id: "user-123", email: "old@test.com", firstName: "Test" });
+    const dto = { otp: "123456" };
+    const emailUpdateRequest = buildEmailUpdateRequestMock({
+      id: "email-update-id",
+      userId: user.id,
+      oldEmail: user.email,
+      newEmail: "new@test.com",
+      status: EmailUpdateStatus.Pending,
+      otpId: "otp-id",
+    });
+
+    const otpRecord = buildIOtpMock({ userId: user.id, type: OtpType.EmailUpdate });
+
+    let findPendingByUserIdSpy: MockInstance;
+    let verifyOtpSpy: MockInstance;
+    let updateUserSpy: MockInstance;
+    let updateStatusSpy: MockInstance;
+    let sendEmailUpdateConfirmationSpy: MockInstance;
+
+    beforeEach(() => {
+      findPendingByUserIdSpy = vi
+        .spyOn(EmailUpdateRequestRepository, "findLatestPendingByUserId")
+        .mockResolvedValue(emailUpdateRequest);
+      verifyOtpSpy = vi.spyOn(AuthService, "verifyOtp").mockResolvedValue(undefined);
+      updateUserSpy = vi.spyOn(UsersService, "updateUser").mockResolvedValue(undefined);
+      updateStatusSpy = vi
+        .spyOn(EmailUpdateRequestRepository, "updateStatus")
+        .mockResolvedValue(undefined);
+      sendEmailUpdateConfirmationSpy = vi
+        .spyOn(MailerService, "sendEmailUpdateConfirmation")
+        .mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      verifyOtpSpy.mockRestore();
+    });
+
+    it("should successfully verify email update and change email", async () => {
+      await AuthService.verifyEmailUpdate({ dto, user });
+
+      expect(findPendingByUserIdSpy).toHaveBeenCalledWith({
+        userId: user.id,
+        tx: expect.anything(),
+      });
+      expect(verifyOtpSpy).toHaveBeenCalledWith({
+        otp: dto.otp,
+        user,
+        type: OtpType.EmailUpdate,
+        onRevoke: expect.any(Function),
+        txInstance: expect.anything(),
+      });
+      expect(updateUserSpy).toHaveBeenCalledWith({
+        txInstance: expect.anything(),
+        userId: user.id,
+        update: {
+          email: emailUpdateRequest.newEmail,
+          emailVerified: true,
+        },
+      });
+      expect(updateStatusSpy).toHaveBeenCalledWith({
+        id: emailUpdateRequest.id,
+        status: EmailUpdateStatus.Verified,
+        tx: expect.anything(),
+      });
+      expect(sendEmailUpdateConfirmationSpy).toHaveBeenCalledWith({
+        dest: emailUpdateRequest.newEmail,
+        name: user.firstName,
+        isNewEmail: true,
+      });
+      expect(sendEmailUpdateConfirmationSpy).toHaveBeenCalledWith({
+        dest: user.email,
+        name: user.firstName,
+        isNewEmail: false,
+      });
+    });
+
+    it("should throw BadRequestException if no pending email update request found", async () => {
+      findPendingByUserIdSpy.mockResolvedValue(null);
+
+      await expect(AuthService.verifyEmailUpdate({ dto, user })).rejects.toThrow(BadRequestException);
+      expect(verifyOtpSpy).not.toHaveBeenCalled();
     });
   });
 });

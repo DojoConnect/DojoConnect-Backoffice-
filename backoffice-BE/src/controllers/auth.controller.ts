@@ -103,7 +103,7 @@ export const handleFirebaseLogin = async (req: Request, res: Response) => {
 
 export const handleInitForgetPassword = async (req: Request, res: Response) => {
   try {
-    await AuthService.initForgetPassword({ dto: req.body });
+    await AuthService.requestPasswordReset({ dto: req.body });
   } catch (err) {
     console.log("Error while trying to Init forget password: ", err);
   } finally {
@@ -190,6 +190,44 @@ export const handleVerifyEmail = async (req: Request, res: Response) => {
     formatApiResponse({
       data: undefined,
       message: "Email verified successfully",
+    }),
+  );
+};
+
+export const handleRequestEmailUpdate = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not authenticated");
+  }
+
+  const user = req.user;
+  await AuthService.requestEmailUpdate({
+    dto: req.body,
+    user,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Verification code sent to new email",
+    }),
+  );
+};
+
+export const handleVerifyEmailUpdate = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not authenticated");
+  }
+
+  const user = req.user;
+  await AuthService.verifyEmailUpdate({
+    dto: req.body,
+    user,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Email updated successfully",
     }),
   );
 };

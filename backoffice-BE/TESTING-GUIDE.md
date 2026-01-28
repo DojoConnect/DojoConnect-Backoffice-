@@ -1,8 +1,3 @@
-host: "localhost",
-user: "root",
-password: "Trodpen2022\*",
-database: "trial_dojo",
-
 # Email Endpoints Testing Guide
 
 ## Quick Setup

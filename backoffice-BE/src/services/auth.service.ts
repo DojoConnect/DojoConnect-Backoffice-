@@ -36,9 +36,11 @@ import {
   RegisterParentDTO,
   ChangePasswordDTO,
   VerifyEmailOtpDTO,
+  RequestEmailUpdateDTO,
+  VerifyEmailUpdateDTO,
 } from "../validations/auth.schemas.js";
 import type { Transaction } from "../db/index.js";
-import { DojoStatus, OTPType, Role } from "../constants/enums.js";
+import { DojoStatus, Role } from "../constants/enums.js";
 import { AuthResponseDTO, RegisterDojoAdminResponseDTO } from "../dtos/auth.dtos.js";
 import { UserOAuthAccountsRepository } from "../repositories/oauth-providers.repository.js";
 import { OTPRepository } from "../repositories/otps.repository.js";
@@ -49,6 +51,8 @@ import { SubscriptionService } from "./subscription.service.js";
 import { NotificationService } from "./notifications.service.js";
 import { StripeService } from "./stripe.service.js";
 import { ParentRepository } from "../repositories/parent.repository.js";
+import { OtpStatus, OtpType, EmailUpdateStatus } from "../core/constants/auth.constants.js";
+import { EmailUpdateRequestRepository } from "../repositories/email-update-request.repository.js";
 
 export class AuthService {
   static generateAuthTokens = async ({
@@ -619,7 +623,7 @@ export class AuthService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static initForgetPassword = async ({
+  static requestPasswordReset = async ({
     dto,
     txInstance,
   }: {
@@ -637,7 +641,7 @@ export class AuthService {
         throw new NotFoundException("User not found");
       }; 
 
-      const otp = await this.createOTP(user, OTPType.PasswordReset, tx);
+      const { otp } = await this.createOTP(user, OtpType.PasswordReset, tx);
 
       await MailerService.sendPasswordResetMail({
         dest: user.email,
@@ -669,7 +673,7 @@ export class AuthService {
       await this.verifyOtp({
         otp: dto.otp,
         user,
-        type: OTPType.PasswordReset,
+        type: OtpType.PasswordReset,
         txInstance: tx,
       });
 
@@ -687,11 +691,13 @@ export class AuthService {
     otp,
     type,
     user,
+    onRevoke,
     txInstance,
   }: {
     otp: string;
-    type: OTPType;
+    type: OtpType;
     user: IUser;
+    onRevoke?: () => Promise<void>;
     txInstance?: Transaction;
   }) => {
     const execute = async (tx: Transaction) => {
@@ -721,10 +727,14 @@ export class AuthService {
           tx,
           otpID: otpRecord.id,
           update: {
-            used: true,
+            status: OtpStatus.Revoked,
             attempts: otpRecord.attempts! + 1,
           },
         });
+
+        if (onRevoke) {
+          await onRevoke();
+        }
 
         throw new TooManyRequestsException("Too many failed attempts. Request a new code.");
       }
@@ -735,7 +745,7 @@ export class AuthService {
         tx,
         otpID: otpRecord.id,
         update: {
-          used: true,
+          status: OtpStatus.Used,
         },
       });
     };
@@ -843,12 +853,11 @@ export class AuthService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static createOTP = async (user: IUser, type: OTPType, tx: Transaction) => {
+  static createOTP = async (user: IUser, type: OtpType, tx: Transaction) => {
     // Invalidate ANY previous unused tokens for this user
       // (Prevents stacking valid OTPs)
-      await OTPRepository.updateByUserId({
+      await OTPRepository.revokeUserPendingOTPs({
         tx,
-        update: { used: true },
         userId: user.id,
       });
 
@@ -859,7 +868,7 @@ export class AuthService {
       // Short Expiry (15 Minutes max for OTPs)
       const expiresAt = addMinutes(new Date(), 15);
 
-      await OTPRepository.createOTP({
+      const otpId = await OTPRepository.createOTP({
         tx,
         dto: {
           userId: user.id,
@@ -870,7 +879,7 @@ export class AuthService {
         },
       });
 
-      return otp;
+      return { otp, otpId };
   };
 
   static requestEmailVerification = async ({
@@ -885,7 +894,7 @@ export class AuthService {
         throw new BadRequestException("Email already verified");
       }
 
-      const otp = await this.createOTP(user, OTPType.EmailVerification, tx);
+      const { otp } = await this.createOTP(user, OtpType.EmailVerification, tx);
 
       await MailerService.sendEmailVerificationMail({
         dest: user.email,
@@ -910,7 +919,7 @@ export class AuthService {
       await this.verifyOtp({
         otp: dto.otp,
         user,
-        type: OTPType.EmailVerification,
+        type: OtpType.EmailVerification,
         txInstance: tx,
       });
 
@@ -921,6 +930,161 @@ export class AuthService {
       });
 
       await MailerService.sendEmailVerifiedNotification(user.email, user.firstName);
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static requestEmailUpdate = async ({
+    dto,
+    user,
+    txInstance,
+  }: {
+    dto: RequestEmailUpdateDTO;
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      // Fetch user with password
+      const userWithPassword = await UsersService.getOneUserByID({
+        userId: user.id,
+        txInstance: tx,
+        withPassword: true,
+      });
+
+      if (!userWithPassword || !userWithPassword.passwordHash) {
+        throw new UnauthorizedException("Invalid credentials");
+      }
+
+      // Verify password
+      const isPasswordValid = await verifyPassword(userWithPassword.passwordHash, dto.password);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException("Invalid credentials");
+      }
+
+      // Verify new email is different
+      if (dto.newEmail.toLowerCase() === user.email.toLowerCase()) {
+        throw new BadRequestException("New email must be different from current email");
+      }
+
+      // Check new email is not already registered
+      const existingUser = await UsersService.getOneUserByEmail({
+        email: dto.newEmail,
+        txInstance: tx,
+      });
+
+      if (existingUser) {
+        throw new ConflictException("Email already registered");
+      }
+
+      // Revoke all pending email update requests
+      await EmailUpdateRequestRepository.revokePendingByUserId({
+        userId: user.id,
+        tx,
+      });
+
+      // Create OTP (which also revokes pending OTPs)
+      const { otp, otpId } = await this.createOTP(user, OtpType.EmailUpdate, tx);
+
+      // Create email update request record
+      await EmailUpdateRequestRepository.create({
+        dto: {
+          userId: user.id,
+          oldEmail: user.email,
+          newEmail: dto.newEmail,
+          otpId,
+          status: EmailUpdateStatus.Pending,
+        },
+        tx,
+      });
+
+      // Send OTP to new email and notification to old email
+      await Promise.allSettled([
+        MailerService.sendEmailUpdateOtp({
+          dest: dto.newEmail,
+          name: user.firstName,
+          otp,
+        }),
+        MailerService.sendEmailUpdateNotification({
+          dest: user.email,
+          name: user.firstName,
+          newEmail: dto.newEmail,
+        }),
+      ]);
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static verifyEmailUpdate = async ({
+    dto,
+    user,
+    txInstance,
+  }: {
+    dto: VerifyEmailUpdateDTO;
+    user: IUser;
+    txInstance?: Transaction;
+  }) => {
+    const execute = async (tx: Transaction) => {
+      // Find pending email update request
+      const emailUpdateRequest = await EmailUpdateRequestRepository.findLatestPendingByUserId({
+        userId: user.id,
+        tx,
+      });
+
+      if (!emailUpdateRequest) {
+        throw new BadRequestException("No pending email update request found");
+      }
+
+      // Verify OTP with onRevoke callback
+      await this.verifyOtp({
+        otp: dto.otp,
+        user,
+        type: OtpType.EmailUpdate,
+        onRevoke: async () => {
+          await EmailUpdateRequestRepository.updateStatus({
+            id: emailUpdateRequest.id,
+            status: EmailUpdateStatus.Revoked,
+            tx,
+          });
+        },
+        txInstance: tx,
+      });
+
+      const oldEmail = user.email;
+      const newEmail = emailUpdateRequest.newEmail;
+
+      // Update user's email and mark as verified
+      // Update email update request status to verified
+      await Promise.all([
+        UsersService.updateUser({
+        txInstance: tx,
+        userId: user.id,
+        update: { 
+          email: newEmail,
+          emailVerified: true,
+        },
+      }),
+      EmailUpdateRequestRepository.updateStatus({
+        id: emailUpdateRequest.id,
+        status: EmailUpdateStatus.Verified,
+        tx,
+      })
+    ]);
+
+      // Send confirmation emails to both addresses
+      await Promise.allSettled([
+        MailerService.sendEmailUpdateConfirmation({
+          dest: newEmail,
+          name: user.firstName,
+          isNewEmail: true,
+        }),
+        MailerService.sendEmailUpdateConfirmation({
+          dest: oldEmail,
+          name: user.firstName,
+          isNewEmail: false,
+        }),
+      ]);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
