@@ -15,7 +15,10 @@ import {
   handleResetPassword,
   handleIsDojoTagAvailable,
   handleChangePassword,
+  handleVerifyEmailRequest,
+  handleVerifyEmail,
 } from "../controllers/auth.controller.js";
+import { requireAuth } from "../middlewares/require-auth.middleware.js";
 import { validateReqBody } from "../middlewares/validate.middleware.js";
 import {
   FirebaseSignInSchema,
@@ -25,10 +28,10 @@ import {
   RegisterDojoAdminSchema,
   RegisterParentSchema,
   ResetPasswordSchema,
-  VerifyOtpSchema,
+  VerifyPasswordResetOtpSchema,
+  VerifyEmailOtpSchema,
   ChangePasswordSchema,
 } from "../validations/auth.schemas.js";
-import { requireAuth } from "../middlewares/require-auth.middleware.js";
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -120,7 +123,7 @@ router.get(
 router.get("/availability/dojo-tags/:tag", checkAvailabilityRateLimiter, handleIsDojoTagAvailable);
 
 router.post(
-  "/forgot-password",
+  "/password/reset/request",
   otpRequestLimiter,
   otpIpLimiter,
   validateReqBody(ForgotPasswordSchema),
@@ -128,21 +131,33 @@ router.post(
 );
 
 router.post(
-  "/verify-otp",
+  "/password/reset/verify",
   otpVerifyLimiter,
   otpVerifyIpLimiter,
-  validateReqBody(VerifyOtpSchema),
+  validateReqBody(VerifyPasswordResetOtpSchema),
   handleVerifyOtp,
 );
 
-router.post("/reset-password", validateReqBody(ResetPasswordSchema), handleResetPassword);
+router.post("/password/reset", validateReqBody(ResetPasswordSchema), handleResetPassword);
 
 router.post(
-  "/change-password",
+  "/password/change",
   authLimiter,
   requireAuth,
   validateReqBody(ChangePasswordSchema),
   handleChangePassword,
+);
+
+router.post("/email/verification/request", requireAuth, otpVerifyLimiter,
+  otpVerifyIpLimiter, handleVerifyEmailRequest);
+
+router.post(
+  "/email/verification/confirm",
+  requireAuth,
+  otpVerifyLimiter,
+  otpVerifyIpLimiter,
+  validateReqBody(VerifyEmailOtpSchema),
+  handleVerifyEmail,
 );
 
 export default router;

@@ -118,7 +118,7 @@ export const handleInitForgetPassword = async (req: Request, res: Response) => {
 
 export const handleVerifyOtp = async (req: Request, res: Response) => {
   try {
-    const result = await AuthService.verifyOtp({ dto: req.body });
+    const result = await AuthService.verifyPasswordResetOtp({ dto: req.body });
     res.json(formatApiResponse({ data: result }));
   } catch (error) {
     throw new BadRequestException("Invalid OTP or expired");
@@ -155,6 +155,41 @@ export const handleChangePassword = async (req: Request, res: Response) => {
     formatApiResponse({
       data: undefined,
       message: "Password changed successfully",
+    }),
+  );
+};
+
+export const handleVerifyEmailRequest = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not found");
+  }
+
+  const user = req.user;
+  await AuthService.requestEmailVerification({ user });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Verification code sent to your email",
+    }),
+  );
+};
+
+export const handleVerifyEmail = async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new UnauthorizedException("User not found");
+  }
+
+  const user = req.user;
+  await AuthService.verifyEmailVerification({
+    dto: req.body,
+    user,
+  });
+
+  res.json(
+    formatApiResponse({
+      data: undefined,
+      message: "Email verified successfully",
     }),
   );
 };

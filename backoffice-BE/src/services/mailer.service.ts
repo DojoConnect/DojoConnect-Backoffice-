@@ -623,4 +623,57 @@ export class MailerService {
       console.error(`Password changed notification email failed to ${dest}: ${error.message}`);
     }
   };
+
+  static sendEmailVerificationMail = async ({
+    dest,
+    name,
+    otp,
+  }: {
+    dest: string;
+    name: string;
+    otp: string;
+  }) => {
+    const mailOptions = {
+      from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+      to: dest,
+      subject: "Dojo Connect - Verify Your Email",
+      html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #E51B1B; text-align: center;">Welcome to Dojo Connect!</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Thank you for signing up. Please use the following One-Time Password (OTP) to verify your email address. This code is valid for 15 minutes.</p>
+        <div style="background: #f9f9f9; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #E51B1B; border-radius: 5px; margin: 20px 0;">
+          ${otp}
+        </div>
+        <p>If you did not request this verification, please ignore this email.</p>
+        <p>Best regards,<br/>The Dojo Connect Team</p>
+      </div>
+      `,
+    };
+
+    await this.getTransporter().sendMail(mailOptions);
+  };
+
+  static sendEmailVerifiedNotification = async (dest: string, name: string) => {
+    try {
+      const mailOptions = {
+        from: `"Dojo Connect" <${AppConfig.ZOHO_EMAIL}>`,
+        to: dest,
+        subject: "Email Verified - Dojo Connect",
+        html: `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #4CAF50; text-align: center;">Verification Successful!</h2>
+        <p>Hi <strong>${name}</strong>,</p>
+        <p>Your email address has been successfully verified. You now have full access to your Dojo Connect account.</p>
+        <p>Happy training!</p>
+        <p>Best regards,<br/>The Dojo Connect Team</p>
+      </div>
+      `,
+      };
+
+      await MailerService.getTransporter().sendMail(mailOptions);
+    } catch (error: any) {
+      console.error(`Email verified notification failed to ${dest}: ${error.message}`);
+    }
+  };
 }
