@@ -619,7 +619,7 @@ export class AuthService {
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
   };
 
-  static initForgetPassword = async ({
+  static requestPasswordReset = async ({
     dto,
     txInstance,
   }: {

@@ -762,7 +762,7 @@ describe("Auth Service", () => {
     });
   });
 
-  describe("initForgetPassword", () => {
+  describe("requestPasswordReset", () => {
     const dto = { email: "test@example.com" };
     const user = buildUserMock({ email: dto.email });
 
@@ -783,7 +783,7 @@ describe("Auth Service", () => {
     it("should initiate password reset for existing user", async () => {
       getOneUserByEmailSpy.mockResolvedValue(user);
 
-      await AuthService.initForgetPassword({ dto });
+      await AuthService.requestPasswordReset({ dto });
 
       expect(getOneUserByEmailSpy).toHaveBeenCalledWith({
         email: dto.email,
@@ -800,7 +800,7 @@ describe("Auth Service", () => {
     it("should throw NotFoundException if user is not found", async () => {
       getOneUserByEmailSpy.mockResolvedValue(null);
 
-      await expect(AuthService.initForgetPassword({ dto })).rejects.toThrow(NotFoundException);
+      await expect(AuthService.requestPasswordReset({ dto })).rejects.toThrow(NotFoundException);
 
       expect(getOneUserByEmailSpy).toHaveBeenCalled();
       expect(createOTPSpy).not.toHaveBeenCalled();

@@ -103,7 +103,7 @@ export const handleFirebaseLogin = async (req: Request, res: Response) => {
 
 export const handleInitForgetPassword = async (req: Request, res: Response) => {
   try {
-    await AuthService.initForgetPassword({ dto: req.body });
+    await AuthService.requestPasswordReset({ dto: req.body });
   } catch (err) {
     console.log("Error while trying to Init forget password: ", err);
   } finally {
