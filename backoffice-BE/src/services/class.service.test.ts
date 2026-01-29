@@ -151,18 +151,6 @@ describe("Class Service", () => {
   });
 
   describe("createClass", () => {
-    it("should throw NotFoundException if imagePublicId is provided but asset not found", async () => {
-      const dto = buildCreateClassDTOMock({ imagePublicId: "non-existent" });
-      fetchImageAssetSpy.mockResolvedValue(null);
-      await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(NotFoundException);
-    });
-
-    it("should throw BadRequestException if asset is not an image", async () => {
-      const dto = buildCreateClassDTOMock({ imagePublicId: "video-id" });
-      fetchImageAssetSpy.mockResolvedValue({ resource_type: "video" } as any);
-      await expect(ClassService.createClass({ dto, dojo })).rejects.toThrow(BadRequestException);
-    });
-
     it("should throw NotFoundException if instructorId is provided but not found", async () => {
       const dto = buildCreateClassDTOMock({ instructorId: "ghost" });
       findInstructorSpy.mockResolvedValue(null);

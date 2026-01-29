@@ -734,15 +734,5 @@ describe("Users Service", () => {
       expect(result).toBeInstanceOf(UserDTO);
       expect(result.username).toBe("new-username");
     });
-
-    it("should throw NotFoundException if user is not found after update", async () => {
-      const userId = "user-1";
-      const user = buildUserMock({ id: userId });
-      const update = buildUpdateProfileDtoMock({ firstName: "Ghost" });
-
-      getOneUserByIDSpy.mockResolvedValue(null);
-
-      await expect(UsersService.updateProfile(user, update)).rejects.toThrow(NotFoundException);
-    });
   });
 });

@@ -4,7 +4,6 @@ import { ChatsService } from "./chats.service.js";
 import { ChatRepository } from "../repositories/chat.repository.js";
 import { MessageService } from "./message.service.js";
 import { buildUserMock } from "../tests/factories/user.factory.js";
-import { buildChatMock } from "../tests/factories/chat.factory.js";
 import { ChatType } from "../constants/enums.js";
 
 vi.mock("../repositories/chat.repository.js");
