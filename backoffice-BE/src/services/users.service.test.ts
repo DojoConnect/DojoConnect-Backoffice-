@@ -708,25 +708,27 @@ describe("Users Service", () => {
 
     it("should throw ConflictException if username is already taken by another user", async () => {
       const userId = "user-1";
+      const user = buildUserMock({ id: userId });
       const update = buildUpdateProfileDtoMock({ username: "taken-username" });
       const existingUser = buildUserMock({ id: "user-2", username: "taken-username" });
 
       getOneUserSpy.mockResolvedValue(existingUser);
 
-      await expect(UsersService.updateProfile(userId, update)).rejects.toThrow(ConflictException);
+      await expect(UsersService.updateProfile(user, update)).rejects.toThrow(ConflictException);
       expect(getOneUserSpy).toHaveBeenCalled();
       expect(updateUserSpy).not.toHaveBeenCalled();
     });
 
     it("should update profile successfully when username is available", async () => {
       const userId = "user-1";
+      const user = buildUserMock({ id: userId });
       const update = buildUpdateProfileDtoMock({ username: "new-username", firstName: "New" });
-      const updatedUser = buildUserMock({ id: userId, ...update });
+      const updatedUser = buildUserMock({ ...user, ...update });
 
       getOneUserSpy.mockResolvedValue(null); // No other user with this username
       getOneUserByIDSpy.mockResolvedValue(updatedUser);
 
-      const result = await UsersService.updateProfile(userId, update);
+      const result = await UsersService.updateProfile(user, update);
 
       expect(updateUserSpy).toHaveBeenCalledWith({ userId, update, txInstance: expect.anything() });
       expect(result).toBeInstanceOf(UserDTO);
@@ -735,11 +737,12 @@ describe("Users Service", () => {
 
     it("should throw NotFoundException if user is not found after update", async () => {
       const userId = "user-1";
+      const user = buildUserMock({ id: userId });
       const update = buildUpdateProfileDtoMock({ firstName: "Ghost" });
 
       getOneUserByIDSpy.mockResolvedValue(null);
 
-      await expect(UsersService.updateProfile(userId, update)).rejects.toThrow(NotFoundException);
+      await expect(UsersService.updateProfile(user, update)).rejects.toThrow(NotFoundException);
     });
   });
 });

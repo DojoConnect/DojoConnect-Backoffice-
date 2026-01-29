@@ -13,7 +13,7 @@ export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
     lastName: faker.person.lastName(),
     email: "john@example.com",
     passwordHash: "$argon2id$v=19$m=65536,t=3,p=4$examplehashhere",
-    avatar: "https://example.com/avatar.jpg",
+    avatarPublicId: "https://example.com/avatar.jpg",
     role: Role.DojoAdmin,
     emailVerified: true,
     dob: new Date("1990-05-14"),
