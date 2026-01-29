@@ -13,13 +13,8 @@ import { InternalServerErrorException } from "../core/errors/InternalServerError
 
 // Maps image types to their corresponding Cloudinary folder paths.
 const FOLDER_MAP: Record<ImageType, string> = {
-  [ImageType.CLASS]: "dojos/{dojoId}/class",
-  [ImageType.PROFILE]: "dojos/{dojoId}/profile",
-};
-
-// Determines the Cloudinary folder for an upload based on image type and dojo ID.
-const getTmpUploadFolder = (dojoId: string) => {
-  return `dojos/${dojoId}/tmp`;
+  [ImageType.CLASS]: "dojos/{id}/class",
+  [ImageType.AVATAR]: "users/{id}/avatar",
 };
 
 const getFinalUploadFolder = (imageType: ImageType, dojoId: string) => {
@@ -28,21 +23,18 @@ const getFinalUploadFolder = (imageType: ImageType, dojoId: string) => {
 
 export class CloudinaryService {
   // Generates a signed upload signature for Cloudinary.
-  static getCloudinarySignature = (dto: GetCloudinarySignatureDto) => {
-    const { imageType, dojoId } = dto;
+  static getCloudinarySignature = ({imageType, context, uploadFolder}: {imageType: ImageType, context: string, uploadFolder: string}) => {
     if (!IMAGE_TRANSFORMATIONS[imageType]) {
       throw new InternalServerErrorException(`Unsupported image type: ${imageType}`);
     }
 
-    const asset_folder = getTmpUploadFolder(dojoId);
+    const asset_folder = uploadFolder;
     const timestamp = Math.round(new Date().getTime() / 1000);
 
     // Defines the transformation to be applied to the uploaded image.
     const transformation = IMAGE_TRANSFORMATIONS[imageType];
 
     const upload_preset = UPLOAD_PRESETS.general_signed_image_upload;
-
-    const context = `dojoId=${dojoId}|imageType=${imageType}`;
 
     // Creates a signature for the upload request.
     const signature = cloudinary.utils.api_sign_request(
