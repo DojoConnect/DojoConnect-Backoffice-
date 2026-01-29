@@ -740,12 +740,14 @@ describe("Users Service", () => {
   });
 
   describe('updateProfileImage', () => {
+    const mockPublicId = 'temp/avatar_123';
+    const mockUrl = 'https://cdn.cloudinary.com/avatar.png';
   const user = buildUserMock({
     id: 'user-123',
   });
 
   const dto = buildUpdateProfileImageDtoMock({
-    publicId: 'temp/avatar_123',
+    publicId: mockPublicId,
   });
 
   let assertValidSpy: MockInstance;
@@ -754,12 +756,12 @@ describe("Users Service", () => {
   let getAssetUrlSpy: MockInstance;
 
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
 
     assertValidSpy = vi.spyOn(CloudinaryService, 'assertValidImageAsset').mockResolvedValue(undefined);
     updateUserSpy = vi.spyOn(UsersService, 'updateUser').mockResolvedValue(undefined);
     moveImageSpy = vi.spyOn(CloudinaryService, 'moveImageFromTempFolder').mockResolvedValue(undefined);
-    getAssetUrlSpy = vi.spyOn(CloudinaryService, 'getAssetUrl').mockReturnValue('https://cdn.cloudinary.com/avatar.png');
+    getAssetUrlSpy = vi.spyOn(CloudinaryService, 'getAssetUrl').mockReturnValue(mockUrl);
   });
 
   it('should update profile image successfully', async () => {
@@ -768,8 +770,8 @@ describe("Users Service", () => {
     expect(assertValidSpy).toHaveBeenCalledWith(dto.publicId);
     expect(moveImageSpy).toHaveBeenCalledWith(dto.publicId, user.id, ImageType.AVATAR);
     expect(getAssetUrlSpy).toHaveBeenCalledWith(dto.publicId);
-    expect(updateUserSpy).toHaveBeenCalledWith({ userId: user.id, update: { avatarPublicId: 'https://cdn.cloudinary.com/avatar.png' }, txInstance: dbSpies.mockTx });
-    expect(result).toBe('https://cdn.cloudinary.com/avatar.png');
+    expect(updateUserSpy).toHaveBeenCalledWith({ userId: user.id, update: { avatarPublicId: mockPublicId }, txInstance: dbSpies.mockTx });
+    expect(result).toBe(mockUrl);
   });
 });
 });
