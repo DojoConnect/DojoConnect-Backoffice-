@@ -3,7 +3,7 @@ import { Role } from "../../constants/enums.js";
 import { UserDTO, UserDTOParams } from "../../dtos/user.dtos.js";
 import { INewUser, IUser } from "../../repositories/user.repository.js";
 import { INewUserCard, IUserCard } from "../../services/users.service.js";
-import { UpdateProfileDTO } from "../../validations/users.schemas.js";
+import { UpdateProfileDTO, UpdateProfileImageDTO } from "../../validations/users.schemas.js";
 
 export const buildUserMock = (overrides?: Partial<IUser>): IUser => {
   return {
@@ -69,6 +69,13 @@ export const buildUpdateProfileDtoMock = (overrides?: Partial<UpdateProfileDTO>)
     dob: new Date("1990-05-14"),
     street: "42 Ikoyi Crescent",
     city: "Lagos",
+    ...overrides,
+  };
+};
+
+export const buildUpdateProfileImageDtoMock = (overrides?: Partial<UpdateProfileImageDTO>): UpdateProfileImageDTO => {
+  return {
+    publicId: "temp/avatar_123",
     ...overrides,
   };
 };

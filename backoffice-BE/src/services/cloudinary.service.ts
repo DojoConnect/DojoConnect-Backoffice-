@@ -12,6 +12,19 @@ import { InternalServerErrorException } from "../core/errors/InternalServerError
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { BadRequestException } from "../core/errors/BadRequestException.js";
 
+export interface ICloudinarySignature {
+    cloudName: string;
+    apiKey: string;
+    timestamp: number;
+    signature: string;
+    asset_folder: string;
+    allowed_formats: string[];
+    max_file_size: number;
+    transformation: string;
+    upload_preset: string;
+    context: string;
+}
+
 // Maps image types to their corresponding Cloudinary folder paths.
 const FOLDER_MAP: Record<ImageType, string> = {
   [ImageType.CLASS]: "dojos/{id}/class",
@@ -24,7 +37,7 @@ const getFinalUploadFolder = (imageType: ImageType, entityId: string) => {
 
 export class CloudinaryService {
   // Generates a signed upload signature for Cloudinary.
-  static getCloudinarySignature = ({imageType, context, uploadFolder}: {imageType: ImageType, context: string, uploadFolder: string}) => {
+  static getCloudinarySignature = ({imageType, context, uploadFolder}: {imageType: ImageType, context: string, uploadFolder: string}): ICloudinarySignature => {
     if (!IMAGE_TRANSFORMATIONS[imageType]) {
       throw new InternalServerErrorException(`Unsupported image type: ${imageType}`);
     }

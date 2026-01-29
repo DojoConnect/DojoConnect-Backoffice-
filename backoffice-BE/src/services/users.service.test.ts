@@ -7,6 +7,7 @@ import { userCards, users } from "../db/schema.js";
 import {
   buildNewUserMock,
   buildUpdateProfileDtoMock,
+  buildUpdateProfileImageDtoMock,
   buildUserCardMock,
   buildUserMock,
 } from "../tests/factories/user.factory.js";
@@ -31,6 +32,8 @@ import { UnauthorizedException } from "../core/errors/UnauthorizedException.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { ConflictException } from "../core/errors/ConflictException.js";
+import { CloudinaryService } from "./cloudinary.service.js";
+import { ImageType } from "../constants/cloudinary.js";
 
 describe("Users Service", () => {
   const whereClause = eq(users.id, "1");
@@ -735,4 +738,38 @@ describe("Users Service", () => {
       expect(result.username).toBe("new-username");
     });
   });
+
+  describe('updateProfileImage', () => {
+  const user = buildUserMock({
+    id: 'user-123',
+  });
+
+  const dto = buildUpdateProfileImageDtoMock({
+    publicId: 'temp/avatar_123',
+  });
+
+  let assertValidSpy: MockInstance;
+  let updateUserSpy: MockInstance;
+  let moveImageSpy: MockInstance;
+  let getAssetUrlSpy: MockInstance;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+
+    assertValidSpy = vi.spyOn(CloudinaryService, 'assertValidImageAsset').mockResolvedValue(undefined);
+    updateUserSpy = vi.spyOn(UsersService, 'updateUser').mockResolvedValue(undefined);
+    moveImageSpy = vi.spyOn(CloudinaryService, 'moveImageFromTempFolder').mockResolvedValue(undefined);
+    getAssetUrlSpy = vi.spyOn(CloudinaryService, 'getAssetUrl').mockReturnValue('https://cdn.cloudinary.com/avatar.png');
+  });
+
+  it('should update profile image successfully', async () => {
+    const result = await UsersService.updateProfileImage(user, dto);
+
+    expect(assertValidSpy).toHaveBeenCalledWith(dto.publicId);
+    expect(moveImageSpy).toHaveBeenCalledWith(dto.publicId, user.id, ImageType.AVATAR);
+    expect(getAssetUrlSpy).toHaveBeenCalledWith(dto.publicId);
+    expect(updateUserSpy).toHaveBeenCalledWith({ userId: user.id, update: { avatarPublicId: 'https://cdn.cloudinary.com/avatar.png' }, txInstance: dbSpies.mockTx });
+    expect(result).toBe('https://cdn.cloudinary.com/avatar.png');
+  });
+});
 });
