@@ -6,7 +6,7 @@ import { UpdateProfileImageSchema, UpdateProfileSchema } from "../validations/us
 
 const router = Router();
 
-router.put(
+router.patch(
   "/me",
   requireAuth,
   validateReqBody(UpdateProfileSchema),

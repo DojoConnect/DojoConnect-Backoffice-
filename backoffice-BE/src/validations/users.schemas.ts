@@ -2,13 +2,13 @@ import { z } from "zod";
 import { DateOnlySchema } from "./helpers.schemas.js";
 
 export const UpdateProfileSchema = z.object({
-  firstName: z.string().trim().nonempty(),
-  lastName: z.string().trim().nonempty(),
-  username: z.string().trim().nonempty(),
-  gender: z.string().trim().nonempty(),
-  dob: DateOnlySchema,
-  street: z.string().trim().nonempty(),
-  city: z.string().trim().nonempty(),
+  firstName: z.string().trim().nonempty().optional(),
+  lastName: z.string().trim().nonempty().optional(),
+  username: z.string().trim().nonempty().optional(),
+  gender: z.string().trim().nonempty().optional(),
+  dob: DateOnlySchema.optional(),
+  street: z.string().trim().nonempty().optional(),
+  city: z.string().trim().nonempty().optional(),
 });
 
 export const UpdateProfileImageSchema = z.object({

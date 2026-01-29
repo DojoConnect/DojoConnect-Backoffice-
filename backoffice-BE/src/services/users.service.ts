@@ -204,13 +204,16 @@ export class UsersService {
 
   static updateProfile = async (
     user: IUser,
-    update: UpdateProfileDTO,
+    dto: UpdateProfileDTO,
     txInstance?: Transaction,
   ): Promise<UserDTO> => {
     const execute = async (tx: Transaction) => {
+      const update: IUpdateUser = {};
+
+      if (dto.username) {
         const existingUser = await UsersService.getOneUser(
           {
-            whereClause: and(eq(users.username, update.username), not(eq(users.id, user.id)))!,
+            whereClause: and(eq(users.username, dto.username), not(eq(users.id, user.id)))!,
           },
           tx,
         );
@@ -219,9 +222,36 @@ export class UsersService {
           throw new ConflictException("Username already taken");
         }
 
+        update.username = dto.username;
+      }
+
+      if (dto.firstName) {
+        update.firstName = dto.firstName;
+      }
+
+      if (dto.lastName) {
+        update.lastName = dto.lastName;
+      }
+
+      if (dto.gender) {
+        update.gender = dto.gender;
+      }
+
+      if (dto.dob) {
+        update.dob = dto.dob;
+      }
+
+      if (dto.street) {
+        update.street = dto.street;
+      }
+
+      if (dto.city) {
+        update.city = dto.city;
+      }
+
       await UsersService.updateUser({ userId: user.id, update, txInstance: tx });
 
-      const updatedUser = Object.assign(user, update);
+      const updatedUser = Object.assign(user, dto);
 
       return new UserDTO(updatedUser);
     };
