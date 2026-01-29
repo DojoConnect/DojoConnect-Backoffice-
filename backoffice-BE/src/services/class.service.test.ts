@@ -579,34 +579,6 @@ describe("Class Service", () => {
     });
   });
 
-  describe("assertValidClassImage", () => {
-    it("should not throw an error for a valid image", async () => {
-      fetchImageAssetSpy.mockResolvedValue({
-        resource_type: CloudinaryResourceType.IMAGE,
-      } as any);
-
-      await expect(ClassService.assertValidClassImage("valid-image-id")).resolves.not.toThrow();
-    });
-
-    it("should throw NotFoundException if asset is not found", async () => {
-      fetchImageAssetSpy.mockResolvedValue(null);
-
-      await expect(ClassService.assertValidClassImage("not-found-id")).rejects.toThrow(
-        NotFoundException,
-      );
-    });
-
-    it("should throw BadRequestException if asset is not an image", async () => {
-      fetchImageAssetSpy.mockResolvedValue({
-        resource_type: "video",
-      } as any);
-
-      await expect(ClassService.assertValidClassImage("video-id")).rejects.toThrow(
-        BadRequestException,
-      );
-    });
-  });
-
   describe("assertInstructorExistInDojo", () => {
     const instructorId = "test-instructor-id";
     const dojoId = "test-dojo-id";

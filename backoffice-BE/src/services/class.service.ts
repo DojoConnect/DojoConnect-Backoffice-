@@ -52,7 +52,7 @@ export class ClassService {
       let dojoInstructor: IDojoInstructor | null = null;
 
       if (dto.imagePublicId) {
-        await ClassService.assertValidClassImage(dto.imagePublicId);
+        await CloudinaryService.assertValidImageAsset(dto.imagePublicId);
       }
 
       if (dto.instructorId) {
@@ -298,7 +298,7 @@ export class ClassService {
       }
 
       if (dto.imagePublicId) {
-        await ClassService.assertValidClassImage(dto.imagePublicId);
+        await CloudinaryService.assertValidImageAsset(dto.imagePublicId);
       }
 
       // Handle schedule updates
@@ -404,18 +404,6 @@ export class ClassService {
         };
       })
       .filter((s): s is INewClassSchedule => s !== null);
-  };
-
-  static assertValidClassImage = async (imagePublicId: string) => {
-    const asset = await CloudinaryService.fetchImageAsset(imagePublicId);
-
-    if (!asset) {
-      throw new NotFoundException(`Image with ID ${imagePublicId} not found`);
-    }
-
-    if (asset.resource_type !== CloudinaryResourceType.IMAGE) {
-      throw new BadRequestException(`Asset with ID ${imagePublicId} is not an image`);
-    }
   };
 
   static assertInstructorExistInDojo = async (

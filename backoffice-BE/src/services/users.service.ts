@@ -19,7 +19,9 @@ import {
   StudentUserDTO,
   UserDTO,
 } from "../dtos/user.dtos.js";
-import { UpdateProfileDTO } from "../validations/users.schemas.js";
+import { UpdateProfileDTO, UpdateProfileImageDTO } from "../validations/users.schemas.js";
+import { CloudinaryService } from "./cloudinary.service.js";
+import { ImageType } from "../constants/cloudinary.js";
 
 export type IUserCard = InferSelectModel<typeof userCards>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
@@ -201,14 +203,14 @@ export class UsersService {
   };
 
   static updateProfile = async (
-    userId: string,
+    user: IUser,
     update: UpdateProfileDTO,
     txInstance?: Transaction,
   ): Promise<UserDTO> => {
     const execute = async (tx: Transaction) => {
         const existingUser = await UsersService.getOneUser(
           {
-            whereClause: and(eq(users.username, update.username), not(eq(users.id, userId)))!,
+            whereClause: and(eq(users.username, update.username), not(eq(users.id, user.id)))!,
           },
           tx,
         );
@@ -217,13 +219,9 @@ export class UsersService {
           throw new ConflictException("Username already taken");
         }
 
-      await UsersService.updateUser({ userId, update, txInstance: tx });
+      await UsersService.updateUser({ userId: user.id, update, txInstance: tx });
 
-      const updatedUser = await UsersService.getOneUserByID({ userId, txInstance: tx });
-
-      if (!updatedUser) {
-        throw new NotFoundException("User not found after update");
-      }
+      const updatedUser = Object.assign(user, update);
 
       return new UserDTO(updatedUser);
     };
@@ -353,6 +351,20 @@ export class UsersService {
         ...user,
         student,
       });
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static updateProfileImage = async (user: IUser, dto: UpdateProfileImageDTO, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
+      await CloudinaryService.assertValidImageAsset(dto.publicId);
+
+      await UsersService.updateUser({ userId: user.id, update: { avatarPublicId: dto.publicId }, txInstance: tx });
+
+      await CloudinaryService.moveImageFromTempFolder(dto.publicId, user.id, ImageType.AVATAR);
+
+      return CloudinaryService.getAssetUrl(dto.publicId);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);

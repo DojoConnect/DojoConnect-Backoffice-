@@ -11,4 +11,10 @@ export const UpdateProfileSchema = z.object({
   city: z.string().trim().nonempty(),
 });
 
+export const UpdateProfileImageSchema = z.object({
+  publicId: z.string().trim().nonempty(),
+});
+
+
 export type UpdateProfileDTO = z.infer<typeof UpdateProfileSchema>;
+export type UpdateProfileImageDTO = z.infer<typeof UpdateProfileImageSchema>;

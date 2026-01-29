@@ -680,7 +680,7 @@ export const users = mysqlTable(
     username: varchar({ length: 100 }).unique().notNull(),
     passwordHash: varchar("password_hash", { length: 255 }),
     emailVerified: boolean("email_verified").default(false).notNull(),
-    avatar: text(),
+    avatarPublicId: varchar("avatar_public_id", { length: 255 }),
     role: mysqlEnum(Role).notNull(),
     dob: date("dob"),
     gender: varchar({ length: 10 }),

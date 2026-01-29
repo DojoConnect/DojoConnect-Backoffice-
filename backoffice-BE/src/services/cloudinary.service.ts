@@ -8,8 +8,9 @@ import {
   MAX_FILE_SIZE_BYTES,
   UPLOAD_PRESETS,
 } from "../constants/cloudinary.js";
-import { GetCloudinarySignatureDto } from "../dtos/upload.dtos.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
+import { NotFoundException } from "../core/errors/NotFoundException.js";
+import { BadRequestException } from "../core/errors/BadRequestException.js";
 
 // Maps image types to their corresponding Cloudinary folder paths.
 const FOLDER_MAP: Record<ImageType, string> = {
@@ -17,8 +18,8 @@ const FOLDER_MAP: Record<ImageType, string> = {
   [ImageType.AVATAR]: "users/{id}/avatar",
 };
 
-const getFinalUploadFolder = (imageType: ImageType, dojoId: string) => {
-  return FOLDER_MAP[imageType].replace("{dojoId}", dojoId);
+const getFinalUploadFolder = (imageType: ImageType, entityId: string) => {
+  return FOLDER_MAP[imageType].replace("{id}", entityId);
 };
 
 export class CloudinaryService {
@@ -70,19 +71,31 @@ export class CloudinaryService {
     });
   }
 
+  static assertValidImageAsset = async (imagePublicId: string) => {
+    const asset = await CloudinaryService.fetchImageAsset(imagePublicId);
+
+    if (!asset) {
+      throw new NotFoundException(`Image with ID ${imagePublicId} not found`);
+    }
+
+    if (asset.resource_type !== CloudinaryResourceType.IMAGE) {
+      throw new BadRequestException(`Asset with ID ${imagePublicId} is not an image`);
+    }
+  };
+
   static deleteImageAsset = async (publicId: string) => {
     return await cloudinary.uploader.destroy(publicId);
   };
 
   static moveImageFromTempFolder = async (
     publicId: string,
-    dojoId: string,
+    entityId: string,
     imageType: ImageType,
   ) => {
     return await cloudinary.uploader.explicit(publicId, {
       type: "upload",
       resource_type: CloudinaryResourceType.IMAGE,
-      asset_folder: getFinalUploadFolder(imageType, dojoId),
+      asset_folder: getFinalUploadFolder(imageType, entityId),
     });
   };
 
