@@ -4,6 +4,27 @@ import { formatApiResponse } from "../utils/api.utils.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 
 export class UsersController {
+
+  static getProfile = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!req.user) {
+        throw new InternalServerErrorException("User not found");
+      }
+
+      const user = req.user;
+
+      const result = await UsersService.getUserDTO(user);
+      
+      res.json(
+        formatApiResponse({
+          data: result
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
   static updateProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
       if (!req.user) {

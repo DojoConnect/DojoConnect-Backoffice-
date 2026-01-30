@@ -6,6 +6,8 @@ import { UpdateProfileImageSchema, UpdateProfileSchema } from "../validations/us
 
 const router = Router();
 
+router.get("/me", requireAuth, UsersController.getProfile);
+
 router.patch(
   "/me",
   requireAuth,
