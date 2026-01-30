@@ -3,6 +3,7 @@ import { IDojo } from "../repositories/dojo.repository.js";
 import { IDojoInstructor } from "../repositories/instructors.repository.js";
 import { IParent } from "../repositories/parent.repository.js";
 import { IStudent } from "../repositories/student.repository.js";
+import { CloudinaryService } from "../services/cloudinary.service.js";
 import { BaseDojoDTO } from "./dojo.dtos.js";
 import { DojoInstructorDTO } from "./instructor.dtos.js";
 import { ParentDTO } from "./parent.dtos.js";
@@ -14,7 +15,7 @@ export interface UserDTOParams {
   lastName: string;
   email: string;
   username: string;
-  avatar: string | null;
+  avatarPublicId: string | null;
   role: Role;
   dob: Date | null;
   gender: string | null;
@@ -46,7 +47,7 @@ export class UserDTO implements UserDTOParams {
   lastName: string;
   email: string;
   username: string;
-  avatar: string | null;
+  avatarPublicId: string | null;
   role: Role;
   dob: Date | null;
   gender: string | null;
@@ -60,7 +61,7 @@ export class UserDTO implements UserDTOParams {
     this.lastName = params.lastName;
     this.email = params.email;
     this.username = params.username;
-    this.avatar = params.avatar;
+    this.avatarPublicId = params.avatarPublicId;
     this.role = params.role;
     this.dob = params.dob;
     this.gender = params.gender;
@@ -76,7 +77,7 @@ export class UserDTO implements UserDTOParams {
       lastName: this.lastName,
       email: this.email,
       username: this.username,
-      avatar: this.avatar,
+      avatarUrl: this.avatarPublicId ? CloudinaryService.getAssetUrl(this.avatarPublicId) : null,
       role: this.role,
       dob: this.dob,
       gender: this.gender,

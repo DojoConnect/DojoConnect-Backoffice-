@@ -19,7 +19,9 @@ import {
   StudentUserDTO,
   UserDTO,
 } from "../dtos/user.dtos.js";
-import { UpdateProfileDTO } from "../validations/users.schemas.js";
+import { UpdateProfileDTO, UpdateProfileImageDTO } from "../validations/users.schemas.js";
+import { CloudinaryService } from "./cloudinary.service.js";
+import { ImageType } from "../constants/cloudinary.js";
 
 export type IUserCard = InferSelectModel<typeof userCards>;
 export type INewUserCard = InferInsertModel<typeof userCards>;
@@ -201,14 +203,17 @@ export class UsersService {
   };
 
   static updateProfile = async (
-    userId: string,
-    update: UpdateProfileDTO,
+    user: IUser,
+    dto: UpdateProfileDTO,
     txInstance?: Transaction,
   ): Promise<UserDTO> => {
     const execute = async (tx: Transaction) => {
+      const update: IUpdateUser = {};
+
+      if (dto.username) {
         const existingUser = await UsersService.getOneUser(
           {
-            whereClause: and(eq(users.username, update.username), not(eq(users.id, userId)))!,
+            whereClause: and(eq(users.username, dto.username), not(eq(users.id, user.id)))!,
           },
           tx,
         );
@@ -217,13 +222,36 @@ export class UsersService {
           throw new ConflictException("Username already taken");
         }
 
-      await UsersService.updateUser({ userId, update, txInstance: tx });
-
-      const updatedUser = await UsersService.getOneUserByID({ userId, txInstance: tx });
-
-      if (!updatedUser) {
-        throw new NotFoundException("User not found after update");
+        update.username = dto.username;
       }
+
+      if (dto.firstName) {
+        update.firstName = dto.firstName;
+      }
+
+      if (dto.lastName) {
+        update.lastName = dto.lastName;
+      }
+
+      if (dto.gender) {
+        update.gender = dto.gender;
+      }
+
+      if (dto.dob) {
+        update.dob = dto.dob;
+      }
+
+      if (dto.street) {
+        update.street = dto.street;
+      }
+
+      if (dto.city) {
+        update.city = dto.city;
+      }
+
+      await UsersService.updateUser({ userId: user.id, update, txInstance: tx });
+
+      const updatedUser = Object.assign(user, dto);
 
       return new UserDTO(updatedUser);
     };
@@ -353,6 +381,20 @@ export class UsersService {
         ...user,
         student,
       });
+    };
+
+    return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);
+  };
+
+  static updateProfileImage = async (user: IUser, dto: UpdateProfileImageDTO, txInstance?: Transaction) => {
+    const execute = async (tx: Transaction) => {
+      await CloudinaryService.assertValidImageAsset(dto.publicId);
+
+      await UsersService.updateUser({ userId: user.id, update: { avatarPublicId: dto.publicId }, txInstance: tx });
+
+      await CloudinaryService.moveImageFromTempFolder(dto.publicId, user.id, ImageType.AVATAR);
+
+      return CloudinaryService.getAssetUrl(dto.publicId);
     };
 
     return txInstance ? execute(txInstance) : dbService.runInTransaction(execute);

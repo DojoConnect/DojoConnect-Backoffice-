@@ -50,7 +50,7 @@ export class MessageRepository {
             id: users.id,
             firstName: users.firstName,
             lastName: users.lastName,
-            avatar: users.avatar,
+            avatar: users.avatarPublicId,
           },
         })
         .from(messages)
@@ -86,7 +86,7 @@ export class MessageRepository {
           id: users.id,
           firstName: users.firstName,
           lastName: users.lastName,
-          avatar: users.avatar,
+          avatar: users.avatarPublicId,
         },
       })
       .from(messages)

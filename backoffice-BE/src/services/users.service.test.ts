@@ -7,6 +7,7 @@ import { userCards, users } from "../db/schema.js";
 import {
   buildNewUserMock,
   buildUpdateProfileDtoMock,
+  buildUpdateProfileImageDtoMock,
   buildUserCardMock,
   buildUserMock,
 } from "../tests/factories/user.factory.js";
@@ -31,6 +32,8 @@ import { UnauthorizedException } from "../core/errors/UnauthorizedException.js";
 import { NotFoundException } from "../core/errors/NotFoundException.js";
 import { InternalServerErrorException } from "../core/errors/InternalServerErrorException.js";
 import { ConflictException } from "../core/errors/ConflictException.js";
+import { CloudinaryService } from "./cloudinary.service.js";
+import { ImageType } from "../constants/cloudinary.js";
 
 describe("Users Service", () => {
   const whereClause = eq(users.id, "1");
@@ -708,38 +711,67 @@ describe("Users Service", () => {
 
     it("should throw ConflictException if username is already taken by another user", async () => {
       const userId = "user-1";
+      const user = buildUserMock({ id: userId });
       const update = buildUpdateProfileDtoMock({ username: "taken-username" });
       const existingUser = buildUserMock({ id: "user-2", username: "taken-username" });
 
       getOneUserSpy.mockResolvedValue(existingUser);
 
-      await expect(UsersService.updateProfile(userId, update)).rejects.toThrow(ConflictException);
+      await expect(UsersService.updateProfile(user, update)).rejects.toThrow(ConflictException);
       expect(getOneUserSpy).toHaveBeenCalled();
       expect(updateUserSpy).not.toHaveBeenCalled();
     });
 
     it("should update profile successfully when username is available", async () => {
       const userId = "user-1";
+      const user = buildUserMock({ id: userId });
       const update = buildUpdateProfileDtoMock({ username: "new-username", firstName: "New" });
-      const updatedUser = buildUserMock({ id: userId, ...update });
+      const updatedUser = buildUserMock({ ...user, ...update });
 
       getOneUserSpy.mockResolvedValue(null); // No other user with this username
       getOneUserByIDSpy.mockResolvedValue(updatedUser);
 
-      const result = await UsersService.updateProfile(userId, update);
+      const result = await UsersService.updateProfile(user, update);
 
       expect(updateUserSpy).toHaveBeenCalledWith({ userId, update, txInstance: expect.anything() });
       expect(result).toBeInstanceOf(UserDTO);
       expect(result.username).toBe("new-username");
     });
-
-    it("should throw NotFoundException if user is not found after update", async () => {
-      const userId = "user-1";
-      const update = buildUpdateProfileDtoMock({ firstName: "Ghost" });
-
-      getOneUserByIDSpy.mockResolvedValue(null);
-
-      await expect(UsersService.updateProfile(userId, update)).rejects.toThrow(NotFoundException);
-    });
   });
+
+  describe('updateProfileImage', () => {
+    const mockPublicId = 'temp/avatar_123';
+    const mockUrl = 'https://cdn.cloudinary.com/avatar.png';
+  const user = buildUserMock({
+    id: 'user-123',
+  });
+
+  const dto = buildUpdateProfileImageDtoMock({
+    publicId: mockPublicId,
+  });
+
+  let assertValidSpy: MockInstance;
+  let updateUserSpy: MockInstance;
+  let moveImageSpy: MockInstance;
+  let getAssetUrlSpy: MockInstance;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    assertValidSpy = vi.spyOn(CloudinaryService, 'assertValidImageAsset').mockResolvedValue(undefined);
+    updateUserSpy = vi.spyOn(UsersService, 'updateUser').mockResolvedValue(undefined);
+    moveImageSpy = vi.spyOn(CloudinaryService, 'moveImageFromTempFolder').mockResolvedValue(undefined);
+    getAssetUrlSpy = vi.spyOn(CloudinaryService, 'getAssetUrl').mockReturnValue(mockUrl);
+  });
+
+  it('should update profile image successfully', async () => {
+    const result = await UsersService.updateProfileImage(user, dto);
+
+    expect(assertValidSpy).toHaveBeenCalledWith(dto.publicId);
+    expect(moveImageSpy).toHaveBeenCalledWith(dto.publicId, user.id, ImageType.AVATAR);
+    expect(getAssetUrlSpy).toHaveBeenCalledWith(dto.publicId);
+    expect(updateUserSpy).toHaveBeenCalledWith({ userId: user.id, update: { avatarPublicId: mockPublicId }, txInstance: dbSpies.mockTx });
+    expect(result).toBe(mockUrl);
+  });
+});
 });

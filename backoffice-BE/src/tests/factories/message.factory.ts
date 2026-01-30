@@ -21,7 +21,7 @@ export const buildMessageWithSenderMock = (overrides?: Partial<MessageWithSender
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
-      avatar: user.avatar,
+      avatar: user.avatarPublicId,
     },
     ...overrides,
   } as MessageWithSender;

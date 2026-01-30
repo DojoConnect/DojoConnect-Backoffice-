@@ -1,17 +1,38 @@
 import { NextFunction, Request, Response } from "express";
-import { GetCloudinarySignatureDto } from "../dtos/upload.dtos.js";
-import { CloudinaryService } from "../services/cloudinary.service.js";
 import { formatApiResponse } from "../utils/api.utils.js";
+import { UploadService } from "../services/uploads.service.js";
+import { UnauthorizedException } from "../core/errors/UnauthorizedException.js";
 
 export class UploadController {
-  static handleGetCloudinarySignature = (req: Request, res: Response, next: NextFunction) => {
+  static handleGenerateClassImageUploadSignature = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { imageType, dojoId } = req.body as GetCloudinarySignatureDto;
+      const user = req.user;
 
-      const signature = CloudinaryService.getCloudinarySignature({
-        imageType,
-        dojoId,
-      });
+      if (!user) {
+        throw new UnauthorizedException("User not found");
+      }
+
+      const signature = await UploadService.generateClassImageUploadSignature(user);
+
+      res.status(200).json(
+        formatApiResponse({
+          data: signature,
+        }),
+      );
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  static handleGenerateProfileImageUploadSignature = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = req.user;
+
+      if (!user) {
+        throw new UnauthorizedException("User not found");
+      }
+
+      const signature = await UploadService.generateProfileImageUploadSignature(user);
 
       res.status(200).json(
         formatApiResponse({

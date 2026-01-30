@@ -29,6 +29,13 @@
       "when": 1769589682337,
       "tag": "0003_sad_colossus",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1769702505599,
+      "tag": "0004_silly_black_tarantula",
+      "breakpoints": true
     }
   ]
 }
